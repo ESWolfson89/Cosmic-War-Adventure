@@ -1,0 +1,14 @@
+[ConverseStringsType1]
+
+@ !!!ATTENTION!!!
+@ YOU ARE ENTERING <caprace> TERRITORY
+@ BE WARNED! ALL ACTS OF HOSTILITY ARE PUNISHABLE BY DEATH
+@ Welcome traveler...
+@ How can The <race> be of service to you?
+@ There's not much here, but you may enter.
+@ We trade modules and offer the usual hull and fuel services.
+@ What would you like to know?
+@ Who sent you!? Nevermind that... You won't get away alive.
+@ Bye.
+
+[EOF_STRING]

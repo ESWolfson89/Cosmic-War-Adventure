@@ -1,0 +1,14 @@
+[ConverseStringsType2]
+
+@ !!!ATTENTION!!!
+@ YOU ARE ENTERING <caprace> TERRITORY
+@ BE WARNED! ALL ACTS OF HOSTILITY ARE PUNISHABLE BY DEATH
+@ Interloper...
+@ We WILL attack you if you enter regardless.
+@ You won't last long!
+@ We're not interested.
+@ We're not telling you anything.
+@ WE ARE GOING TO DESTROY YOU NOW!
+@ Get lost.
+
+[EOF_STRING]
