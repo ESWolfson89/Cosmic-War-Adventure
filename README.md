@@ -9,6 +9,7 @@ An ascii space adventure game.
 ---
 
 Requires:
+
 SDL2
 
 SDL2 Image library
