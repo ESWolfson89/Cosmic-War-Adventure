@@ -40,7 +40,7 @@ std::string genName(int num_compounds)
         }
 	}
 
-	//if ((start_vowel == true && num_compounds % 2 == 0) || (start_vowel == false && num_compounds % 2 == 1))
+    //if ((start_vowel == true && num_compounds % 2 == 0) || (start_vowel == false && num_compounds % 2 == 1))
     //{
     //    curr_name.append(middle_consonant[randInt(0,18)]);
     //}
@@ -49,5 +49,5 @@ std::string genName(int num_compounds)
 
     curr_name[0] = toupper(curr_name[0]);
 
-	return curr_name;
+    return curr_name;
 }
