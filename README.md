@@ -1,7 +1,5 @@
 Cosmic War Adventure.
 
-Copyright Eric Wolfson 2015-2017
-
 An ascii space adventure game.
 
 ![Alt text](/screenshots/screenshotcwa3.jpg?raw=true "Screenshot1")
