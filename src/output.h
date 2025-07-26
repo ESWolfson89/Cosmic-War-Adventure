@@ -5,6 +5,9 @@
 #include "graphics.h"
 #include "mob.h"
 #include "menu.h"
+#include "input.h"
+#include "region.h"
+#include "globals.h"
 
 #define NUMMESSAGELINES 10
 
@@ -65,33 +68,32 @@ class display
         void clearMessages();
         void printMonitorWindow();
         void printWindowBorders(std::string, std::string, tab_type);
-        void printShipStatsSection(ship_mob *);
-        void printShipGraphic(ship_mob *);
-        void addModuleGraphic(ship_mob *, int,int,int);
+        void printShipStatsSection(MobShip *);
+        void printShipGraphic(MobShip *, int);
+        void addModuleGraphic(MobShip *, int,int,int);
         void updateLOSBrightness(map *, point, chtype &);
         void updateGridCharacters(map *, point, chtype &);
-        void addMiscShipGraphicDetails(int);
+        void addPlayerShipGraphicDetails(int);
         void printMeter(module *, int,int,int, module_type,color_type,int);
         void printCrewMeter(module *, int,int,int);
         void printWeaponShieldEngineGraphic(module *,int,int,int);
         void delayAndUpdate(int);
-        void displayMonitor(monitor_type, ship_mob *);
+        void displayMonitor(monitor_type, MobShip *);
         void displayMenu(menu *);
-        void displayNPCShipInfo(ship_mob *);
-        void displayNPCShipGraphic(ship_mob *);
-        void initNPCShipPixels(ship_mob *);
-        void runShipDesignCADisplayRule(ship_mob *);
-        void setNPCShipYCenterPixels(ship_mob *);
-        void drawShipDesign(ship_mob *);
+        void displayNPCShipInfo(MobShip *);
+        void displayNPCShipGraphic(MobShip *);
+        void initNPCShipPixels(MobShip *);
+        void runShipDesignCADisplayRule(MobShip *);
+        void setNPCShipYCenterPixels(MobShip *);
+        void drawNPCShipDesign(MobShip *);
+        void displayMachineBox();
         int numShipPixelsAdj(int,int,int);
         bool addMessage(std::string,color_pair);
-        gfx_engine *getGFXEngine();
         chtype getSymbol(map *,point);
         void save(std::ofstream &) const;
         void load(std::ifstream &);
     private:
         point upper_left;
-        gfx_engine gfx_obj;
         msgbuffer mbuffer;
         int npc_ship_pixels[NPCSHIP_PIXEL_MAXHEIGHT][NPCSHIP_PIXEL_MAXWIDTH];
         int npc_ship_pixels_temp[NPCSHIP_PIXEL_MAXHEIGHT][NPCSHIP_PIXEL_MAXWIDTH];
@@ -102,5 +104,42 @@ color_type getFuelMeterColor(module *m);
 chtype getShipAdditiveModuloChtypeIndex(chtype,chtype);
 
 chtype getShipMultiplicativeModuloChtypeIndex(chtype,chtype);
+
+void msgeAdd(std::string, color_pair);
+
+void reDisplay(bool);
+
+void reDisplayWithoutUpdate(bool);
+
+void printWindowBorders();
+
+void printMobCells();
+
+void clearAllFireCellsInRange(map*, point, int);
+
+void clearAllFireCells(map*);
+
+void printAndSetFireCell(map*, point, fire_t);
+
+void addHitSprite(map*, point);
+
+void createDamagingExplosionAnimation(point, int, int, fire_t, bool);
+
+void printFireCircle(point, int, fire_t);
+
+void calculatePlayerLOS();
+
+void updateAllLastSymbols(cell *);
+
+void changeMobTile(point, point, mob_t);
+
+void setMobTileToNIL(map*, point);
+
+void setMobTile(map*, point, mob_t);
+
+bool chtypeEqual(chtype, chtype);
+
+extern display display_obj;
+extern tab_type current_tab;
 
 #endif

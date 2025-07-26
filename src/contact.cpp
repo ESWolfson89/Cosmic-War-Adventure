@@ -3,6 +3,7 @@
 void loadContactMainTextSequence(menu *menu_obj, race *race_obj, std::string initial_text, int num_lines, int file_line_offset)
 {
     menu_obj->addMenuMainText(initial_text);
+
     for (int i = 0; i < num_lines; ++i)
     {
         menu_obj->addMenuMainText("\"" + loadConverseStringFromFile(race_obj->getNameString(), i + file_line_offset + 1, race_obj->getPlayerAttStatus()) + "\"");
@@ -22,26 +23,34 @@ void loadCurrentContactMenuText(race *race_obj, menu *menu_obj, entrance_contact
     switch(menu_obj->getMenuLevel())
     {
         case(0):
-            loadContactMainTextSequence(menu_obj,race_obj,live_message_string,ecs_obj->num_welcome_lines,ecs_obj->num_prerecorded_lines);
-            menu_obj->addMenuItem("[continue]",blank_ch);
+        {
+            loadContactMainTextSequence(menu_obj, race_obj, live_message_string, ecs_obj->num_welcome_lines, ecs_obj->num_prerecorded_lines);
+            menu_obj->addMenuItem("[continue]", blank_ch);
             race_obj->setPlayerIDByRaceStatus(true);
             break;
+        }
         case(1):
+        {
             for (int i = 0; i < ecs_obj->num_converse_choices; ++i)
             {
-                 menu_obj->addMenuItem(contact_menu_options_type1[i],blank_ch);
+                menu_obj->addMenuItem(contact_menu_options_type1[i], blank_ch);
             }
-            menu_obj->addMenuItem("[leave]",blank_ch);
+            menu_obj->addMenuItem("[leave]", blank_ch);
             break;
+        }
         case(2):
+        {
             menu_obj->clearMenuMainText();
             menu_obj->addMenuMainText("\"" + loadConverseStringFromFile(race_obj->getNameString(),
-                                      ecs_obj->num_prerecorded_lines + ecs_obj->num_welcome_lines +
-                                      menu_obj->getSelectionIndex() + 1,race_obj->getPlayerAttStatus()) + "\"");
-            menu_obj->addMenuItem("[continue]",blank_ch);
+                ecs_obj->num_prerecorded_lines + ecs_obj->num_welcome_lines +
+                menu_obj->getSelectionIndex() + 1, race_obj->getPlayerAttStatus()) + "\"");
+            menu_obj->addMenuItem("[continue]", blank_ch);
             break;
+        }        
         default:
+        {
             break;
+        }
     }
 }
 
@@ -64,17 +73,25 @@ void loadStationInitialContactMenu(station *station_obj, menu *menu_obj)
         switch(station_obj->getBasicStationTradeChoice(i))
         {
             case(STATIONCHOICE_FUEL):
-                menu_obj->addMenuItem("Buy Fuel: " + uint642String(station_obj->getFuelCost()) + " CRED",fuelupgrade_symbol);
+            {
+                menu_obj->addMenuItem("Buy Fuel: " + uint642String(station_obj->getFuelCost()) + " CRED", fuelupgrade_symbol);
                 break;
+            }
             case(STATIONCHOICE_HULLREPAIR):
+            {
                 menu_obj->addMenuItem("Repair Hull: " + uint642String(station_obj->getHullFixCost()) + " CRED",hull_repair_symbol);
                 break;
+            }
             case(STATIONCHOICE_HULLUPGRADE):
+            {
                 menu_obj->addMenuItem("Upgrade Hull: " + uint642String(station_obj->getHullUpgradeCost()) + " CRED",hull_upgrade_symbol);
                 break;
+            }
             case(STATIONCHOICE_INCNUMMODULECAPACITY):
+            {
                 menu_obj->addMenuItem("Upgrade Slot Capacity: " + uint642String(station_obj->getSlotCapUpgradeCost()) + " CRED",slot_upgrade_symbol);
                 break;
+            }
             case(STATIONCHOICE_HIRECREW):
                 menu_obj->addMenuItem("Hire Crew: " + uint642String(station_obj->getCrewCost()) + " CRED",crew_upgrade_symbol);
                 break;
@@ -87,6 +104,24 @@ void loadStationInitialContactMenu(station *station_obj, menu *menu_obj)
             default:
                 break;
         }
+    }
+}
+
+void loadEntertainmentCenterInitialContactMenu(EntertainmentStation * station_obj, menu * menu_obj)
+{
+    chtype slotSymbol;
+    chtype diamondSymbol;
+
+    for (int i = 0; i < station_obj->getNumSlotMachines(); ++i)
+    {
+        slotSymbol = { station_obj->getSlotMachine(i)->getMachineColor() , '$'};
+        menu_obj->addMenuItem("SLOTS ", slotSymbol);
+    }
+
+    for (int i = 0; i < station_obj->getNumDiamondMachines(); ++i)
+    {
+        diamondSymbol = { station_obj->getDiamondsMachine(i)->getMachineColor() , 4 };
+        menu_obj->addMenuItem("DIAMONDS ", diamondSymbol);
     }
 }
 
@@ -130,7 +165,7 @@ void loadStationBuyModulesMenu(station *station_obj, menu *menu_obj)
     menu_obj->addMenuItem("[back]",blank_ch);
 }
 
-void loadStationSellModulesMenu(station *station_obj, menu *menu_obj, ship_mob *player_ship)
+void loadStationSellModulesMenu(station *station_obj, menu *menu_obj, MobShip *player_ship)
 {
     std::string added_module_string = "";
     chtype added_module_chtype = blank_ch;
@@ -172,12 +207,12 @@ void loadStationSellModulesMenu(station *station_obj, menu *menu_obj, ship_mob *
     menu_obj->addMenuItem("[back]",blank_ch);
 }
 
-void setStationContactData(race *race_obj, station *station_obj, menu *menu_obj, ship_mob *player_ship, int menu_lev)
+void setStationContactData(race *race_obj, station *station_obj, menu *menu_obj, MobShip *player_ship, int menu_lev)
 {
     menu_obj->setMenuLevel(menu_lev);
     menu_obj->clearMenuItems();
     menu_obj->clearMenuMainText();
-    menu_obj->addMenuMainText("--- " + race_obj->getNameString() + " Galactic Space Station ---");
+    menu_obj->addMenuMainText("--- " + race_obj->getNameString() + " Galactic Ship Station ---");
 
     switch(menu_obj->getMenuLevel())
     {
@@ -194,6 +229,24 @@ void setStationContactData(race *race_obj, station *station_obj, menu *menu_obj,
             break;
     }
     menu_obj->addMenuItem("[leave]",blank_ch);
+}
+
+void setEntertainmentCenterContactData(race* race_obj, EntertainmentStation * station_obj, menu* menu_obj, int menu_lev)
+{
+    menu_obj->setMenuLevel(menu_lev);
+    menu_obj->clearMenuItems();
+    menu_obj->clearMenuMainText();
+    menu_obj->addMenuMainText("--- " + race_obj->getNameString() + " Cosmic Entertainment Center ---");
+
+    switch (menu_obj->getMenuLevel())
+    {
+        case(0):
+            loadEntertainmentCenterInitialContactMenu(station_obj, menu_obj);
+            break;
+        default:
+            break;
+    }
+    menu_obj->addMenuItem("[leave]", blank_ch);
 }
 
 std::string loadConverseStringFromFile(std::string race_str, int converse_line, int atp)

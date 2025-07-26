@@ -12,6 +12,7 @@ class map
 		map();
 		map(point);
 		cell getCell(point);
+		cell * getCellP(point);
 		mob_t getMob(point);
 		item_t getItem(point);
 		backdrop_t getBackdrop(point);

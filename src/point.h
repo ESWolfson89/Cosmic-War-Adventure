@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cassert>
 #include <fstream>
+#include <tuple>
 
 class point
 {
@@ -21,15 +22,17 @@ class point
 		// set x only
 		void setx(int);
 		// get y value of point.
-		int y();
+		int y() const;
 		// get x value of point.
-		int x();
+		int x() const;
 		// assignment overload
 		point operator=(point);
 		// save point to file
         void save(std::ofstream &) const;
         // load point to file
         void load(std::ifstream &);
+
+		bool operator<(const point& other) const;
 
 	private:
 		// member variables for x and y coord.
@@ -46,8 +49,17 @@ int shortestPath(point, point);
 
 int distanceSquared(point, point);
 
+point multiplyPoints(point, point);
+
+point pointDistance(point, point);
+
 point divPoint(point, int, int);
 
 point addPoints(point, point);
+
+bool isOnDiagonal(point, point);
+
+bool isInStraightLine(point, point);
+
 
 #endif

@@ -171,7 +171,7 @@ void station::addEngineModuleToStation(int i)
 
 void station::addCrewpodModuleToStation(int i)
 {
-    int fill_val = 24*i;
+    int fill_val = 16*i;
     module mod_added = module(MODULE_CREW,0,fill_val);
     uint_64 mod_cost = getModuleBuyCost(MODULE_CREW,fill_val,mod_added.getBaseCost());
     modules_for_trade.push_back(std::make_pair(mod_added,mod_cost));
@@ -277,4 +277,109 @@ module *station::getModuleForTrade(int i)
 basic_station_trade_choice station::getBasicStationTradeChoice(int i)
 {
     return choices_lev0[i];
+}
+
+// constructor (do not call implicitly)
+EntertainmentStation::EntertainmentStation()
+{
+
+}
+
+// use this one
+EntertainmentStation::EntertainmentStation(point loc, int dl)
+{
+    subarea_loc = loc;
+    danger_level = dl;
+}
+
+void EntertainmentStation::initStation()
+{
+    do
+    {
+        addSlotMachines();
+        addDiamondMachines();
+    } while (getNumOptions() == 0);
+}
+
+void EntertainmentStation::addSlotMachines()
+{
+    int numMachines = randInt(0, randInt(1, randInt(1, 6)));
+
+    for (int i = 0; i < numMachines; i++)
+    {
+        slotMachines.push_back(slot(subarea_loc, std::min(20, (int)randIntZ(5 + (int)((danger_level + 5) / 2)) + 1), 0));
+        slotMachines[slotMachines.size() - 1].initSlots();
+    }
+}
+
+void EntertainmentStation::addDiamondMachines()
+{
+    int numMachines = randInt(0, randInt(1, randInt(1, 6)));
+
+    for (int i = 0; i < numMachines; i++)
+    {
+        diamondMachines.push_back(diamond(subarea_loc, std::min(20, (int)randIntZ(5 + (int)((danger_level + 5) / 2)) + 1), 0));
+        diamondMachines[diamondMachines.size() - 1].initDiamonds();
+    }
+}
+
+/*
+void EntertainmentStation::addSlotMachines()
+{
+    int numMachines = randInt(0, randInt(1, randInt(1, 6)));
+
+    for (int i = 0; i < numMachines; i++)
+    {
+        slotMachines.push_back(slot(subarea_loc, std::min(20, (int)randIntZ(5 + (int)(danger_level / 2)) + 1),0));
+        slotMachines[slotMachines.size() - 1].initSlots();
+    }
+}
+
+void EntertainmentStation::addDiamondMachines()
+{
+    int numMachines = randInt(0, randInt(1, randInt(1, 6)));
+
+    for (int i = 0; i < numMachines; i++)
+    {
+        diamondMachines.push_back(diamond(subarea_loc, std::min(20, (int)randIntZ(5 + (int)(danger_level / 2)) + 1), 0));
+        diamondMachines[diamondMachines.size() - 1].initDiamonds();
+    }
+}
+*/
+
+slot * EntertainmentStation::getSlotMachine(int i)
+{
+    return &slotMachines[i];
+}
+
+diamond* EntertainmentStation::getDiamondsMachine(int i)
+{
+    return &diamondMachines[i];
+}
+
+// get danger level of region space station is in
+int EntertainmentStation::getDangerLevel()
+{
+    return danger_level;
+}
+
+int EntertainmentStation::getNumSlotMachines()
+{
+    return (int)slotMachines.size();
+}
+
+int EntertainmentStation::getNumDiamondMachines()
+{
+    return (int)diamondMachines.size();
+}
+
+int EntertainmentStation::getNumOptions()
+{
+    return (int)slotMachines.size() + (int)diamondMachines.size();
+}
+
+// get location of sub area on starmap that the space station is in
+point EntertainmentStation::getSubareaLoc()
+{
+    return subarea_loc;
 }

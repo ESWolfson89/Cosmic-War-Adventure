@@ -97,6 +97,7 @@ struct weapon_struct
     // if true, display directional dependent straight line
     bool is_firet_line;
     bool ignores_shields;
+    bool eightDirectionRestricted;
     fire_t ftile;
     // color shown in hud
     chtype disp_chtype;
@@ -135,71 +136,71 @@ static const weapon_struct allbasicweapon_stats[NUM_TOTAL_WEAPON_TYPES] =
 {
   {
       WEAPONTYPE_NONE, {0,0,0}, {0,0,0}, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 1, false, false, NIL_f, {cp_blackonblack,(int)'N'}, "", 0
+      0, 0, 0, 0, 0, 0, 0, 0, 1, false, false, true, NIL_f, {cp_blackonblack,(int)'N'}, "", 0
   },
   {
       WEAPONTYPE_BLAST, {1,6,9}, {1,3,0}, 2, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 1, 5, 10, true, false, FIRET_REDLINE, {cp_redonblack,92}, "laser", 250
+      0, 0, 0, 0, 4, 0, 1, 5, 10, true, false, true, FIRET_REDLINE, {cp_redonblack,92}, "laser", 250
   },
   {
       WEAPONTYPE_BLAST, {1,6,9}, {1,3,0}, 2, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 2, 5, 10, true, false, FIRET_REDLINE, {cp_redonblack,92}, "laser II", 1000
+      0, 0, 0, 0, 4, 0, 2, 5, 10, true, false, true, FIRET_REDLINE, {cp_redonblack,92}, "laser II", 1000
   },
   {
       WEAPONTYPE_BLAST, {1,6,9}, {1,3,0}, 2, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 3, 5, 10, true, false, FIRET_REDLINE, {cp_redonblack,92}, "laser III", 5000
+      0, 0, 0, 0, 4, 0, 3, 5, 10, true, false, true, FIRET_REDLINE, {cp_redonblack,92}, "laser III", 5000
   },
   {
       WEAPONTYPE_BLAST, {2,9,8}, {1,4,0}, 3, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 1, 7, 15, true, false, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt", 1000
+      0, 0, 0, 0, 4, 0, 1, 7, 15, true, false, true, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt", 1000
   },
   {
       WEAPONTYPE_BLAST, {2,9,8}, {1,4,0}, 3, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 2, 7, 15, true, false, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt II", 5000
+      0, 0, 0, 0, 4, 0, 2, 7, 15, true, false, true, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt II", 5000
   },
   {
       WEAPONTYPE_BLAST, {2,9,8}, {1,4,0}, 3, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 3, 7, 15, true, false, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt III", 10000
+      0, 0, 0, 0, 4, 0, 3, 7, 15, true, false, true, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt III", 10000
   },
   {
       WEAPONTYPE_BLAST, {3,12,7}, {1,5,0}, 1, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 1, 9, 20, true, false, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster I", 12500
+      0, 0, 0, 0, 4, 0, 1, 9, 20, true, false, true, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster I", 12500
   },
   {
       WEAPONTYPE_BLAST, {3,12,7}, {1,5,0}, 1, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 2, 9, 20, true, false, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster II", 75000
+      0, 0, 0, 0, 4, 0, 2, 9, 20, true, false, true, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster II", 75000
   },
   {
       WEAPONTYPE_BLAST, {3,12,7}, {1,5,0}, 1, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 3, 9, 20, true, false, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster III", 300000
+      0, 0, 0, 0, 4, 0, 3, 9, 20, true, false, true, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster III", 300000
   },
   {
       WEAPONTYPE_SPREAD, {6,7,6}, {1,4,7}, 6, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 1, 4, 12, false, false, FIRET_EXPLOSION, {cp_orangeonblack,(int)247}, "flamer", 25000
+      0, 0, 0, 0, 4, 0, 1, 4, 12, false, false ,true, FIRET_EXPLOSION, {cp_orangeonblack,(int)247}, "flamer", 25000
   },
   {
       WEAPONTYPE_PULSE, {4,5,4}, {1,2,3}, 5, 1, 0, 0,
-      0, 0, 0, 0, 7, 0, 1, 8, 25, false, false, FIRET_PURPLEPLASMA, {cp_purpleonblack,(int)'^'}, "pulse cannon", 750000
+      0, 0, 0, 0, 7, 0, 1, 8, 25, false, false, true, FIRET_PURPLEPLASMA, {cp_purpleonblack,(int)'^'}, "pulse cannon", 750000
   },
   {
       WEAPONTYPE_WALLOP, {0,0,0}, {12,3,6}, 7, 0, 0, 0,
-      4, 2, 0, 0, 4, 0, 1, 7, 30, false, true, FIRET_GREENWALLOP, {cp_greenonblack,(int)'*'}, "plague cannon", 150000
+      4, 2, 0, 0, 4, 0, 1, 7, 30, false, true, true, FIRET_GREENWALLOP, {cp_greenonblack,(int)'*'}, "plague cannon", 150000
   },
   {
       WEAPONTYPE_MISSILE, {6,19,9}, {1,6,8}, 0, 0, 0, 0,
-      5, 2, 5, 3, 5, 2, 1, 1, 15, true, true, FIRET_GRAYLINE, {cp_grayonblack,(int)'!'}, "missile launcher", 50000
+      5, 2, 5, 3, 5, 2, 1, 1, 15, true, true, false, FIRET_GRAYLINE, {cp_grayonblack,(int)'!'}, "missile launcher", 50000
   },
   {
       WEAPONTYPE_MISSILE, {6,19,9}, {1,6,8}, 0, 0, 0, 0,
-      5, 2, 5, 3, 5, 2, 2, 1, 15, true, true, FIRET_GRAYLINE, {cp_grayonblack,(int)'!'}, "dual missile launcher", 100000
+      5, 2, 5, 3, 5, 2, 2, 1, 15, true, true, false, FIRET_GRAYLINE, {cp_grayonblack,(int)'!'}, "dual missile launcher", 100000
   },
   {
       WEAPONTYPE_MECH, {6,7,8}, {1,6,6}, 15, 3, 0, 100,
-      0, 0, 8, 3, 6, 0, 1, 1, 20, false, false, FIRET_DARKRAZOR, {cp_darkgrayonblack,15}, "giant spinning razor", 250000
+      0, 0, 8, 3, 6, 0, 1, 1, 20, false, false, false, FIRET_DARKRAZOR, {cp_darkgrayonblack,15}, "giant spinning razor", 250000
   },
   {
       WEAPONTYPE_HELL, {8,9,9}, {1,10,5}, 20, 0, 0, 0,
-      1, 3, 2, 2, 8, 5, 1, 10, 50, false, true, FIRET_DAMAGINGEXPLOSION, {cp_darkredonblack,239}, "hell cannon", 1000000
+      1, 3, 2, 2, 8, 5, 1, 10, 50, false, true, false, FIRET_DAMAGINGEXPLOSION, {cp_darkredonblack,239}, "hell cannon", 1000000
   }
 };
 

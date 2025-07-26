@@ -1,8 +1,7 @@
 #ifndef CELL_H_
 #define CELL_H_
 
-#include "globals.h"
-#include <fstream>
+#include "misc.h"
 
 // A cell has five characteristics
 // displayed in the following priority:
@@ -53,18 +52,53 @@ class cell
 
 		// set cell memory (was visited)
 		void setm(bool);
+
+		void setCurrentFireSymbol(chtype symbol);
+		void setCurrentMobSymbol(chtype symbol);
+		void setCurrentItemSymbol(chtype symbol);
+		void setCurrentBackdropSymbol(chtype symbol);
+
+		void setLastFireSymbol(chtype symbol);
+		void setLastMobSymbol(chtype symbol);
+		void setLastItemSymbol(chtype symbol);
+		void setLastBackdropSymbol(chtype symbol);
+
+		chtype getCurrentFireSymbol();
+		chtype getCurrentMobSymbol();
+		chtype getCurrentItemSymbol();
+		chtype getCurrentBackdropSymbol();
+
+		chtype getLastFireSymbol();
+		chtype getLastMobSymbol();
+		chtype getLastItemSymbol();
+		chtype getLastBackdropSymbol();
+
 		// save cell
         void save(std::ofstream &) const;
+
         // load cell
         void load(std::ifstream &);
 
 	private:
+
 		// fields for cell class (described above)
 		fire_t fire;
 		mob_t mob;
 		item_t itm;
 		backdrop_t backdrop;
+
+		chtype currentFireSymbol;
+		chtype currentMobSymbol;
+		chtype currentItemSymbol;
+		chtype currentBackdropSymbol;
+
+		chtype lastFireSymbol;
+		chtype lastMobSymbol;
+		chtype lastItemSymbol;
+		chtype lastBackdropSymbol;
+
 		bool in_mem;
+
 		bool is_vis;
 };
 

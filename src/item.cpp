@@ -37,6 +37,18 @@ item_stats *item::getStats()
     return &stats;
 }
 
+void item::save(std::ofstream& os) const
+{
+    os.write(reinterpret_cast<const char*>(&quantity), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&stats.i_type), sizeof(item_t));
+}
+
+void item::load(std::ifstream& is)
+{
+    is.read(reinterpret_cast<char*>(&quantity), sizeof(int));
+    is.read(reinterpret_cast<char*>(&stats.i_type), sizeof(item_t));
+}
+
 item_container::item_container()
 {
 
@@ -94,6 +106,24 @@ item *item_container::getItem(int i)
     return &items[i];
 }
 
+void item_container::save(std::ofstream& os) const
+{
+    int count = static_cast<int>(items.size());
+    os.write(reinterpret_cast<const char*>(&count), sizeof(int));
+    for (const item& it : items)
+        it.save(os);
+}
+
+void item_container::load(std::ifstream& is)
+{
+    int count = 0;
+    is.read(reinterpret_cast<char*>(&count), sizeof(int));
+    items.resize(count);
+    for (int i = 0; i < count; ++i)
+        items[i].load(is);
+}
+
+
 cell_pile::cell_pile(point p)
 {
     loc = p;
@@ -102,6 +132,18 @@ cell_pile::cell_pile(point p)
 point cell_pile::getLoc()
 {
     return loc;
+}
+
+void cell_pile::save(std::ofstream& os) const
+{
+    loc.save(os);         // uses point::save (member function)
+    item_container::save(os); // explicitly call base class version
+}
+
+void cell_pile::load(std::ifstream& is)
+{
+    loc.load(is);         // uses point::load (member function)
+    item_container::load(is); // explicitly call base class version
 }
 
 bool itemsEqual(item_stats *a, item_stats *b)

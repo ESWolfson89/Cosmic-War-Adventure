@@ -13,11 +13,12 @@ enum input_t
 	INP_LOAD,
 	INP_SELECT,
 	INP_WEAPONFIRE,
+	INP_EXAMINE,
 	INP_CHANGETABFOCUS,
 	INP_TOGGLE,
 	INP_DEBUG,
 	INP_WAIT,
-	INP_WAITSPECIFY
+	INP_WAITSPECIFY,
 };
 
 class input
@@ -50,5 +51,7 @@ private:
 	input_t action;
 
 };
+
+extern input event_handler;
 
 #endif

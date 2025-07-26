@@ -33,6 +33,10 @@ public:
 
     item_stats *getStats();
 
+    void save(std::ofstream&) const;
+
+    void load(std::ifstream&);
+
 private:
     int quantity;
     item_stats stats;
@@ -61,6 +65,11 @@ public:
 
     item *getItem(int);
 
+    virtual void save(std::ofstream&) const;
+
+    virtual void load(std::ifstream&);
+
+
 protected:
 
     std::vector <item> items;
@@ -71,14 +80,18 @@ protected:
 // inherits from item_container
 class cell_pile : public item_container
 {
-public:
+    public:
+    
+        cell_pile(point);
+    
+        point getLoc();
 
-    cell_pile(point);
+        void save(std::ofstream&) const override;
 
-    point getLoc();
-
-private:
-    point loc;
+        void load(std::ifstream&) override;
+    
+    private:
+        point loc;
 };
 
 bool itemsEqual(item_stats*, item_stats*);

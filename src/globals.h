@@ -6,12 +6,16 @@
 #include <iostream>
 #include <sstream>
 #include <cstdlib>
+#include <math.h>
+#include <algorithm>
+#include <numeric>
+#include <cstdint>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
 #define TILEWID 8
-#define TILEHGT 12
+#define TILEHGT 8
 
 #define BITMAPROWS 16
 #define BITMAPCOLS 16
@@ -61,10 +65,20 @@
 
 #define NUM_POSSIBLE_SHIPDESIGN_SYMBOLS 25
 
+#define NUM_STAR_TYPES 4
+
+#define NUM_STAR_SYSTEMS 167
+
+#define MIN_UNDSC_STAR_INT (int)SMBACKDROP_MAINSEQSTARSUBAREAENTRANCE
+#define MAX_UNDSC_STAR_INT (int)SMBACKDROP_WHITESTARSUBAREAENTRANCE
+
+
 // color structure
 struct color_type
 {
-    Uint8 r,g,b;
+    Uint8 r;
+    Uint8 g;
+    Uint8 b;
 };
 
 struct color_pair
@@ -81,13 +95,25 @@ struct chtype
     int ascii;
 };
 
-enum map_type
+enum StationType
+{
+    STATION_SHIP,
+    STATION_ENTERTAINMENT
+};
+
+enum EntertainmentType
+{
+    ET_SLOTS,
+    ET_DIAMONDS
+};
+
+enum MapType
 {
     MAPTYPE_STARMAP,
     MAPTYPE_LOCALEMAP
 };
 
-enum subarea_map_type
+enum subarea_MapType
 {
     SMT_NONE,
     SMT_NONPERSISTENT,
@@ -108,12 +134,6 @@ enum mob_t
 {
     NIL_m,
     SHIP_PLAYER,
-    SHIP_PATROL,
-    SHIP_AHRKONFIGHTER,
-    SHIP_AHRKONDREADNOUGHT,
-    SHIP_OOLIGFIGHTER,
-    SHIP_OOLIGDREADNOUGHT,
-    SHIP_OOLIGDESTROYER,
     SHIP_PROCGEN
 };
 
@@ -131,9 +151,26 @@ enum backdrop_t
     SMBACKDROP_REDSTARSUBAREAENTRANCE,
     SMBACKDROP_BLUESTARSUBAREAENTRANCE,
     SMBACKDROP_WHITESTARSUBAREAENTRANCE,
+    SMBACKDROP_FRIENDRACE_MAINSEQSTARSUBAREAENTRANCE,
+    SMBACKDROP_FRIENDRACE_REDSTARSUBAREAENTRANCE,
+    SMBACKDROP_FRIENDRACE_BLUESTARSUBAREAENTRANCE,
+    SMBACKDROP_FRIENDRACE_WHITESTARSUBAREAENTRANCE,
+    SMBACKDROP_HOSTILERACE_MAINSEQSTARSUBAREAENTRANCE,
+    SMBACKDROP_HOSTILERACE_REDSTARSUBAREAENTRANCE,
+    SMBACKDROP_HOSTILERACE_BLUESTARSUBAREAENTRANCE,
+    SMBACKDROP_HOSTILERACE_WHITESTARSUBAREAENTRANCE,
+    SMBACKDROP_WARZONE_MAINSEQSTARSUBAREAENTRANCE,
+    SMBACKDROP_WARZONE_REDSTARSUBAREAENTRANCE,
+    SMBACKDROP_WARZONE_BLUESTARSUBAREAENTRANCE,
+    SMBACKDROP_WARZONE_WHITESTARSUBAREAENTRANCE,
+    SMBACKDROP_EMPTY_MAINSEQSTARSUBAREAENTRANCE,
+    SMBACKDROP_EMPTY_REDSTARSUBAREAENTRANCE,
+    SMBACKDROP_EMPTY_BLUESTARSUBAREAENTRANCE,
+    SMBACKDROP_EMPTY_WHITESTARSUBAREAENTRANCE,
     LBACKDROP_PLANET,
     LBACKDROP_ENSLAVEDPLANET,
-    LBACKDROP_SPACESTATION,
+    LBACKDROP_SPACESTATION_SHIP,
+    LBACKDROP_SPACESTATION_ENTERTAINMENT,
     LBACKDROP_SPACEWALL,
     LBACKDROP_SPACE_UNLIT,
     LBACKDROP_SPACE_LIT,
@@ -176,12 +213,14 @@ static const color_type color_black = {0,0,0};
 static const color_type color_darkgray = {64,64,64};
 static const color_type color_creditgray = {96,96,96};
 static const color_type color_verydarkgray = {30,30,30};
+static const color_type color_darkergray = { 45,45,45 };
 static const color_type color_space {15,15,15};
 static const color_type color_gray = {128,128,128};
 static const color_type color_red = {255,0,0};
 static const color_type color_lightred = {255,144,144};
 static const color_type color_yellow = {255,255,0};
 static const color_type color_green = {0,255,0};
+static const color_type color_darkgreen = { 0,128,0 };
 static const color_type color_darkred = {128,0,0};
 static const color_type color_orange = {255,128,0};
 static const color_type color_brown = {180,90,0};
@@ -190,6 +229,7 @@ static const color_type color_lightblue = {100,200,255};
 static const color_type color_lightgray = {192,192,192};
 static const color_type color_blue = {0,0,255};
 static const color_type color_purple = {255,0,255};
+static const color_type color_darkpurple = {128,0,128};
 static const color_type color_mainseq = {255,255,128};
 static const color_type color_planetblue = {0,128,255};
 
@@ -213,6 +253,7 @@ static const color_pair cp_darkredonblack = {color_darkred,color_black};
 static const color_pair cp_darkgrayonwhite = {color_darkgray,color_white};
 static const color_pair cp_purpleonblack = {color_purple,color_black};
 static const color_pair cp_blueonblack = {color_blue,color_black};
+static const color_pair cp_darkergrayonblack = { color_darkergray, color_black };
 static const color_pair cp_verydarkgrayonblack = {color_verydarkgray,color_black};
 static const color_pair cp_spaceonblack = {color_space,color_black};
 static const color_pair cp_purpleonverydarkgray = {color_purple,color_verydarkgray};
@@ -307,7 +348,7 @@ static const color_pair procgen_ship_colors[NUM_POSSIBLE_SHIP_COLORS] =
 
 static const chtype fire_symbol[24] =
 {
-    {cp_grayonblack,(int)'N'},
+    blank_ch,
     {cp_cyanonblack,179},
     {cp_cyanonblack,196},
     {cp_cyanonblack,92},
@@ -335,7 +376,7 @@ static const chtype fire_symbol[24] =
 
 static const chtype mob_symbol[9] =
 {
-    {cp_grayonblack,(int)'N'},
+    blank_ch,
     {cp_whiteonblack,(int)'@'},
     {cp_darkgrayonblack,(int)'o'},
     {cp_lightblueonblack,(int)'A'},
@@ -348,21 +389,38 @@ static const chtype mob_symbol[9] =
 
 static const chtype item_symbol[2] =
 {
-    {cp_grayonblack ,(int)'N'},
+    blank_ch,
     {cp_grayonblack,37}
 };
 
-static const chtype backdrop_symbol[16] =
+static const chtype backdrop_symbol[33] =
 {
-    {cp_grayonblack,(int)'N'},
+    blank_ch,
     {cp_verydarkgrayonblack,(int)'~'},
     {cp_mainseqonblack,(int)'*'},
     {cp_lightredonblack,(int)'*'},
     {cp_lightblueonblack,(int)'*'},
     {cp_whiteonblack,(int)'*'},
+    {{color_mainseq, color_darkgreen},(int)'*'},
+    {{color_lightred, color_darkgreen},(int)'*'},
+    {{color_lightblue, color_darkgreen},(int)'*'},
+    {{color_white, color_darkgreen},(int)'*'},
+    {{color_mainseq, color_darkred},(int)'*'},
+    {{color_lightred, color_darkred},(int)'*'},
+    {{color_lightblue, color_darkred},(int)'*'},
+    {{color_white, color_darkred},(int)'*'},
+    {{color_mainseq, color_darkpurple},(int)'*'},
+    {{color_lightred, color_darkpurple},(int)'*'},
+    {{color_lightblue, color_darkpurple},(int)'*'},
+    {{color_white, color_darkpurple},(int)'*'},
+    {{color_mainseq, color_gray},(int)'*'},
+    {{color_lightred, color_gray},(int)'*'},
+    {{color_lightblue, color_gray},(int)'*'},
+    {{color_white, color_gray},(int)'*'},
     {cp_planetblueonverydarkgray,(int)'*'},
     {cp_purpleonverydarkgray,(int)'*'},
     {cp_lightgrayonblack,157},
+    {cp_redonblack, 21},
     {cp_grayonblack,(int)'#'},
     {cp_darkgrayonblack,250},
     {cp_lightgrayonblack,250},
@@ -386,5 +444,10 @@ enum npc_ship_type
     NPCSHIPTYPE_WAR,
     NPCSHIPTYPE_PIRATE
 };
+
+extern bool game_active;
+extern bool playerHasMoved;
+extern int wait_counter;
+extern int gmti;
 
 #endif

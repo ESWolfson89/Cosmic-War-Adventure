@@ -115,3 +115,49 @@ point menu::getArea()
 {
     return area;
 }
+
+void menu::save(std::ofstream & os) const
+{
+    loc.save(os);
+    area.save(os);
+
+    os.write(reinterpret_cast<const char*>(&selection_index), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&menu_level), sizeof(int));
+
+    int numMainStrings = static_cast<int>(menu_main_text.size());
+    os.write(reinterpret_cast<const char*>(&numMainStrings), sizeof(int));
+    for (const auto& str : menu_main_text)
+        stringSave(os, str);
+
+    int numItems = static_cast<int>(menu_items.size());
+    os.write(reinterpret_cast<const char*>(&numItems), sizeof(int));
+    for (const auto& item : menu_items)
+    {
+        stringSave(os, item.description);
+        chtypeSave(os, item.menu_symbol);
+    }
+}
+
+void menu::load(std::ifstream& is)
+{
+    loc.load(is);
+    area.load(is);
+
+    is.read(reinterpret_cast<char*>(&selection_index), sizeof(int));
+    is.read(reinterpret_cast<char*>(&menu_level), sizeof(int));
+
+    int numMainStrings = 0;
+    is.read(reinterpret_cast<char*>(&numMainStrings), sizeof(int));
+    menu_main_text.resize(numMainStrings);
+    for (int i = 0; i < numMainStrings; ++i)
+        stringLoad(is, menu_main_text[i]);
+
+    int numItems = 0;
+    is.read(reinterpret_cast<char*>(&numItems), sizeof(int));
+    menu_items.resize(numItems);
+    for (int i = 0; i < numItems; ++i)
+    {
+        stringLoad(is, menu_items[i].description);
+        chtypeLoad(is, menu_items[i].menu_symbol);
+    }
+}

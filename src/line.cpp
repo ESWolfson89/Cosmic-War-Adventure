@@ -1,5 +1,7 @@
 #include "line.h"
 
+line tracer;
+
 line::line()
 {
 }
@@ -112,4 +114,15 @@ point line::getLinePoint(int i)
         return point(1,1);
 
     return points[i];
+}
+
+void extrapolateLine(point& source, point& dest, point mapSize)
+{
+    point extrap = dest;
+    dest.setx(2 * dest.x() - source.x());
+    dest.sety(2 * dest.y() - source.y());
+    // source is now former target
+    source = extrap;
+
+    tracer.bresenham(mapSize, source, dest);
 }

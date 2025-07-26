@@ -2,11 +2,14 @@
 #define GAME_H_
 
 #include "output.h"
-#include "input.h"
-#include "region.h"
 #include "combat.h"
 #include "pathfind.h"
 #include "line.h"
+#include "namegen.h"
+#include "mob.h"
+#include "region.h"
+#include "station.h"
+#include "ai.h"
 
 #define RACE_EVENT_CHANCE 600000
 #define RACE_EVENT_BATTLE_SHIPS_MAX_SPAWN 6
@@ -35,123 +38,79 @@ public:
     void spacePirateEncounter();
     void addEncounterShips();
     void raceInvasionEvent(race *, race *);
-    void activateAllNPCAI();
-    void activateOneNPC(ship_mob *);
-    void setNPCRandDestination(ship_mob *);
-    void setNPCRandFreePlanetDestination(ship_mob *);
-    void setNPCAIPattern(ship_mob *);
-    void setNPCGoalDestinationLoc(ship_mob *);
-    void checkNPCMoveEvent(ship_mob *);
-    void checkNPCAggroEvent(ship_mob *);
-    void checkNPCPlanetAttackEvent(ship_mob *);
-    void checkNPCPlanetMoveEvent(ship_mob *);
     void resetAttackIDs(int);
-    void checkIfRaceAggroEvent(ship_mob *, ship_mob *);
-    void moveNPC(ship_mob *, point);
-    void playerTargetToggle();
+    void playerTargetToggle(input_t);
     void printPlayerFirePath(point,point);
-    void mobShootSingleProjectile(ship_mob*,point);
-    void mobShootSpread(ship_mob*,point,int);
-    void mobShootPulse(ship_mob*,point);
-    void extrapolateLine(point&,point&);
-    void mobFire(ship_mob*,point);
-    void outputLOFTransition(point,point,point,fire_t);
+    void playerFireWeapon(point);
     void checkPlayerFuelEvent();
-    void checkMobRegenerateEvent(ship_mob *s,module_type);
+    void checkMobRegenerateEvent(MobShip *s,module_type);
     void initGameObjects();
-    void reDisplay(bool);
     void promptInput();
-    void changeMobTile(point,point,mob_t);
     void cleanupEverything();
     void movePlayerShip(point);
     void msgeAddPromptSpace(std::string, color_pair);
-    void msgeAdd(std::string, color_pair);
-    void printWindowBorders();
-    void calculatePlayerLOS();
     void executeMiscPlayerTurnBasedData();
     void executeMiscNPCTurnBasedData();
-    void enterStarSystem();
     void returnToStarMap();
     void setPlayerLoc(point);
+    void setVisitedStarMapTileBackdrops(point smloc);
+    void setVisitedStarMapTileBackdrop(point smloc, int increment);
+    void checkSetRegionTileToHostile();
     void enterArea();
     void enterSubArea(bool);
     void enterStation();
     void useSpaceStation(point);
+    void useEntertainmentCenter(point);
     void changeGameTabFocus();
     void changeSelectedModule(point);
-    void mobShootWeapon(ship_mob *);
-    void endOfProjectileLoop(ship_mob *,point,bool);
     void checkNPCDefeatedEvent();
     void checkPlayerDefeatedEvent();
-    void createDamagingExplosionAnimation(point, int, int, fire_t, bool);
     void createShipDestructionAnimations();
-    void printFireCircle(point,int,fire_t);
-    void checkMobExplosionRadiusDamage(point, int, damage_report,bool);
-    void checkCreateDamagingExplosion(point,int,int,fire_t,bool,damage_report,bool);
-    void checkNPCFlags(ship_mob *);
-    void checkMobHasEngine(ship_mob *);
-    void printShipmobWeaponEventMessage(ship_mob *, std::string);
     void printTileCharacteristics();
-    void displayDamageReport(damage_report,ship_mob *,bool);
-    void mobChangeSelectedWeapon(ship_mob *);
-    void displayEvasionReport(int, ship_mob *);
-    void checkCreateDamagingExplosionRollDamage(ship_mob *, point, int);
-    void decrementPlayerRaceReputation(race *);
-    void printMobCells();
-    void printAndSetFireCell(map*,point,fire_t);
-    void clearAllFireCellsInRange(map*,point,int);
-    void clearAllFireCells(map *);
-    void addHitSprite(map *, point);
     void navigateMenu(menu *);
     void playerPurchaseModule(station *, menu *);
     void playerSellModule(station *, menu *);
-    void stripShipMobOfResources(ship_mob *, ship_mob *);
+    void stripShipMobOfResources(MobShip *, MobShip *);
     void upgradePlayerSlotCapacity(station *);
     void upgradePlayerHull(station *);
     void repairPlayerHull(station *);
     void playerHireCrew(station *);
     void playerBuyFuel(station *);
-    void pickUpItems(ship_mob*, int, int);
-    void checkPickUpItems(ship_mob *);
+    void pickUpItems(MobShip*, int, int);
+    void checkPickUpItems(MobShip *);
     void printSubAreaEntranceMessage();
-    bool checkNPCWeaponEvent(ship_mob *);
-    bool checkForMobInLOF(ship_mob *, point, bool, bool);
-    bool isTargetableNPC(int);
+    void printTogglePromptMessage(input_t, bool);
+    void cycleTarget();
+    void setPointIfInMapRangeAndLOS(point, point&);
+    bool isTargetableNPC(int, input_t);
     bool converseViaContactMenu(race *);
     bool executeConverseEvent(race *);
-    point getNextTargetedNPC();
-    point getMapSize();
-    map *getMap();
-    ship_mob *getPlayerShip();
-    ship_mob *getSubAreaShipMobAt(point);
-    ship_mob *getCurrentMobTurn();
-    ship_mob *getMobFromID(int);
+    bool checkCanTargetBasedOnModule(input_t);
+    bool checkCanTargetBasedOnStraightLine(MobShip *, input_t);
+    bool sufficientFillQuantity(MobShip *);
+    point getNextTargetedNPC(input_t);
+    point getNextToggleDeltaForFireWeapon(point, point);
     void save();
     void load();
+    // template functions
+    template <typename M> void useMachinePlayer(M*);
+    template <typename M> void featurePlayerToggle(M*);
+    template <typename M> void featurePlayerSelect(M*, point);
 private:
-    ship_mob player_ship;
-    display display_obj;
-    starmap_region universe;
     point last_smloc;
     point last_subarealoc;
-    int current_subarea_id;
     int gmti;
     int current_player_target;
-    int current_mob_turn;
-    int wait_counter;
+    bool usingMachine;
     uint turn_timer;
-    tab_type current_tab;
-    map_type current_maptype;
-    input event_handler;
-    bool game_active;
-    bool player_has_moved;
-    line tracer;
-    pathfind pathfinder;
     menu contact_menu_obj;
     menu station_menu_obj;
+    menu entertainmentStationMenu;
     std::vector<ship_explosion_struct> explosion_data;
 };
 
-std::string getNamePrefix(ship_mob *);
+bool eightDirectionRestrictedWeaponSelected(MobShip*);
+
+bool inRangeStarMapBackdropGreen(backdrop_t);
 
 #endif

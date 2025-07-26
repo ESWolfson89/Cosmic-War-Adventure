@@ -18,3 +18,18 @@ int randInt(int low, int high)
     std::uniform_int_distribution<int> dist(low,high);
     return dist(random_number_generator);
 }
+
+int randIntZ(int high)
+{
+    return randInt(0, high);
+}
+
+point randZeroBasedPoint(int maxX, int maxY)
+{
+    return randPoint(0, 0, maxX, maxY);
+}
+
+point randPoint(int minX, int minY, int maxX, int maxY)
+{
+    return point(randInt(minX, maxX), randInt(minY, maxY));
+}

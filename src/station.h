@@ -2,6 +2,7 @@
 #define STATION_H_
 
 #include "mob.h"
+#include "casino.h"
 
 /*
 Currently unused
@@ -82,6 +83,31 @@ class station
         uint_64 crew_cost;
         int danger_level;
         point subarea_loc;
+};
+
+class EntertainmentStation
+{
+    public:
+        //unused: bool hasStationChoice(basic_station_trade_choice);
+        //unused: double getSellRatio();
+        EntertainmentStation();
+        EntertainmentStation(point, int);
+        int getDangerLevel();
+        int getNumSlotMachines();
+        int getNumDiamondMachines();
+        point getSubareaLoc();
+        void initStation();
+        void addSlotMachines();
+        void addDiamondMachines();
+        slot * getSlotMachine(int);
+        diamond * getDiamondsMachine(int);
+        int getNumOptions();
+    private:
+        int danger_level;
+        point subarea_loc;
+        std::vector<EntertainmentType> entertainmentTypes;
+        std::vector<slot> slotMachines;
+        std::vector<diamond> diamondMachines;
 };
 
 #endif

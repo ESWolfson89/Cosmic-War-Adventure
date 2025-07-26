@@ -3,11 +3,15 @@
 
 #include <random>
 #include <time.h>
+#include "point.h"
 
-static std::mt19937 random_number_generator(time(0));
+static std::mt19937 random_number_generator(static_cast<unsigned int>(time(nullptr)));
 
-bool roll(int);
-bool rollPerc(int);
-int randInt(int,int);
+bool roll(int sides);
+bool rollPerc(int perc);
+int randInt(int low, int high);
+int randIntZ(int high);
+point randZeroBasedPoint(int maxX, int maxY);
+point randPoint(int minX, int minY, int maxX, int maxY);
 
 #endif

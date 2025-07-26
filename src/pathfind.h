@@ -38,4 +38,6 @@ class pathfind
 		point max_scan;
 };
 
+extern pathfind pathfinder;
+
 #endif

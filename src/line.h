@@ -18,4 +18,8 @@ class line
 		std::vector <point> points;
 };
 
+void extrapolateLine(point&, point&, point);
+
+extern line tracer;
+
 #endif

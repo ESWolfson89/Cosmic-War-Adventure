@@ -1,18 +1,20 @@
 #include "mob.h"
 
-ship_mob::ship_mob()
+MobShip player_ship;
+
+MobShip::MobShip()
 {
     loc = point(1,1);
     player_controlled = false;
 }
 
-ship_mob::ship_mob(bool pc, shipmobstat_struct sms_param, npc_ship_type nst, int hs, point p)
+MobShip::MobShip(bool pc, shipmobstat_struct sms_param, npc_ship_type nst, int hs, point p)
 {
     mob_subarea_id = -1;
     setShipMob(pc,sms_param,nst,hs,p);
 }
 
-void ship_mob::setShipMob(bool pc, shipmobstat_struct sms_param, npc_ship_type nst, int hs, point p)
+void MobShip::setShipMob(bool pc, shipmobstat_struct sms_param, npc_ship_type nst, int hs, point p)
 {
     init_loc = loc = p;
     sms_data = sms_param;
@@ -31,7 +33,7 @@ void ship_mob::setShipMob(bool pc, shipmobstat_struct sms_param, npc_ship_type n
     initShipDesign();
 }
 
-void ship_mob::initShipDesign()
+void MobShip::initShipDesign()
 {
     design_obj.ca_ship_gens = randInt(5,125);
     design_obj.ca_start_val = ship_design_pattern_ch[randInt(0,NUM_POSSIBLE_SHIPDESIGN_SYMBOLS-1)];
@@ -60,103 +62,103 @@ void ship_mob::initShipDesign()
     }
 }
 
-void ship_mob::setInitLoc(point p)
+void MobShip::setInitLoc(point p)
 {
     init_loc = p;
 }
 
-shipmobstat_struct ship_mob::getStatStruct()
+shipmobstat_struct MobShip::getStatStruct()
 {
     return sms_data;
 }
 
-shipmob_goalStatus ship_mob::getGoalStatus()
+shipmob_goalStatus MobShip::getGoalStatus()
 {
     return smgs;
 }
 
-shipmob_AIpattern ship_mob::getAIPattern()
+shipmob_AIpattern MobShip::getAIPattern()
 {
     return smAIp;
 }
 
-ship_design_struct ship_mob::getDesignStruct()
+ship_design_struct MobShip::getDesignStruct()
 {
     return design_obj;
 }
 
-npc_ship_type ship_mob::getNPCShipType()
+npc_ship_type MobShip::getNPCShipType()
 {
     return npc_ship_type_obj;
 }
 
-void ship_mob::setGoalStatus(shipmob_goalStatus new_gs)
+void MobShip::setGoalStatus(shipmob_goalStatus new_gs)
 {
     smgs = new_gs;
 }
 
-void ship_mob::setRoveChance(int rc)
+void MobShip::setRoveChance(int rc)
 {
     sms_data.rove_chance = rc;
 }
 
-void ship_mob::setAIPattern(shipmob_AIpattern new_p)
+void MobShip::setAIPattern(shipmob_AIpattern new_p)
 {
     smAIp = new_p;
 }
 
-void ship_mob::setTurnTimer(double d)
+void MobShip::setTurnTimer(double d)
 {
 	NPC_turn_timer = d;
 }
 
-void ship_mob::decrementTurnTimer()
+void MobShip::decrementTurnTimer()
 {
 	NPC_turn_timer--;
 }
 
-void ship_mob::setMoveState(bool b)
+void MobShip::setMoveState(bool b)
 {
     can_move = b;
 }
 
-void ship_mob::setMaxHull(int mh)
+void MobShip::setMaxHull(int mh)
 {
     sms_data.max_hull = mh;
 }
 
-double ship_mob::getTurnTimer()
+double MobShip::getTurnTimer()
 {
 	return NPC_turn_timer;
 }
 
-bool ship_mob::inTimerRange()
+bool MobShip::inTimerRange()
 {
 	// area of precision (assuming you dont have speeds of 1001, etc...
 	return NPC_turn_timer < 0.0001 && NPC_turn_timer > -0.0001;
 }
 
-point ship_mob::at()
+point MobShip::at()
 {
     return loc;
 }
 
-double ship_mob::getSpeed()
+double MobShip::getSpeed()
 {
     return sms_data.base_speed + getBonusSpeed();
 }
 
-double ship_mob::getEvasion()
+double MobShip::getEvasion()
 {
     return sms_data.evasion + getModifiedEvasion();
 }
 
-double ship_mob::getAccuracy()
+double MobShip::getAccuracy()
 {
     return sms_data.accuracy + getModule(getModuleSelectionIndex())->getWeaponStruct().to_hit;
 }
 
-double ship_mob::getBonusSpeed()
+double MobShip::getBonusSpeed()
 {
     double bonus_speed = 0.0;
     int eng_iter = 0;
@@ -175,7 +177,7 @@ double ship_mob::getBonusSpeed()
     return bonus_speed;
 }
 
-double ship_mob::getModifiedEvasion()
+double MobShip::getModifiedEvasion()
 {
     double mod_evasion = 0.0;
     for (int i = 0; i < getNumInstalledModules(); ++i)
@@ -188,7 +190,7 @@ double ship_mob::getModifiedEvasion()
     return mod_evasion;
 }
 
-int ship_mob::getFuelConsumptionRate()
+int MobShip::getFuelConsumptionRate()
 {
     int rate = 1;
     int eng_iter = 0;
@@ -207,95 +209,95 @@ int ship_mob::getFuelConsumptionRate()
     return rate;
 }
 
-void ship_mob::setLoc(point p)
+void MobShip::setLoc(point p)
 {
     loc = p;
 }
 
-void ship_mob::offLoc(point p)
+void MobShip::offLoc(point p)
 {
     loc = addPoints(loc,p);
 }
 
-int ship_mob::getDetectRadius()
+int MobShip::getDetectRadius()
 {
     return sms_data.detect_radius;
 }
 
-void ship_mob::addModule(module m)
+void MobShip::addModule(module m)
 {
     if ((int)module_vec.size() < sms_data.num_max_modules)
         module_vec.push_back(m);
 }
 
-void ship_mob::removeModule(int index)
+void MobShip::removeModule(int index)
 {
     module_vec.erase(module_vec.begin()+index);
 }
 
-void ship_mob::setHullStatus(int h)
+void MobShip::setHullStatus(int h)
 {
     hull_status = h;
     if (hull_status > getMaxHull())
         hull_status = getMaxHull();
 }
 
-void ship_mob::setActivationStatus(bool b)
+void MobShip::setActivationStatus(bool b)
 {
     is_activated = b;
 }
 
-module *ship_mob::getModule(int index)
+module *MobShip::getModule(int index)
 {
     return &(module_vec[index]);
 }
 
-int ship_mob::getMaxNumModules()
+int MobShip::getMaxNumModules()
 {
     return sms_data.num_max_modules;
 }
 
-int ship_mob::getNumInstalledModules()
+int MobShip::getNumInstalledModules()
 {
     return (int)module_vec.size();
 }
 
-int ship_mob::getHullStatus()
+int MobShip::getHullStatus()
 {
     return hull_status;
 }
 
-int ship_mob::getMaxHull()
+int MobShip::getMaxHull()
 {
     return sms_data.max_hull;
 }
 
-void ship_mob::eraseModule(int i)
+void MobShip::eraseModule(int i)
 {
     module_vec.erase(module_vec.begin() + i);
 }
 
-bool ship_mob::crewOperable()
+bool MobShip::crewOperable()
 {
     return sms_data.crew_operable;
 }
 
-bool ship_mob::isActivated()
+bool MobShip::isActivated() const
 {
     return is_activated;
 }
 
-bool ship_mob::getMoveState()
+bool MobShip::getMoveState()
 {
     return can_move;
 }
 
-int ship_mob::getDangerLevel()
+int MobShip::getDangerLevel()
 {
     return danger_level;
 }
 
-void ship_mob::incTotalFillAmount(int amount,module_type mt)
+void MobShip::incTotalFillAmount(int amount,module_type mt)
 {
     int increment_remaining = amount;
     int increment_unit;
@@ -318,7 +320,7 @@ void ship_mob::incTotalFillAmount(int amount,module_type mt)
     }
 }
 
-void ship_mob::decTotalFillAmount(int amount,module_type mt)
+void MobShip::decTotalFillAmount(int amount,module_type mt)
 {
     int decrement_remaining = amount;
     int decrement_unit;
@@ -339,7 +341,7 @@ void ship_mob::decTotalFillAmount(int amount,module_type mt)
     }
 }
 
-int ship_mob::getTotalMTFillRemaining(module_type mt)
+int MobShip::getTotalMTFillRemaining(module_type mt)
 {
     int amount_remaining = 0;
     for (int i = 0; i < getNumInstalledModules(); ++i)
@@ -350,7 +352,7 @@ int ship_mob::getTotalMTFillRemaining(module_type mt)
     return amount_remaining;
 }
 
-int ship_mob::getTotalMTFillCapacity(module_type mt)
+int MobShip::getTotalMTFillCapacity(module_type mt)
 {
     int amount_capacity = 0;
     for (int i = 0; i < getNumInstalledModules(); ++i)
@@ -361,12 +363,12 @@ int ship_mob::getTotalMTFillCapacity(module_type mt)
     return amount_capacity;
 }
 
-int ship_mob::getTotalFillPercentageOfType(module_type mt)
+int MobShip::getTotalFillPercentageOfType(module_type mt)
 {
     return (int)(((double)getTotalMTFillRemaining(MODULE_SHIELD)/(double)getTotalMTFillCapacity(MODULE_SHIELD))*100.0);
 }
 
-int ship_mob::getNumInstalledModulesOfType(module_type mt)
+int MobShip::getNumInstalledModulesOfType(module_type mt)
 {
     int num = 0;
     for (int i = 0; i < getNumInstalledModules(); ++i)
@@ -377,29 +379,29 @@ int ship_mob::getNumInstalledModulesOfType(module_type mt)
     return num;
 }
 
-int ship_mob::getCrashFactor()
+int MobShip::getCrashFactor()
 {
     return sms_data.crash_factor;
 }
 
-int ship_mob::getModuleSelectionIndex()
+int MobShip::getModuleSelectionIndex()
 {
     return module_selection_index;
 }
 
-void ship_mob::setModuleSelectionIndex(int msi)
+void MobShip::setModuleSelectionIndex(int msi)
 {
     module_selection_index = msi;
     checkSelectedModuleBoundary();
 }
 
-void ship_mob::offModuleSelectionIndex(int o)
+void MobShip::offModuleSelectionIndex(int o)
 {
     module_selection_index += o;
     checkSelectedModuleBoundary();
 }
 
-void ship_mob::checkSelectedModuleBoundary()
+void MobShip::checkSelectedModuleBoundary()
 {
     if (module_selection_index >= getNumInstalledModules())
         module_selection_index = 0;
@@ -407,82 +409,82 @@ void ship_mob::checkSelectedModuleBoundary()
         module_selection_index = getNumInstalledModules() - 1;
 }
 
-bool ship_mob::isCurrentPlayerShip()
+bool MobShip::isCurrentPlayerShip()
 {
     return player_controlled;
 }
 
-void ship_mob::cleanupEverything()
+void MobShip::cleanupEverything()
 {
     std::vector<module>().swap(module_vec);
 }
 
-void ship_mob::setDestination(point p)
+void MobShip::setDestination(point p)
 {
     destination = p;
 }
 
-point ship_mob::getInitLoc()
+point MobShip::getInitLoc()
 {
     return init_loc;
 }
 
-point ship_mob::getDestination()
+point MobShip::getDestination()
 {
     return destination;
 }
 
-std::string ship_mob::getShipName()
+std::string MobShip::getShipName()
 {
     return sms_data.ship_name;
 }
 
-mob_t ship_mob::getMobType()
+mob_t MobShip::getMobType()
 {
     return sms_data.mtype;
 }
 
-chtype ship_mob::getShipSymbol()
+chtype MobShip::getShipSymbol()
 {
     return sms_data.ship_symbol;
 }
 
-int ship_mob::getMobSubAreaID()
+int MobShip::getMobSubAreaID()
 {
     return mob_subarea_id;
 }
 
-int ship_mob::getMobSubAreaGroupID()
+int MobShip::getMobSubAreaGroupID() const
 {
     return mob_subarea_group_id;
 }
 
-int ship_mob::getMobSubAreaAttackID()
+int MobShip::getMobSubAreaAttackID()
 {
     return mob_subarea_attack_id;
 }
 
-void ship_mob::setShipName(std::string sn)
+void MobShip::setShipName(std::string sn)
 {
     sms_data.ship_name = sn;
 }
 
-void ship_mob::initMobSubAreaID(int id)
+void MobShip::initMobSubAreaID(int id)
 {
     mob_subarea_id = id;
 }
 
-void ship_mob::setMobSubAreaAttackID(int aid)
+void MobShip::setMobSubAreaAttackID(int aid)
 {
     mob_subarea_attack_id = aid;
 }
 
-void ship_mob::setMobSubAreaGroupID(int gid)
+void MobShip::setMobSubAreaGroupID(int gid)
 {
     mob_subarea_group_id = gid;
 }
 
-void ship_mob::useFuelEvent(int cons_rate)
+void MobShip::useFuelEvent(int cons_rate)
 {
     for (int i = 0; i < getNumInstalledModules(); ++i)
     {
@@ -495,7 +497,7 @@ void ship_mob::useFuelEvent(int cons_rate)
     }
 }
 
-bool ship_mob::isLowOnFuel()
+bool MobShip::isLowOnFuel()
 {
     if (hasNoFuel())
         return false;
@@ -506,27 +508,27 @@ bool ship_mob::isLowOnFuel()
     return false;
 }
 
-bool ship_mob::hasNoFuel()
+bool MobShip::hasNoFuel()
 {
     return (getTotalMTFillRemaining(MODULE_FUEL) == 0.0 || getTotalMTFillCapacity(MODULE_FUEL) == 0.0);
 }
 
-uint_64 ship_mob::getNumCredits()
+uint_64 MobShip::getNumCredits()
 {
     return num_credits;
 }
 
-void ship_mob::setNumCredits(uint_64 new_cred)
+void MobShip::setNumCredits(uint_64 new_cred)
 {
     num_credits = new_cred;
 }
 
-void ship_mob::setNumMaxModules(int nmm)
+void MobShip::setNumMaxModules(int nmm)
 {
     sms_data.num_max_modules = nmm;
 }
 
-void ship_mob::save(std::ofstream& os) const
+void MobShip::save(std::ofstream& os) const
 {
     int temp_num_modules = (int)module_vec.size();
     os.write((const char *)&temp_num_modules,sizeof(int));
@@ -560,7 +562,7 @@ void ship_mob::save(std::ofstream& os) const
     chtypeSave(os,sms_data.ship_symbol);
 }
 
-void ship_mob::load(std::ifstream& is)
+void MobShip::load(std::ifstream& is)
 {
     int temp_num_modules = 0;
     is.read((char *)&temp_num_modules,sizeof(int));
@@ -594,4 +596,9 @@ void ship_mob::load(std::ifstream& is)
     is.read((char *)&sms_data.mtype,sizeof(mob_t));
     stringLoad(is,sms_data.ship_name);
     chtypeLoad(is,sms_data.ship_symbol);
+}
+
+MobShip* getPlayerShip()
+{
+    return &player_ship;
 }

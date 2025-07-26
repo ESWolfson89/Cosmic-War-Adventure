@@ -2,6 +2,8 @@
 
 #include "input.h"
 
+input event_handler;
+
 input::input()
 {
     delta.set(0,0);
@@ -24,40 +26,36 @@ void input::setAction()
 
     switch(evt.key.keysym.sym)
     {
-    case(SDLK_y):
     case(SDLK_KP_7):
+    case(SDLK_y):
         setDelta(point(-1,-1));
         break;
-    case(SDLK_k):
     case(SDLK_KP_8):
-    case(SDLK_UP):
+    case(SDLK_k):
         setDelta(point(0,-1));
         break;
-    case(SDLK_u):
     case(SDLK_KP_9):
+    case(SDLK_u):
         setDelta(point(1,-1));
         break;
-    case(SDLK_h):
     case(SDLK_KP_4):
-    case(SDLK_LEFT):
+    case(SDLK_h):
         setDelta(point(-1,0));
         break;
-    case(SDLK_l):
     case(SDLK_KP_6):
-    case(SDLK_RIGHT):
+    case(SDLK_l):
         setDelta(point(1,0));
         break;
-    case(SDLK_b):
     case(SDLK_KP_1):
+    case(SDLK_b):
         setDelta(point(-1,1));
         break;
-    case(SDLK_j):
     case(SDLK_KP_2):
-    case(SDLK_DOWN):
+    case(SDLK_j):
         setDelta(point(0,1));
         break;
-    case(SDLK_n):
     case(SDLK_KP_3):
+    case(SDLK_n):
         setDelta(point(1,1));
         break;
     case(SDLK_SPACE):
@@ -65,6 +63,9 @@ void input::setAction()
         break;
     case(SDLK_t):
         action = INP_WEAPONFIRE;
+        break;
+    case(SDLK_x):
+        action = INP_EXAMINE;
         break;
     case(SDLK_TAB):
         action = INP_CHANGETABFOCUS;

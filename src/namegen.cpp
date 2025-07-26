@@ -51,3 +51,10 @@ std::string genName(int num_compounds)
 
     return curr_name;
 }
+
+std::string getNamePrefix(MobShip* mb)
+{
+    if (mb->isCurrentPlayerShip())
+        return "Your";
+    return "The";
+}

@@ -3,6 +3,7 @@
 
 #include "globals.h"
 #include "point.h"
+#include "misc.h"
 
 struct menu_item
 {
@@ -28,6 +29,8 @@ class menu
         void decSelectionIndex();
         void setSelectionIndex(int);
         void setMenuLevel(int);
+        void save(std::ofstream&) const;
+        void load(std::ifstream&);
         int getNumMenuMainTextStrings();
         int getSelectionIndex();
         int getMenuLevel();

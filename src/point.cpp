@@ -34,13 +34,13 @@ void point::setx(int xx)
 }
 
 // get y value of point.
-int point::y()
+int point::y() const
 {
 	return y_val;
 }
 
 // get x value of point.
-int point::x()
+int point::x() const
 {
 	return x_val;
 }
@@ -53,17 +53,20 @@ point point::operator=(point p)
 	return *this;
 }
 
-void point::save(std::ofstream &os) const
-{
-    os.write((const char *)&x_val,sizeof(int));
-    os.write((const char *)&y_val,sizeof(int));
+bool point::operator<(const point& other) const {
+	return std::tie(x_val, y_val) < std::tie(other.x_val, other.y_val);
 }
 
-// load point
-void point::load(std::ifstream &is)
+void point::save(std::ofstream& os) const
 {
-    is.read((char *)&x_val,sizeof(int));
-    is.read((char *)&y_val,sizeof(int));
+	os.write(reinterpret_cast<const char*>(&x_val), sizeof(int));
+	os.write(reinterpret_cast<const char*>(&y_val), sizeof(int));
+}
+
+void point::load(std::ifstream& is)
+{
+	is.read(reinterpret_cast<char*>(&x_val), sizeof(int));
+	is.read(reinterpret_cast<char*>(&y_val), sizeof(int));
 }
 
 
@@ -110,8 +113,28 @@ int distanceSquared(point a, point b)
     return (delta.x() * delta.x()) + (delta.y() * delta.y());
 }
 
+point multiplyPoints(point a, point b)
+{
+	return point(a.x() * b.x(), a.y() * b.y());
+}
+
+point pointDistance(point a, point b)
+{
+	return point(abs(a.x() - b.x()), abs(a.y() - b.y()));
+}
+
 // return the sum of points a and b
 point addPoints(point a, point b)
 {
 	return point(a.x() + b.x(),a.y() + b.y());
+}
+
+bool isOnDiagonal(point a, point b)
+{
+	return abs(a.x() - b.x()) == abs(a.y() - b.y());
+}
+
+bool isInStraightLine(point a, point b)
+{
+	return a.x() == b.x() || a.y() == b.y() || isOnDiagonal(a, b);
 }

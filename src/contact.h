@@ -4,6 +4,7 @@
 #include "menu.h"
 #include "race.h"
 #include "station.h"
+#include "mob.h"
 
 #define MAX_CONTACT_MENU_LEVEL 2
 
@@ -38,20 +39,29 @@ static std::string contact_menu_options_type2[2] =
 };
 
 static std::string prerecorded_message_string = "<<<<<INCOMING PRERECORDED TRANSMISSION>>>>>";
+
 static std::string live_message_string = "<<<<<INCOMING LIVE TRANSMISSION>>>>>";
+
 
 void loadContactMainTextSequence(menu *, race *, std::string, int, int);
 
 void loadDiscoveryContactMenuText(race *, menu *, entrance_contact_struct *);
+
 void loadCurrentContactMenuText(race *, menu *, entrance_contact_struct *);
 
 void setEntranceContactData(race *, menu *, int);
 
-void setStationContactData(race *, station *, menu *, ship_mob *, int);
+void setStationContactData(race *, station *, menu *, MobShip *, int);
+
+void setEntertainmentCenterContactData(race *, EntertainmentStation *, menu *, int);
 
 void loadStationInitialContactMenu(station *, menu *);
+
+void loadEntertainmentCenterInitialContactMenu(EntertainmentStation *, menu *);
+
 void loadStationBuyModulesMenu(station *, menu *);
-void loadStationSellModulesMenu(station *, menu *, ship_mob *);
+
+void loadStationSellModulesMenu(station *, menu *, MobShip *);
 
 std::string loadConverseStringFromFile(std::string, int, int);
 

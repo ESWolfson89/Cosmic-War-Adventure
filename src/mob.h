@@ -4,6 +4,7 @@
 #include "point.h"
 #include "module.h"
 #include "rng.h"
+#include "line.h"
 
 #define CREDIT_DL_MULTIPLIER 1000ULL
 
@@ -103,7 +104,7 @@ struct shipmobstat_struct
     std::string ship_name;
 };
 
-static const shipmobstat_struct allshipmob_data[8] =
+static const shipmobstat_struct allshipmob_data[2] =
 {
     {
         NIL_m, 1,
@@ -132,98 +133,14 @@ static const shipmobstat_struct allshipmob_data[8] =
         RACETYPE_NONE,
         mob_symbol[(int)SHIP_PLAYER],
         "USS Player"
-    },
-    {
-        SHIP_PATROL, 1,
-        10.0,8.0,60.0,
-        25,8,4,2,0,15,
-        100,15,3,0,100,3,
-        {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,1,0},
-        {0,1,0},
-        false,
-        CLASSTYPE_PATROL,
-        RACETYPE_NONE,
-        mob_symbol[(int)SHIP_PATROL],
-        "patrol drone"
-    },
-    {
-        SHIP_AHRKONFIGHTER, 4,
-        20.0,25.0,100.0,
-        50,20,6,4,15,30,
-        60,25,4,0,0,10,
-        {0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,1,0},
-        {0,2,0},
-        true,
-        CLASSTYPE_FIGHTER,
-        RACETYPE_AHRKON,
-        mob_symbol[(int)SHIP_AHRKONFIGHTER],
-        "Ahrkon fighter"
-    },
-    {
-        SHIP_AHRKONDREADNOUGHT, 6,
-        30.0,10.0,80.0,
-        125,15,7,7,45,60,
-        40,35,5,10,0,5,
-        {0,0,0,0,2,0,0,0,0,0,1,0,0,0,0,0,0},
-        {0,1,0},
-        {0,0,1},
-        true,
-        CLASSTYPE_DREADNOUGHT,
-        RACETYPE_AHRKON,
-        mob_symbol[(int)SHIP_AHRKONDREADNOUGHT],
-        "Ahrkon dreadnought"
-    },
-    {
-        SHIP_OOLIGFIGHTER, 3,
-        10.0,5.0,100.0,
-        35,7,5,6,20,25,
-        15,30,4,5,0,5,
-        {0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0},
-        {0,1,0},
-        {0,1,0},
-        true,
-        CLASSTYPE_FIGHTER,
-        RACETYPE_OOLIG,
-        mob_symbol[(int)SHIP_OOLIGFIGHTER],
-        "oolij fighter"
-    },
-    {
-        SHIP_OOLIGDREADNOUGHT, 8,
-        25.0,8.0,80.0,
-        100,15,12,7,36,75,
-        9,25,5,12,0,5,
-        {0,3,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0},
-        {0,3,0},
-        {0,2,1},
-        true,
-        CLASSTYPE_DREADNOUGHT,
-        RACETYPE_OOLIG,
-        mob_symbol[(int)SHIP_OOLIGDREADNOUGHT],
-        "oolij dreadnought"
-    },
-    {
-        SHIP_OOLIGDESTROYER, 18,
-        50.0,5.0,100.0,
-        250,25,10,15,100,100,
-        3,40,7,20,0,5,
-        {0,0,2,0,0,0,0,0,0,0,0,0,0,2,0,0,0},
-        {0,1,0},
-        {0,0,3},
-        true,
-        CLASSTYPE_DESTROYER,
-        RACETYPE_OOLIG,
-        mob_symbol[(int)SHIP_OOLIGDESTROYER],
-        "oolij destroyer"
     }
 };
 
-class ship_mob
+class MobShip
 {
     public:
-        ship_mob();
-        ship_mob(bool,shipmobstat_struct,npc_ship_type,int,point);
+        MobShip();
+        MobShip(bool,shipmobstat_struct,npc_ship_type,int,point);
         void setShipMob(bool,shipmobstat_struct,npc_ship_type,int,point);
         point at();
         shipmobstat_struct getStatStruct();
@@ -278,7 +195,7 @@ class ship_mob
         int getNumInstalledModulesOfType(module_type);
         int getTotalFillPercentageOfType(module_type);
         int getMobSubAreaID();
-        int getMobSubAreaGroupID();
+        int getMobSubAreaGroupID() const;
         int getMobSubAreaAttackID();
         void initMobSubAreaID(int);
         void setDestination(point);
@@ -291,7 +208,7 @@ class ship_mob
         bool isLowOnFuel();
         bool isCurrentPlayerShip();
         bool crewOperable();
-        bool isActivated();
+        bool isActivated() const;
         point getDestination();
         point getInitLoc();
         uint_64 getNumCredits();
@@ -323,5 +240,13 @@ class ship_mob
         point init_loc;
         uint_64 num_credits;
 };
+
+MobShip* getMobFromID(int);
+
+MobShip* getPlayerShip();
+
+MobShip* getCurrentMobTurn();
+
+extern MobShip player_ship;
 
 #endif

@@ -20,6 +20,11 @@ cell map::getCell(point p)
 	return grid[p.y()][p.x()];
 }
 
+cell * map::getCellP(point p)
+{
+	return &(grid[p.y()][p.x()]);
+}
+
 mob_t map::getMob(point p)
 {
 	return grid[p.y()][p.x()].getMob();
@@ -121,11 +126,11 @@ point map::getSize()
 
 void map::save(std::ofstream& os) const
 {
-    grid_size.save(os);
-    point pmax = grid_size;
-    for (int x = 0; x < pmax.x(); ++x)
+    grid_size.save(os);  // Save the size (point with x and y)
+
+    for (int y = 0; y < grid_size.y(); ++y)
     {
-        for (int y = 0; y < pmax.y(); ++y)
+        for (int x = 0; x < grid_size.x(); ++x)
         {
             grid[y][x].save(os);
         }
@@ -135,11 +140,17 @@ void map::save(std::ofstream& os) const
 void map::load(std::ifstream& is)
 {
     grid_size.load(is);
-    std::vector < std::vector< cell > > temp_grid(grid_size.y(), std::vector< cell >(grid_size.x()));
+
+    std::vector<std::vector<cell>> temp_grid(
+        grid_size.y(),
+        std::vector<cell>(grid_size.x())
+    );
+
     grid.swap(temp_grid);
-    for (int x = 0; x < grid_size.x(); ++x)
+
+    for (int y = 0; y < grid_size.y(); ++y)
     {
-        for (int y = 0; y < grid_size.y(); ++y)
+        for (int x = 0; x < grid_size.x(); ++x)
         {
             grid[y][x].load(is);
         }
@@ -148,10 +159,8 @@ void map::load(std::ifstream& is)
 
 bool isStarmapStarTile(backdrop_t b)
 {
-    return (b == SMBACKDROP_MAINSEQSTARSUBAREAENTRANCE ||
-            b == SMBACKDROP_REDSTARSUBAREAENTRANCE ||
-            b == SMBACKDROP_BLUESTARSUBAREAENTRANCE ||
-            b == SMBACKDROP_WHITESTARSUBAREAENTRANCE);
+    return ((int)b >= SMBACKDROP_MAINSEQSTARSUBAREAENTRANCE &&
+            (int)b <= SMBACKDROP_EMPTY_WHITESTARSUBAREAENTRANCE);
 }
 
 bool isBlockingCell(cell c)

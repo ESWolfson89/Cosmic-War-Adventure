@@ -1,134 +1,209 @@
 #include "region.h"
 
+StarMapRegion universe;
+MapType current_maptype;
+int current_subarea_id;
+int current_mob_turn;
+
 // starmap implementation
 
-starmap_region::starmap_region()
+StarMapRegion::StarMapRegion()
 {
 
 }
 
-void starmap_region::setupUniverse()
+void StarMapRegion::setupUniverse()
 {
     m = map(point(STARMAPWID,STARMAPHGT));
+
     initEmptyTiles(&m,SMBACKDROP_SPACE);
     generateAllRaces();
-    point gen_loc;
-    for (int i = 0; i < 167; ++i)
+
+    point genLoc;
+
+    for (int i = 0; i < NUM_STAR_SYSTEMS; ++i)
     {
         do
         {
-            gen_loc = point(randInt(0,m.getSize().x()-1),randInt(0,m.getSize().y()-1));
-        }while(m.getBackdrop(gen_loc) != SMBACKDROP_SPACE);
-        m.setBackdrop(gen_loc,(backdrop_t)randInt((int)SMBACKDROP_MAINSEQSTARSUBAREAENTRANCE,(int)SMBACKDROP_WHITESTARSUBAREAENTRANCE));
+            int maxX = m.getSize().x() - 1;
+            int maxY = m.getSize().y() - 1;
+            genLoc = randZeroBasedPoint(maxX, maxY);
+        } while(m.getBackdrop(genLoc) != SMBACKDROP_SPACE);
+
+        backdrop_t starType = (backdrop_t)randInt(MIN_UNDSC_STAR_INT, MAX_UNDSC_STAR_INT);
+
+        m.setBackdrop(genLoc,starType);
     }
-    nonpersistent_subarea = subarea_region(-1,false,STARTYPE_NONE);
+
+    nonpersistent_subarea = SubAreaRegion(-1,false,STARTYPE_NONE);
     nonpersistent_subarea.initMap(point(15,15));
 }
 
-void starmap_region::cleanupEverything()
+void StarMapRegion::cleanupEverything()
 {
     m.clearAllCells();
+
     nonpersistent_subarea.cleanupEverything();
-    for (int i = 0; i < (int)subarea_vec.size(); ++i)
-         subarea_vec[i].cleanupEverything();
-    for (int i = 0; i < (int)race_vec.size(); ++i)
-         race_vec[i].cleanupEverything();
-    std::vector<subarea_region>().swap(subarea_vec);
-    std::vector<race>().swap(race_vec);
+
+    for (auto& s : subareaVector)
+        s.cleanupEverything();
+
+    for (auto& r : raceVector)
+        r.cleanupEverything();
+
+    subareaVector.clear();
+    subareaVector.shrink_to_fit();
+
+    raceVector.clear();
+    raceVector.shrink_to_fit();
 }
 
-void starmap_region::generateAllRaces()
+void StarMapRegion::generateAllRaces()
 {
-    point p;
-    point msze;
-    int danger_level;
-    int atp = 0;
-    race_domain_type rdt;
+    point smLoc;
+    point mapSize;
+    int dangerLevel;
+    int maxDangerLevel;
+    int attitudeTowardsPlayer = 0;
+    race_domain_type raceDomainType;
+    race_type raceType = RACETYPE_PROCGEN;
+    race_personality_type racePersonalityType = PERSONALITY_FRIENDLY_GUARDED;
+
     for (int i = 0; i < NUM_TOTAL_RACES; ++i)
     {
         do
         {
-            p = point(randInt(0,m.getSize().x()-1),randInt(0,m.getSize().y()-1));
-        }while(m.getBackdrop(p) != SMBACKDROP_SPACE);
+            smLoc = point(randInt(0,m.getSize().x()-1),randInt(0,m.getSize().y()-1));
+        } while(m.getBackdrop(smLoc) != SMBACKDROP_SPACE);
 
-        if (roll(3))
-            danger_level = randInt(2,25);
-        else
-            danger_level = randInt(2,14);
 
-        if (danger_level > 17)
-            rdt = (race_domain_type)(randInt(0,2));
-        else if (danger_level > 8)
-            rdt = (race_domain_type)(randInt(0,1));
-        else
-            rdt = RACEDOMAIN_SECTOR;
+        maxDangerLevel = getMaxDangerLevel(smLoc);
+        dangerLevel = randInt(2, maxDangerLevel);
+        raceDomainType = getRaceDomainTypeFromDangerLevel(dangerLevel);
+        mapSize = getMapSizeBasedOnDomainType(raceDomainType);
+        attitudeTowardsPlayer = getStartingRaceAttitudeTowardsPlayer();
+        std::string raceName = genName(randInt(5, 10));
 
-        if (rdt == RACEDOMAIN_SECTOR)
-            msze = point(randInt(8,18)*2,randInt(8,18)*2);
-        if (rdt == RACEDOMAIN_DOMAIN)
-            msze = point(randInt(36,43),randInt(36,43));
-        if (rdt == RACEDOMAIN_EMPIRE)
-            msze = point(randInt(43,52),randInt(43,52));
 
-        if (roll(2))
-            atp = randInt(-200,-1);
-        else
-            atp = 0;
+        generateOneGuaranteedRace(i,
+                                  dangerLevel,
+                                  raceDomainType,
+                                  mapSize, 
+                                  smLoc, 
+                                  raceType, 
+                                  racePersonalityType, 
+                                  raceName, 
+                                  attitudeTowardsPlayer);
 
-        generateOneGuaranteedRace(i,danger_level,rdt,msze,p,RACETYPE_PROCGEN,PERSONALITY_FRIENDLY_GUARDED,genName(randInt(5,10)),atp);
-        m.setBackdrop(race_vec[i].getStarmapLoc(),(backdrop_t)((int)SMBACKDROP_MAINSEQSTARSUBAREAENTRANCE + (int)race_vec[i].getStarType() - 1));
+        m.setBackdrop(raceVector[i].getStarmapLoc(), (backdrop_t)((int)SMBACKDROP_MAINSEQSTARSUBAREAENTRANCE + (int)raceVector[i].getStarType() - 1));
     }
 }
 
-void starmap_region::generateOneGuaranteedRace(int race_id, int danger_level, race_domain_type rdt, point subarea_size, point sm_loc,
-                                               race_type rtype, race_personality_type rptype, std::string race_name_str, int att_status)
+int getStartingRaceAttitudeTowardsPlayer()
 {
-    race_vec.push_back(race(race_id,danger_level,rdt,subarea_size,sm_loc,rtype,rptype,race_name_str,att_status));
-    race_vec[(int)race_vec.size()-1].generateNativeShips();
-    race_vec[(int)race_vec.size()-1].setupRelationshipVectors();
+    if (roll(2))
+    {
+        return randInt(-200, -1);
+    }
+
+    return 0;
 }
 
-map *starmap_region::getMap()
+int getMaxDangerLevel(point smLoc)
+{
+    return std::min(25, 50 - (int)sqrt(distanceSquared(point(smLoc.x(), STARMAPHGT - smLoc.y() - 1), point(STARMAPWID - 1, STARMAPHGT - 1))) + 4);
+}
+
+race_domain_type getRaceDomainTypeFromDangerLevel(int dangerLevel)
+{
+    if (dangerLevel > 17)
+    {
+        return (race_domain_type)(randInt(0, 2));
+    }
+    else if (dangerLevel > 8)
+    {
+        return (race_domain_type)(randInt(0, 1));
+    }
+
+    return RACEDOMAIN_SECTOR;
+}
+
+point getMapSizeBasedOnDomainType(race_domain_type rdt)
+{
+    point msze;
+
+    switch (rdt)
+    {
+       case (RACEDOMAIN_SECTOR):
+           msze = point(randInt(8, 18) * 2, randInt(8, 18) * 2);
+           break;
+       case (RACEDOMAIN_DOMAIN):
+           msze = point(randInt(36, 43), randInt(36, 43));
+           break;
+       case (RACEDOMAIN_EMPIRE):
+           msze = point(randInt(43, 52), randInt(43, 52));
+       default:
+           break;
+    }
+
+    return msze;
+}
+
+void StarMapRegion::generateOneGuaranteedRace(int race_id, int danger_level, race_domain_type rdt, point subarea_size, point sm_loc,
+                                               race_type rtype, race_personality_type rptype, std::string race_name_str, int att_status)
+{
+    raceVector.push_back(race(race_id,danger_level,rdt,subarea_size,sm_loc,rtype,rptype,race_name_str,att_status));
+    raceVector[(int)raceVector.size()-1].generateNativeShips();
+    raceVector[(int)raceVector.size()-1].setupRelationshipVectors();
+}
+
+map *StarMapRegion::getMap()
 {
     return &m;
 }
 
-point starmap_region::getSize()
+point StarMapRegion::getSize()
 {
     return m.getSize();
 }
 
-int starmap_region::getSubAreaIndex(point p)
+int StarMapRegion::getSubAreaIndex(point p)
 {
-    for (int i = 0; i < (int)subarea_vec.size(); ++i)
-    {
-        if (isAt(subarea_vec[i].getSubAreaLoc(),p))
-            return i;
-    }
+    auto it = std::find_if(subareaVector.begin(), subareaVector.end(),
+        [&p](const auto& subarea) {
+            return isAt(subarea.getSubAreaLoc(), p);
+        });
+
+    if (it != subareaVector.end())
+        return static_cast<int>(std::distance(subareaVector.begin(), it));
+
     return -1;
 }
 
-int starmap_region::getRaceIndex(point p)
+int StarMapRegion::getRaceIndex(point p)
 {
-    for (int i = 0; i < (int)race_vec.size(); ++i)
-    {
-        if (isAt(race_vec[i].getStarmapLoc(),p))
-            return i;
-    }
+    auto it = std::find_if(raceVector.begin(), raceVector.end(),
+        [&p](const auto& race) {
+            return isAt(race.getStarmapLoc(), p);
+        });
+
+    if (it != raceVector.end())
+        return static_cast<int>(std::distance(raceVector.begin(), it));
+
     return -1;
 }
 
-int starmap_region::getNumSubAreas()
+int StarMapRegion::getNumSubAreas()
 {
-    return (int)subarea_vec.size();
+    return (int)subareaVector.size();
 }
 
-int starmap_region::getNumRaces()
+int StarMapRegion::getNumRaces()
 {
-    return (int)race_vec.size();
+    return (int)raceVector.size();
 }
 
-void starmap_region::createSubArea(point p, subarea_map_type samt_param, subarea_specific_type sast_param, bool wild_encounter, bool race_affiliated, star_type st)
+void StarMapRegion::createSubArea(point p, subarea_MapType samt_param, subarea_specific_type sast_param, bool wild_encounter, bool race_affiliated, star_type st)
 {
     samt = samt_param;
 
@@ -142,7 +217,7 @@ void starmap_region::createSubArea(point p, subarea_map_type samt_param, subarea
     }
 }
 
-void starmap_region::createPersistentSubArea(point loc, bool race_affiliated, star_type st, subarea_specific_type sast_param)
+void StarMapRegion::createPersistentSubArea(point loc, bool race_affiliated, star_type st, subarea_specific_type sast_param)
 {
     int subarea_idx;
 
@@ -154,64 +229,64 @@ void starmap_region::createPersistentSubArea(point loc, bool race_affiliated, st
 
     if (race_affiliated)
     {
-        race_id = race_vec[race_idx].getRaceID();
-        msze = race_vec[race_idx].getSubAreaSize();
+        race_id = raceVector[race_idx].getRaceID();
+        msze = raceVector[race_idx].getSubAreaSize();
     }
 
-    subarea_vec.push_back(subarea_region(race_id,race_affiliated,st));
+    subareaVector.push_back(SubAreaRegion(race_id,race_affiliated,st));
 
-    subarea_idx = (int)subarea_vec.size() - 1;
+    subarea_idx = (int)subareaVector.size() - 1;
 
-    subarea_vec[subarea_idx].initMap(msze);
+    subareaVector[subarea_idx].initMap(msze);
 
-    subarea_vec[subarea_idx].setupSubAreaMapGenerics(loc,LBACKDROP_SPACE_LIT);
+    subareaVector[subarea_idx].setupSubAreaMapGenerics(loc,LBACKDROP_SPACE_LIT);
 
-    subarea_vec[subarea_idx].setSubAreaSpecificType(sast_param);
+    subareaVector[subarea_idx].setSubAreaSpecificType(sast_param);
 
     if (race_affiliated)
     {
-        subarea_vec[subarea_idx].setupProcgenTerritorialSubArea(&race_vec[race_idx]);
+        subareaVector[subarea_idx].setupProcgenTerritorialSubArea(&raceVector[race_idx]);
     }
     else
     {
-        subarea_vec[subarea_idx].setupProcgenNonTerritorialSubArea(loc);
+        subareaVector[subarea_idx].setupProcgenNonTerritorialSubArea(loc);
         if (roll(3))
         {
-            subarea_vec[subarea_idx].setSubAreaSpecificType(SST_WARZONE);
+            subareaVector[subarea_idx].setSubAreaSpecificType(SST_WARZONE);
             populateWarZone(subarea_idx);
         }
     }
 }
 
-void starmap_region::populateWarZone(int subarea_idx)
+void StarMapRegion::populateWarZone(int subarea_idx)
 {
     int num_ships = randInt(6,35);
     int max_num_races = randInt(3,8);
     int current_id = 0;
     int ns_index = 0;
-    point msize = subarea_vec[subarea_idx].getMap()->getSize();
+    point msize = subareaVector[subarea_idx].getMap()->getSize();
     point spawn_loc;
 
     std::vector<int> race_ids;
 
     for (int i = 0; i < max_num_races; ++i)
     {
-         race_ids.push_back(randInt(0,(int)race_vec.size()-1));
+         race_ids.push_back(randInt(0,(int)raceVector.size()-1));
     }
 
     for (int i = 0; i < num_ships; ++i)
     {
          current_id = race_ids[randInt(0,(int)race_ids.size()-1)];
-         spawn_loc = getRandNPCShipOpenPoint(subarea_vec[subarea_idx].getMap(),point(1,1),addPoints(msize,point(-2,-9)),LBACKDROP_SPACE_UNLIT,LBACKDROP_WHITESTARBACKGROUND);
+         spawn_loc = getRandNPCShipOpenPoint(subareaVector[subarea_idx].getMap(),point(1,1),addPoints(msize,point(-2,-9)),LBACKDROP_SPACE_UNLIT,LBACKDROP_WHITESTARBACKGROUND);
          ns_index = randInt(0,getRace(current_id)->getNumNativeShips()-1);
-         subarea_vec[subarea_idx].createNPCShip(getRace(current_id)->getNativeShip(ns_index),spawn_loc,current_id);
-         subarea_vec[subarea_idx].getNPCShip(spawn_loc)->setRoveChance(100);
+         subareaVector[subarea_idx].createNPCShip(getRace(current_id)->getNativeShip(ns_index),spawn_loc,current_id);
+         subareaVector[subarea_idx].getNPCShip(spawn_loc)->setRoveChance(100);
     }
 
     race_ids.clear();
 }
 
-void starmap_region::createNonPersistentSubArea(point loc, bool wild_encounter, subarea_specific_type sast_param)
+void StarMapRegion::createNonPersistentSubArea(point loc, bool wild_encounter, subarea_specific_type sast_param)
 {
     point msze = wild_encounter ? point(randInt(15,SHOWWID),randInt(15,SHOWHGT)) : point(SHOWWID,SHOWHGT);
 
@@ -225,60 +300,60 @@ void starmap_region::createNonPersistentSubArea(point loc, bool wild_encounter, 
     nonpersistent_subarea.setSubAreaSpecificType(sast_param);
 }
 
-subarea_region *starmap_region::getSubArea(int i)
+SubAreaRegion *StarMapRegion::getSubArea(int i)
 {
-    return &subarea_vec[i];
+    return &subareaVector[i];
 }
 
-subarea_region *starmap_region::getNPSubArea()
+SubAreaRegion *StarMapRegion::getNPSubArea()
 {
     return &nonpersistent_subarea;
 }
 
-subarea_map_type starmap_region::getSubAreaMapType()
+subarea_MapType StarMapRegion::getSubAreaMapType()
 {
     return samt;
 }
 
-race *starmap_region::getRace(int i)
+race *StarMapRegion::getRace(int i)
 {
-    return &race_vec[i];
+    return &raceVector[i];
 }
 
-void starmap_region::setSubAreaMapType(subarea_map_type samt_param)
+void StarMapRegion::setSubAreaMapType(subarea_MapType samt_param)
 {
     samt = samt_param;
 }
 
-void starmap_region::saveAllSubAreas(std::ofstream &os) const
+void StarMapRegion::saveAllSubAreas(std::ofstream &os) const
 {
-    int temp_num_subareas = (int)subarea_vec.size();
+    int temp_num_subareas = (int)subareaVector.size();
     os.write((const char *)&temp_num_subareas,sizeof(int));
     for (int i = 0; i < temp_num_subareas; ++i)
     {
-        subarea_vec[i].save(os);
+        subareaVector[i].save(os);
     }
 }
 
-void starmap_region::loadAllSubAreas(std::ifstream &is)
+void StarMapRegion::loadAllSubAreas(std::ifstream &is)
 {
     int temp_num_subareas = 0;
     is.read((char *)&temp_num_subareas,sizeof(int));
-    std::vector < subarea_region > temp_lvec(temp_num_subareas);
-    subarea_vec.swap(temp_lvec);
+    std::vector < SubAreaRegion > temp_lvec(temp_num_subareas);
+    subareaVector.swap(temp_lvec);
     for (int i = 0; i < temp_num_subareas; ++i)
     {
-        subarea_vec[i].load(is);
+        subareaVector[i].load(is);
     }
 }
 
-void starmap_region::save(std::ofstream & os) const
+void StarMapRegion::save(std::ofstream & os) const
 {
     m.save(os);
     saveAllSubAreas(os);
 }
 
-void starmap_region::load(std::ifstream & is)
+void StarMapRegion::load(std::ifstream & is)
 {
     m.load(is);
     loadAllSubAreas(is);
@@ -286,50 +361,50 @@ void starmap_region::load(std::ifstream & is)
 
 // star system implementation
 
-subarea_region::subarea_region()
+SubAreaRegion::SubAreaRegion()
 {
     subarea_name = "";
     npc_id_counter = 1;
 }
 
-subarea_region::subarea_region(int nrid, bool ra, star_type st)
+SubAreaRegion::SubAreaRegion(int nrid, bool ra, star_type st)
 {
     subarea_name = "";
     npc_id_counter = 1;
-    native_race_id = nrid;
+    nativeRaceID = nrid;
     race_affiliated = ra;
     star_radius = 5;
     s_type = st;
 }
 
-subarea_specific_type subarea_region::getSubAreaSpecificType()
+subarea_specific_type SubAreaRegion::getSubAreaSpecificType()
 {
     return sast;
 }
 
-void subarea_region::setSubAreaSpecificType(subarea_specific_type sast_param)
+void SubAreaRegion::setSubAreaSpecificType(subarea_specific_type sast_param)
 {
     sast = sast_param;
 }
 
-int subarea_region::getNativeRaceID()
+int SubAreaRegion::getNativeRaceID()
 {
-    return native_race_id;
+    return nativeRaceID;
 }
 
-void subarea_region::initMap(point lsize)
+void SubAreaRegion::initMap(point lsize)
 {
     m = map(lsize);
 }
 
-void subarea_region::setupSubAreaMapGenerics(point lloc, backdrop_t filler)
+void SubAreaRegion::setupSubAreaMapGenerics(point lloc, backdrop_t filler)
 {
     initEmptyTiles(getMap(),filler);
     flood_fill_flags.resize(m.getSize().y(), std::vector<bool>(m.getSize().x()));
     subarea_loc = lloc;
 }
 
-void subarea_region::initFloodFillFlags()
+void SubAreaRegion::initFloodFillFlags()
 {
     for (int y = 0; y < getMap()->getSize().y(); ++y)
     for (int x = 0; x < getMap()->getSize().x(); ++x)
@@ -338,75 +413,74 @@ void subarea_region::initFloodFillFlags()
     }
 }
 
-void subarea_region::cleanupEverything()
+void SubAreaRegion::cleanupEverything()
 {
     m.clearAllCells();
     for (int i = 0; i < getNumShipNPCs(); ++i)
     {
-        NPC_ships[i].cleanupEverything();
+        NPCShips[i].cleanupEverything();
     }
     for (int i = 0; i < getNumStations(); ++i)
     {
         station_objs[i].cleanupEverything();
     }
-    std::vector<ship_mob>().swap(NPC_ships);
+    std::vector<MobShip>().swap(NPCShips);
     std::vector<station>().swap(station_objs);
     std::vector<std::vector<bool>>().swap(flood_fill_flags);
     deleteAllPiles();
 }
 
-void subarea_region::destroyNPC(int i)
+void SubAreaRegion::destroyNPC(int i)
 {
-    NPC_ships.erase(NPC_ships.begin() + i);
+    NPCShips.erase(NPCShips.begin() + i);
 }
 
-map *subarea_region::getMap()
+map *SubAreaRegion::getMap()
 {
     return &m;
 }
 
-void subarea_region::setSubAreaName(std::string san_param)
+void SubAreaRegion::setSubAreaName(std::string san_param)
 {
     subarea_name = san_param;
 }
 
-std::string subarea_region::getSubAreaName()
+std::string SubAreaRegion::getSubAreaName()
 {
     return subarea_name;
 }
 
-point subarea_region::getSize()
+point SubAreaRegion::getSize()
 {
     return m.getSize();
 }
 
-point subarea_region::getSubAreaLoc()
+point SubAreaRegion::getSubAreaLoc() const
 {
     return subarea_loc;
 }
 
-int subarea_region::getNumActiveNativeShipsPresent()
+int SubAreaRegion::getNumActiveNativeShipsPresent()
 {
-    int ret_val = 0;
-    for (int i = 0; i < (int)NPC_ships.size(); ++i)
-    {
-        if (NPC_ships[i].getMobSubAreaGroupID() == native_race_id && NPC_ships[i].isActivated())
-            ret_val++;
-    }
-    return ret_val;
+    auto id = nativeRaceID;
+    int retVal = std::count_if(NPCShips.begin(), NPCShips.end(),
+        [id](const auto& ship) {
+            return ship.getMobSubAreaGroupID() == id && ship.isActivated();
+        });
+    return retVal;
 }
 
-int subarea_region::getNumShipNPCs()
+int SubAreaRegion::getNumShipNPCs()
 {
-    return (int)NPC_ships.size();
+    return static_cast<int>(NPCShips.size());
 }
 
-int subarea_region::getNumStations()
+int SubAreaRegion::getNumStations()
 {
     return (int)station_objs.size();
 }
 
-void subarea_region::addAllNPCShips(race *race_obj)
+void SubAreaRegion::addAllNPCShips(race *race_obj)
 {
     int num_npc_ships = randInt(0,race_obj->getDangerLevel()) + 3;
 
@@ -416,7 +490,7 @@ void subarea_region::addAllNPCShips(race *race_obj)
     }
 }
 
-void subarea_region::rollOneNPC(race *race_obj)
+void SubAreaRegion::rollOneNPC(race *race_obj)
 {
     int ship_index;
 
@@ -433,43 +507,51 @@ void subarea_region::rollOneNPC(race *race_obj)
 
     p = getRandNPCShipOpenPoint(getMap(),point(1,1),addPoints(getMaxMapPoint(getMap()),point(-1,-1)),LBACKDROP_SPACE_UNLIT,LBACKDROP_SPACE_LIT);
 
-    createNPCShip(race_obj->getNativeShip(ship_index),p,native_race_id);
+    createNPCShip(race_obj->getNativeShip(ship_index),p,nativeRaceID);
 }
 
-void subarea_region::createNPCShip(ship_mob *added_ship,point p,int gid)
+void SubAreaRegion::createNPCShip(MobShip *added_ship,point p,int gid)
 {
     int index = 0;
-    NPC_ships.push_back(*added_ship);
-    index = (int)NPC_ships.size() - 1;
-    NPC_ships[index].setLoc(p);
-    NPC_ships[index].setDestination(p);
-    NPC_ships[index].setInitLoc(p);
-    NPC_ships[index].initMobSubAreaID(npc_id_counter);
-    NPC_ships[index].setMobSubAreaGroupID(gid);
-    NPC_ships[index].setMobSubAreaAttackID(-1);
-    NPC_ships[index].setNumCredits((uint_64)(NPC_ships[index].getStatStruct().danger_level * ((int)NPC_ships[index].getStatStruct().sctype+1)) * CREDIT_DL_MULTIPLIER);
+    NPCShips.push_back(*added_ship);
+    index = (int)NPCShips.size() - 1;
+    NPCShips[index].setLoc(p);
+    NPCShips[index].setDestination(p);
+    NPCShips[index].setInitLoc(p);
+    NPCShips[index].initMobSubAreaID(npc_id_counter);
+    NPCShips[index].setMobSubAreaGroupID(gid);
+    NPCShips[index].setMobSubAreaAttackID(-1);
+    NPCShips[index].setNumCredits((uint_64)(NPCShips[index].getStatStruct().danger_level * ((int)NPCShips[index].getStatStruct().sctype+1)) * CREDIT_DL_MULTIPLIER);
     npc_id_counter++;
-    m.setMob(p,NPC_ships[index].getStatStruct().mtype);
+    m.setMob(p,NPCShips[index].getStatStruct().mtype);
 }
 
-void subarea_region::createStationAt(point p, int dl)
+void SubAreaRegion::createStationAt(point p, int dl)
 {
     station_objs.push_back(station(p,dl));
     int index = (int)station_objs.size() - 1;
     station_objs[index].initStation();
 }
 
-station *subarea_region::getStation(int i)
+void SubAreaRegion::createEntertainmentStationAt(point p, int dl)
+{
+    entertainmentStations.push_back(EntertainmentStation(p, dl));
+    int index = (int)entertainmentStations.size() - 1;
+    entertainmentStations[index].initStation();
+}
+
+station *SubAreaRegion::getStation(int i)
 {
     return &station_objs[i];
 }
 
-ship_mob *subarea_region::getNPCShip(int i)
+EntertainmentStation* SubAreaRegion::getEntertainmentCenter(int i)
 {
-    return &NPC_ships[i];
+    return &entertainmentStations[i];
 }
 
-station *subarea_region::getStation(point p)
+
+station *SubAreaRegion::getStation(point p)
 {
     for (int i = 0; i < (int)station_objs.size(); ++i)
     {
@@ -479,39 +561,54 @@ station *subarea_region::getStation(point p)
     return &station_objs[0];
 }
 
-ship_mob *subarea_region::getNPCShip(point p)
+EntertainmentStation* SubAreaRegion::getEntertainmentCenter(point p)
 {
-    for (int i = 0; i < (int)NPC_ships.size(); ++i)
+    for (int i = 0; i < (int)entertainmentStations.size(); ++i)
     {
-        if (isAt(NPC_ships[i].at(),p))
-            return &NPC_ships[i];
+        if (isAt(entertainmentStations[i].getSubareaLoc(), p))
+            return &entertainmentStations[i];
     }
-    return &NPC_ships[0];
+    return &entertainmentStations[0];
 }
 
-void subarea_region::saveAllNPCShips(std::ofstream &os) const
+MobShip *SubAreaRegion::getNPCShip(point p)
 {
-    int temp_num_npcs = (int)NPC_ships.size();
+    for (int i = 0; i < (int)NPCShips.size(); ++i)
+    {
+        if (isAt(NPCShips[i].at(),p))
+            return &NPCShips[i];
+    }
+    return &NPCShips[0];
+}
+
+MobShip* SubAreaRegion::getNPCShip(int i)
+{
+    return &NPCShips[i];
+}
+
+void SubAreaRegion::saveAllNPCShips(std::ofstream &os) const
+{
+    int temp_num_npcs = (int)NPCShips.size();
     os.write((const char *)&temp_num_npcs,sizeof(int));
     for (int i = 0; i < temp_num_npcs; ++i)
     {
-        NPC_ships[i].save(os);
+        NPCShips[i].save(os);
     }
 }
 
-void subarea_region::loadAllNPCShips(std::ifstream &is)
+void SubAreaRegion::loadAllNPCShips(std::ifstream &is)
 {
     int temp_num_npcs = 0;
     is.read((char *)&temp_num_npcs,sizeof(int));
-    std::vector < ship_mob > temp_npcvec(temp_num_npcs);
-    NPC_ships.swap(temp_npcvec);
+    std::vector < MobShip > temp_npcvec(temp_num_npcs);
+    NPCShips.swap(temp_npcvec);
     for (int i = 0; i < temp_num_npcs; ++i)
     {
-        NPC_ships[i].load(is);
+        NPCShips[i].load(is);
     }
 }
 
-void subarea_region::save(std::ofstream & os) const
+void SubAreaRegion::save(std::ofstream & os) const
 {
     subarea_loc.save(os);
     stringSave(os,subarea_name);
@@ -519,7 +616,7 @@ void subarea_region::save(std::ofstream & os) const
     saveAllNPCShips(os);
 }
 
-void subarea_region::load(std::ifstream & is)
+void SubAreaRegion::load(std::ifstream & is)
 {
     subarea_loc.load(is);
     stringLoad(is,subarea_name);
@@ -527,7 +624,7 @@ void subarea_region::load(std::ifstream & is)
     loadAllNPCShips(is);
 }
 
-void subarea_region::setupProcgenNonTerritorialSubArea(point loc)
+void SubAreaRegion::setupProcgenNonTerritorialSubArea(point loc)
 {
     point map_size = getMap()->getSize();
     int sze = randInt(4,5);
@@ -535,7 +632,7 @@ void subarea_region::setupProcgenNonTerritorialSubArea(point loc)
     subarea_name = "Sector (" + int2String(loc.x()+1) + "," + int2String(STARMAPHGT-loc.y()) + ")";
 }
 
-void subarea_region::setupProcgenTerritorialSubArea(race *race_obj)
+void SubAreaRegion::setupProcgenTerritorialSubArea(race *race_obj)
 {
     placeInitialSpaceWallConfiguration(race_obj->getRaceDomainType());
 
@@ -549,10 +646,12 @@ void subarea_region::setupProcgenTerritorialSubArea(race *race_obj)
 
     generateAllSpaceStations(race_obj->getDangerLevel(),randInt(1,randInt(1,randInt(1,4))));
 
+    generateAllEntertainmentStations(race_obj->getDangerLevel(), randInt(0, randInt(0, randInt(1, 3))));
+
     subarea_name = race_obj->getNameString();
 }
 
-void subarea_region::smoothenSpaceWallStructure()
+void SubAreaRegion::smoothenSpaceWallStructure()
 {
     backdrop_t bdt;
     point p;
@@ -580,7 +679,7 @@ void subarea_region::smoothenSpaceWallStructure()
     std::vector<point>().swap(cut_locs);
 }
 
-void subarea_region::placeInitialSpaceWallConfiguration(race_domain_type rdt)
+void SubAreaRegion::placeInitialSpaceWallConfiguration(race_domain_type rdt)
 {
     int sze;
 
@@ -616,7 +715,7 @@ void subarea_region::placeInitialSpaceWallConfiguration(race_domain_type rdt)
 
 }
 
-void subarea_region::evolveSpaceWallCA()
+void SubAreaRegion::evolveSpaceWallCA()
 {
     int sze = 5;
 
@@ -638,7 +737,7 @@ void subarea_region::evolveSpaceWallCA()
     star_radius = sze;
 }
 
-void subarea_region::generateAllSpaceStations(int dl, int num_space_stations)
+void SubAreaRegion::generateAllSpaceStations(int dl, int num_space_stations)
 {
     point loc;
 
@@ -649,19 +748,34 @@ void subarea_region::generateAllSpaceStations(int dl, int num_space_stations)
     for (int i = 0; i < num_space_stations; ++i)
     {
          loc = getRandNPCShipOpenPoint(getMap(),min_loc,max_loc,LBACKDROP_SPACE_UNLIT,LBACKDROP_WHITESTARBACKGROUND);
-         getMap()->setBackdrop(loc,LBACKDROP_SPACESTATION);
-         createStationAt(loc,dl);
+         getMap()->setBackdrop(loc, LBACKDROP_SPACESTATION_SHIP);
+         createStationAt(loc, dl);
     }
+}
 
+void SubAreaRegion::generateAllEntertainmentStations(int dl, int numStations)
+{
+    point loc;
+
+    point minLoc = point(1, 1);
+
+    point maxLoc = addPoints(getMap()->getSize(), point(-2, -2));
+
+    for (int i = 0; i < numStations; i++)
+    {
+        loc = getRandNPCShipOpenPoint(getMap(), minLoc, maxLoc, LBACKDROP_SPACE_UNLIT, LBACKDROP_WHITESTARBACKGROUND);
+        getMap()->setBackdrop(loc, LBACKDROP_SPACESTATION_ENTERTAINMENT);
+        createEntertainmentStationAt(loc, dl);
+    }
 }
 
 // item code
-void subarea_region::createPileAt(point p)
+void SubAreaRegion::createPileAt(point p)
 {
     piles.push_back(cell_pile(p));
 }
 
-void subarea_region::deleteItemFromPile(point p, int selection, int select_q)
+void SubAreaRegion::deleteItemFromPile(point p, int selection, int select_q)
 {
     cell_pile * cp = getPile(p);
 
@@ -676,7 +790,7 @@ void subarea_region::deleteItemFromPile(point p, int selection, int select_q)
         m.setItem(p,cp->getItem(0)->getType());
 }
 
-void subarea_region::deletePileAt(point p)
+void SubAreaRegion::deletePileAt(point p)
 {
     int piles_index = -1;
 
@@ -688,7 +802,7 @@ void subarea_region::deletePileAt(point p)
         piles.erase(piles.begin() + piles_index);
 }
 
-void subarea_region::addItem(item_stats istats, int quant, point p)
+void SubAreaRegion::addItem(item_stats istats, int quant, point p)
 {
     int piles_index = -1;
 
@@ -708,7 +822,7 @@ void subarea_region::addItem(item_stats istats, int quant, point p)
     }
 }
 
-bool subarea_region::isPileAt(point p)
+bool SubAreaRegion::isPileAt(point p)
 {
     for (uint i = 0; i < piles.size(); ++i)
         if (isAt(piles[i].getLoc(),p))
@@ -717,17 +831,17 @@ bool subarea_region::isPileAt(point p)
     return false;
 }
 
-int subarea_region::getNumItemPiles()
+int SubAreaRegion::getNumItemPiles()
 {
     return piles.size();
 }
 
-cell_pile *subarea_region::getPile(int i)
+cell_pile *SubAreaRegion::getPile(int i)
 {
     return &piles[i];
 }
 
-cell_pile *subarea_region::getPile(point p)
+cell_pile *SubAreaRegion::getPile(point p)
 {
     for (uint i = 0; i < piles.size(); ++i)
         if (isAt(piles[i].getLoc(),p))
@@ -737,7 +851,7 @@ cell_pile *subarea_region::getPile(point p)
     return &piles[0];
 }
 
-void subarea_region::deleteAllPiles()
+void SubAreaRegion::deleteAllPiles()
 {
     for (uint i = 0; i < piles.size(); ++i)
         piles[i].deleteAllItems();
@@ -745,7 +859,7 @@ void subarea_region::deleteAllPiles()
     std::vector<cell_pile>().swap(piles);
 }
 
-void subarea_region::executeFloodFill(point p)
+void SubAreaRegion::executeFloodFill(point p)
 {
     if (!inMapRange(p,getMap()->getSize()))
         return;
@@ -765,7 +879,7 @@ void subarea_region::executeFloodFill(point p)
     executeFloodFill(point(p.x()+1,p.y()-1));
 }
 
-bool subarea_region::isLevelBlocked()
+bool SubAreaRegion::isLevelBlocked()
 {
     point p;
     for (int y = 0; y < getMap()->getSize().y(); ++y)
@@ -780,12 +894,12 @@ bool subarea_region::isLevelBlocked()
     return false;
 }
 
-bool subarea_region::isRaceAffiliated()
+bool SubAreaRegion::isRaceAffiliated()
 {
     return race_affiliated;
 }
 
-void subarea_region::addAllHomeworlds(race *race_obj)
+void SubAreaRegion::addAllHomeworlds(race *race_obj)
 {
     // rewrite this
     point p;
@@ -809,18 +923,18 @@ void subarea_region::addAllHomeworlds(race *race_obj)
             else
                 smp = point(p.x(),p.y()+1);
 
-            createNPCShip(race_obj->getNativeShip(num_native_ship_types - 1),smp,native_race_id);
+            createNPCShip(race_obj->getNativeShip(num_native_ship_types - 1),smp,nativeRaceID);
         }
     }
 }
 
-void subarea_region::insertOneHomeworld(race *race_obj, point p)
+void SubAreaRegion::insertOneHomeworld(race *race_obj, point p)
 {
     getMap()->setBackdrop(p,LBACKDROP_PLANET);
     race_obj->addHomeworldStruct(p,race_obj->getRaceID(),RMS_FREE);
 }
 
-void subarea_region::addProcgenSubAreaNativeShips(race *race_obj, int num_types)
+void SubAreaRegion::addProcgenSubAreaNativeShips(race *race_obj, int num_types)
 {
     if (num_types == 0)
         return;
@@ -852,7 +966,7 @@ void subarea_region::addProcgenSubAreaNativeShips(race *race_obj, int num_types)
             for (int i = 0; i < 7; ++i)
             {
                 if (num_wall_adj_moore == npc_spawn_conditions[(int)race_obj->getRaceDomainType()][i] + condition_offset && num_types >= i + 1)
-                    createNPCShip(race_obj->getNativeShip(i),p,native_race_id);
+                    createNPCShip(race_obj->getNativeShip(i),p,nativeRaceID);
             }
         }
     }
@@ -1079,4 +1193,67 @@ int getNumGlobalCutIterations(point msze)
         return randInt(1,2);
 
     return randInt(1,3);
+}
+
+map* getMap()
+{
+    switch (current_maptype)
+    {
+    case(MAPTYPE_LOCALEMAP):
+    {
+        return CSYS->getMap();
+    }
+    default:
+    {
+        break;
+    }
+    }
+
+    return universe.getMap();
+}
+
+point getMapSize()
+{
+    switch (current_maptype)
+    {
+    case(MAPTYPE_LOCALEMAP):
+    {
+        return CSYS->getSize();
+    }
+    default:
+    {
+        break;
+    }
+    }
+
+    return universe.getSize();
+}
+
+MobShip* getSubAreaShipMobAt(point p)
+{
+    if (getMap()->getMob(p) == SHIP_PLAYER)
+        return getPlayerShip();
+    return CSYS->getNPCShip(p);
+}
+
+MobShip* getMobFromID(int id)
+{
+    for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
+    {
+        if (CSYS->getNPCShip(i)->getMobSubAreaID() == id)
+            return CSYS->getNPCShip(i);
+    }
+
+    return getPlayerShip();
+}
+
+MobShip* getCurrentMobTurn()
+{
+    for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
+    {
+        if (CSYS->getNPCShip(i)->getMobSubAreaID() == current_mob_turn)
+            return CSYS->getNPCShip(i);
+    }
+
+    return getPlayerShip();
 }

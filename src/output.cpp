@@ -1,5 +1,8 @@
 #include "output.h"
 
+tab_type current_tab;
+display display_obj;
+
 display::display()
 {
     upper_left.set(0,0);
@@ -112,21 +115,19 @@ chtype display::getSymbol(map *m, point p)
 {
     // print in priority depicted in cell.h
     if (m->getFire(p) != NIL_f)
-        return fire_symbol[(int)m->getFire(p)];
+        return m->getCell(p).getLastFireSymbol();
 
     // ...Do NOT print NPCs if not in field of view
     else if (m->getMob(p) != NIL_m && m->getv(p))
-        return mob_symbol[(int)m->getMob(p)];
+        return m->getCell(p).getLastMobSymbol();
 
     else if (m->getItem(p) != NIL_i)
-        return item_symbol[(int)m->getItem(p)];
+    {
+        if (!chtypeEqual(m->getCell(p).getLastItemSymbol(), blank_ch))
+           return m->getCell(p).getLastItemSymbol();
+    }
 
-    return backdrop_symbol[(int)m->getBackdrop(p)];
-}
-
-gfx_engine *display::getGFXEngine()
-{
-    return &gfx_obj;
+    return m->getCell(p).getLastBackdropSymbol();
 }
 
 void display::printMessages()
@@ -159,7 +160,7 @@ bool display::addMessage(std::string m, color_pair col)
     return mbuffer.addMessage(m, col);
 }
 
-void display::displayMonitor(monitor_type mt, ship_mob *mb)
+void display::displayMonitor(monitor_type mt, MobShip *mb)
 {
     switch(mt)
     {
@@ -169,6 +170,17 @@ void display::displayMonitor(monitor_type mt, ship_mob *mb)
         default:
             break;
     }
+}
+
+void display::displayMachineBox()
+{
+    point loc = point(MACHINEX_OFFSET, MACHINEY_OFFSET);
+    point area = point(MACHINEWID + 1, MACHINEHGT + 4);
+
+    gfx_obj.drawRectangle(color_black, point(TILEWID * loc.x(), TILEHGT * loc.y() - (3*TILEHGT/2)), point(area.x() * TILEWID, area.y() * TILEHGT - 6), true);
+    gfx_obj.drawRectangle(color_white, point(TILEWID * loc.x() - 1, TILEHGT * loc.y() - 1 - (3*TILEHGT/2)), point(area.x() * TILEWID + 2, area.y() * TILEHGT - 4), false);
+
+    //gfx_obj.updateScreen();
 }
 
 void display::displayMenu(menu *mu)
@@ -195,15 +207,15 @@ void display::displayMenu(menu *mu)
 SHIP DESIGN GRAPHIC CODE STARTS HERE
 */
 
-void display::displayNPCShipGraphic(ship_mob *s)
+void display::displayNPCShipGraphic(MobShip *s)
 {
     initNPCShipPixels(s);
     runShipDesignCADisplayRule(s);
     setNPCShipYCenterPixels(s);
-    drawShipDesign(s);
+    drawNPCShipDesign(s);
 }
 
-void display::initNPCShipPixels(ship_mob *s)
+void display::initNPCShipPixels(MobShip *s)
 {
     for (int i = 0; i < NPCSHIP_PIXEL_MAXHEIGHT; ++i)
     for (int j = 0; j < NPCSHIP_PIXEL_MAXWIDTH; ++j)
@@ -221,7 +233,7 @@ void display::initNPCShipPixels(ship_mob *s)
     }
 }
 
-void display::runShipDesignCADisplayRule(ship_mob *s)
+void display::runShipDesignCADisplayRule(MobShip *s)
 {
     int num_adj = 0;
     point adj;
@@ -262,7 +274,7 @@ void display::runShipDesignCADisplayRule(ship_mob *s)
     }
 }
 
-void display::setNPCShipYCenterPixels(ship_mob *s)
+void display::setNPCShipYCenterPixels(MobShip *s)
 {
     for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
     for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
@@ -272,7 +284,7 @@ void display::setNPCShipYCenterPixels(ship_mob *s)
     }
 }
 
-void display::drawShipDesign(ship_mob *s)
+void display::drawNPCShipDesign(MobShip *s)
 {
     chtype primary_design_ch, secondary_design_ch, front_tile_ch;
 
@@ -355,7 +367,7 @@ int display::numShipPixelsAdj(int i, int j, int val)
 SHIP DESIGN GRAPHIC CODE ENDS HERE
 */
 
-void display::displayNPCShipInfo(ship_mob *s)
+void display::displayNPCShipInfo(MobShip *s)
 {
     gfx_obj.drawRectangle(color_darkgray,point((SHOWWID+2)*TILEWID,0),point(SCREENWID-((SHOWWID+2)*TILEWID)-TILEWID+1,TILEHGT + (SHOWHGT*TILEHGT)/2),true);
     printMonitorWindow();
@@ -383,7 +395,29 @@ void display::displayNPCShipInfo(ship_mob *s)
     addString(evasion_string+"       ",cp_darkredonblack,point(SHOWWID+23,3));
 
     displayNPCShipGraphic(s);
-    return;
+}
+
+void display::printShipStatsSection(MobShip* s)
+{
+    std::string hull_string = "Hull: " + int2String((int)std::max(0, s->getHullStatus())) + "/" + int2String(s->getMaxHull());
+    std::string crew_string = "Crew: " + int2String(s->getTotalMTFillRemaining(MODULE_CREW)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_CREW));
+    std::string fuel_string = "Fuel: " + int2String(s->getTotalMTFillRemaining(MODULE_FUEL)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_FUEL));
+    std::string credit_string = "Credits: " + uint642String(s->getNumCredits());
+    std::string spd_string = "Speed: " + double2String(s->getSpeed());
+    std::string acc_string = "Accuracy: " + double2String(s->getAccuracy());
+    std::string eva_string = "Evasion: " + double2String(s->getEvasion());
+    std::string shields_string = "Shields: " + int2String(s->getTotalMTFillRemaining(MODULE_SHIELD)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_SHIELD));
+    addString(hull_string + "                      ", cp_grayonblack, point(SHOWWID + 3, SHOWHGT / 2 + 2));
+    addString(crew_string + "                      ", cp_lightgrayonblack, point(SHOWWID + 3, SHOWHGT / 2 + 3));
+    addString(credit_string + "                      ", cp_whiteonblack, point(SHOWWID + 3, SHOWHGT / 2 + 5));
+    addString(shields_string + "                      ", cp_lightblueonblack, point(SHOWWID + 3, SHOWHGT / 2 + 4));
+    addString(spd_string + "       ", cp_purpleonblack, point(SHOWWID + 23, SHOWHGT / 2 + 2));
+    addString(acc_string + "       ", cp_redonblack, point(SHOWWID + 23, SHOWHGT / 2 + 3));
+    addString(eva_string + "       ", cp_darkredonblack, point(SHOWWID + 23, SHOWHGT / 2 + 4));
+    addString(fuel_string + "       ", cp_brownonblack, point(SHOWWID + 23, SHOWHGT / 2 + 5));
+
+    addPlayerShipGraphicDetails(s->getMaxNumModules());
+    printShipGraphic(s, SHOWHGT / 2);
 }
 
 void display::printWindowBorders(std::string current_map_name, std::string player_ship_name, tab_type tt)
@@ -408,41 +442,20 @@ void display::printMonitorWindow()
     gfx_obj.drawRectangle(color_white,point((SHOWWID+2)*TILEWID,TILEHGT-1),point(SCREENWID-((SHOWWID+2)*TILEWID)-TILEWID+1,(SHOWHGT*TILEHGT)/2),false);
 }
 
-void display::printShipStatsSection(ship_mob *s)
-{
-    std::string hull_string = "Hull: " + int2String((int)std::max(0,s->getHullStatus())) + "/" + int2String(s->getMaxHull());
-    std::string crew_string = "Crew: " + int2String(s->getTotalMTFillRemaining(MODULE_CREW)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_CREW));
-    std::string fuel_string = "Fuel: " + int2String(s->getTotalMTFillRemaining(MODULE_FUEL)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_FUEL));
-    std::string credit_string = "Credits: " + uint642String(s->getNumCredits());
-    std::string spd_string = "Speed: " + double2String(s->getSpeed());
-    std::string acc_string = "Accuracy: " + double2String(s->getAccuracy());
-    std::string eva_string = "Evasion: " + double2String(s->getEvasion());
-    std::string shields_string = "Shields: " + int2String(s->getTotalMTFillRemaining(MODULE_SHIELD)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_SHIELD));
-    addString(hull_string+"                      ",cp_grayonblack,point(SHOWWID+3,SHOWHGT/2+2));
-    addString(crew_string+"                      ",cp_lightgrayonblack,point(SHOWWID+3,SHOWHGT/2+3));
-    addString(credit_string+"                      ",cp_whiteonblack,point(SHOWWID+3,SHOWHGT/2+5));
-    addString(shields_string+"                      ",cp_lightblueonblack,point(SHOWWID+3,SHOWHGT/2+4));
-    addString(spd_string+"       ",cp_purpleonblack,point(SHOWWID+23,SHOWHGT/2+2));
-    addString(acc_string+"       ",cp_redonblack,point(SHOWWID+23,SHOWHGT/2+3));
-    addString(eva_string+"       ",cp_darkredonblack,point(SHOWWID+23,SHOWHGT/2+4));
-    addString(fuel_string+"       ",cp_brownonblack,point(SHOWWID+23,SHOWHGT/2+5));
-    printShipGraphic(s);
-}
-
 // print ship window inside
-void display::printShipGraphic(ship_mob *s)
+void display::printShipGraphic(MobShip *s, int globalYOffset)
 {
     int ship_body_size = s->getMaxNumModules();
     int num_ship_modules = s->getNumInstalledModules();
-    addMiscShipGraphicDetails(ship_body_size);
+
     for (int i = 0; i < num_ship_modules; ++i)
     {
-        addModuleGraphic(s,i,ship_body_size,SHOWHGT/2);
+        addModuleGraphic(s,i,ship_body_size,globalYOffset);
     }
 }
 
 // helper...
-void display::addMiscShipGraphicDetails(int ship_body_size)
+void display::addPlayerShipGraphicDetails(int ship_body_size)
 {
     for (int x = 0; x < ship_body_size+2; ++x)
     {
@@ -451,6 +464,7 @@ void display::addMiscShipGraphicDetails(int ship_body_size)
             addChar(gray_rect,point(SHOWWID+37-x,SHOWHGT/2+9+y));
         }
     }
+
     for (int i = 0; i < 3; ++i)
         addChar(gray_rect,point(SHOWWID+40,SHOWHGT/2+12+i));
     for (int i = 0; i < 7; ++i)
@@ -473,9 +487,10 @@ void display::addMiscShipGraphicDetails(int ship_body_size)
 }
 
 // print module graphic bar
-void display::addModuleGraphic(ship_mob *s, int i, int ship_body_size,int y_global_offset)
+void display::addModuleGraphic(MobShip *s, int i, int ship_body_size,int y_global_offset)
 {
     point arrow_loc;
+
     switch(s->getModule(i)->getModuleType())
     {
         case(MODULE_FUEL):
@@ -508,11 +523,17 @@ void display::addModuleGraphic(ship_mob *s, int i, int ship_body_size,int y_glob
             break;
         }
         default:
+        {
             break;
+        }
     }
+
     arrow_loc = point(SHOWWID+36-ship_body_size+i+1,y_global_offset+17);
+
     if (i == s->getModuleSelectionIndex())
-        addChar(up_arrow_selector,arrow_loc);
+    {
+        addChar(up_arrow_selector, arrow_loc);
+    }
 }
 
 // print fill meter of module
@@ -543,12 +564,12 @@ void display::printCrewMeter(module *m, int ship_body_size, int i, int y_global_
     for (int n = 0; n < quantity; ++n)
     {
         dot_offset.set((2*n)%dot_offset_width_factor,max_qmq_print_ratio-((n/(dot_offset_width_factor/2))*2)-1);
-        gfx_obj.drawRectangle(color_lightgray,point(p.x()*TILEWID+dot_offset.x(),(p.y()+1)*TILEHGT+dot_offset.y()),point(1,1),true);
+        gfx_obj.drawRectangle(color_green,point(p.x()*TILEWID+dot_offset.x(),(p.y()+1)*TILEHGT+dot_offset.y()),point(1,1),true);
     }
 
     for (int i = 5; i >= 1; --i)
     {
-        if (m->getMaxFillQuantity() <= i*24)
+        if (m->getMaxFillQuantity() <= i*16)
             gfx_obj.addBitmapCharacter(crewpod_display_symbol,point(p.x(),p.y()+6-i));
         else
             return;
@@ -697,4 +718,252 @@ color_type getFuelMeterColor(module *m)
     if (m->getMaxFillQuantity() >= 1024)
         return color_white;
     return getAnyColor(255,(Uint8)(m->getMaxFillQuantity()/16),(Uint8)(m->getMaxFillQuantity()/4));
+}
+
+void msgeAdd(std::string msg, color_pair col_p)
+{
+    bool reached_buffer_limit = false;
+    // adding a message returns a boolean that says whether
+    // or not the message buffer is full after adding last
+    // message
+    if (game_active)
+    {
+        reached_buffer_limit = display_obj.addMessage(msg, col_p);
+    }
+
+    display_obj.printMessages();
+    // clear buffer if full
+    if (reached_buffer_limit)
+    {
+        reDisplay(false);
+        event_handler.waitForKey(' ');
+        display_obj.clearAndDeleteAllMessages();
+    }
+}
+
+void reDisplay(bool calc_los)
+{
+    // print map
+    if (wait_counter == 0)
+    {
+        reDisplayWithoutUpdate(calc_los);
+    }
+
+    gfx_obj.updateScreen();
+}
+
+void reDisplayWithoutUpdate(bool calc_los)
+{
+    gfx_obj.clearScreen();
+
+    if (calc_los)
+    {
+        calculatePlayerLOS();
+    }
+
+    printWindowBorders();
+    display_obj.clearRange(point(1, 1), point(SHOWWID, SHOWHGT));
+    display_obj.printMap(getMap());
+    printMobCells();
+    display_obj.printShipStatsSection(getPlayerShip());
+    display_obj.printMessages();
+}
+
+void printWindowBorders()
+{
+    std::string current_map_name = "STAR MAP";
+
+    if (current_maptype == MAPTYPE_LOCALEMAP)
+    {
+        if (universe.getSubAreaMapType() == SMT_PERSISTENT && CSYS->isRaceAffiliated())
+        {
+            current_map_name = CSYS->getSubAreaName() + " " +
+                race_domain_suffix_string[(int)universe.getRace(CSYS->getNativeRaceID())->getRaceDomainType()];
+        }
+        else
+        {
+            current_map_name = CSYS->getSubAreaName();
+        }
+    }
+
+    display_obj.printWindowBorders(current_map_name, getPlayerShip()->getShipName(), current_tab);
+}
+
+void printMobCells()
+{
+    if (current_maptype != MAPTYPE_LOCALEMAP)
+        return;
+
+    point m_loc;
+    chtype ct;
+
+    for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
+    {
+        m_loc = CSYS->getNPCShip(i)->at();
+
+        if (getMap()->getv(m_loc) && getMap()->getFire(m_loc) == NIL_f && getMap()->getMob(m_loc) != NIL_m)
+        {
+            ct = CSYS->getNPCShip(i)->getShipSymbol();
+            if (!CSYS->getNPCShip(i)->isActivated())
+            {
+                ct.color.bg = CSYS->getNPCShip(i)->getShipSymbol().color.fg;
+                ct.color.fg = color_black;
+            }
+            display_obj.printCell(getMap(), m_loc, ct);
+        }
+    }
+}
+
+void outputLOFTransition(point lof, point source, point dest, fire_t ft)
+{
+    clearAllFireCellsInRange(getMap(), lof, 1);
+    printAndSetFireCell(getMap(), lof, selectFireCell(source, dest, ft));
+    display_obj.delayAndUpdate(16);
+}
+
+void clearAllFireCellsInRange(map* m, point lof, int r)
+{
+    point dxy;
+    for (int x = lof.x() - r; x <= lof.x() + r; ++x)
+        for (int y = lof.y() - r; y <= lof.y() + r; ++y)
+        {
+            dxy.set(x, y);
+            printAndSetFireCell(m, dxy, NIL_f);
+        }
+}
+
+void clearAllFireCells(map* m)
+{
+    point p;
+    for (int x = 0; x < m->getSize().x(); ++x)
+        for (int y = 0; y < m->getSize().y(); ++y)
+        {
+            p.set(x, y);
+            m->setFire(p, NIL_f);
+        }
+    display_obj.printMap(m);
+    printMobCells();
+}
+
+
+void printAndSetFireCell(map* m, point p, fire_t f)
+{
+    if (inMapRange(p, m->getSize()))
+    {
+        m->setFire(p, f);
+        updateAllLastSymbols(m->getCellP(p));
+        display_obj.printCell(m, p, display_obj.getSymbol(m, p));
+        printMobCells();
+    }
+}
+
+void addHitSprite(map* m, point p)
+{
+    printAndSetFireCell(m, p, FIRET_EXPLOSION);
+    display_obj.delayAndUpdate(15);
+    clearAllFireCellsInRange(m, p, 1);
+}
+
+void createDamagingExplosionAnimation(point p, int radius, int ms_update, fire_t exp_sprite, bool print_msge)
+{
+    if (print_msge)
+        msgeAdd("KABOOOOOOOOOOOOM!!!", fire_symbol[(int)exp_sprite].color);
+
+    if (!getMap()->getv(p))
+        return;
+
+    printFireCircle(p, radius, exp_sprite);
+
+    display_obj.delayAndUpdate(ms_update);
+
+    clearAllFireCells(getMap());
+}
+
+void printFireCircle(point p, int r, fire_t ft)
+{
+    int x_range;
+
+    for (int y = -r; y <= r; ++y)
+    {
+        x_range = (int)std::sqrt(((double)((r * r) - (y * y))));
+        for (int x = -x_range; x <= x_range; ++x)
+            if (inMapRange(addPoints(p, point(x, y)), getMapSize()))
+                printAndSetFireCell(getMap(), addPoints(p, point(x, y)), ft);
+    }
+}
+
+void calculatePlayerLOS()
+{
+    point p;
+
+    int detect_radius = (current_maptype == MAPTYPE_LOCALEMAP ? player_ship.getDetectRadius() : (player_ship.getDetectRadius() / 2));
+
+    int x_range;
+
+    getMap()->setAllCellsUnvisible();
+
+    for (int y = -detect_radius; y <= detect_radius; ++y)
+    {
+        x_range = (int)std::sqrt(((double)((detect_radius * detect_radius) - (y * y))));
+
+        for (int x = -x_range; x <= x_range; ++x)
+        {
+            p = addPoints(point(x, y), getPlayerShip()->at());
+
+            if (inMapRange(p, getMapSize()))
+            {
+                if (!tracer.isBlocking(getMap(), getPlayerShip()->at(), p, false, false))
+                {
+                    cell * cellP = getMap()->getCellP(p);
+
+                    getMap()->setv(p, true);
+                    getMap()->setm(p, true);
+                    updateAllLastSymbols(cellP);
+                }
+            }
+        }
+    }
+}
+
+void changeMobTile(point from, point to, mob_t whom)
+{
+    // set null to the mob tile at old location
+    setMobTileToNIL(getMap(), from);
+    // put mob tile at new location
+    setMobTile(getMap(), to, whom);
+    // print cells to avoid characters appearing twice
+    display_obj.printCell(getMap(), from, display_obj.getSymbol(getMap(), from));
+    display_obj.printCell(getMap(), to, display_obj.getSymbol(getMap(), to));
+    printMobCells();
+}
+
+void setMobTileToNIL(map * m, point p)
+{
+    m->setMob(p, NIL_m);
+    m->getCellP(p)->setLastMobSymbol(m->getCellP(p)->getCurrentMobSymbol());
+}
+
+void setMobTile(map * m, point p, mob_t mt)
+{
+    m->setMob(p, mt);
+    m->getCellP(p)->setLastMobSymbol(m->getCellP(p)->getCurrentMobSymbol());
+}
+
+void updateAllLastSymbols(cell * c)
+{
+    c->setLastFireSymbol(c->getCurrentFireSymbol());
+    c->setLastMobSymbol(c->getCurrentMobSymbol());
+    c->setLastItemSymbol(c->getCurrentItemSymbol());
+    c->setLastBackdropSymbol(c->getCurrentBackdropSymbol());
+}
+
+bool chtypeEqual(chtype a, chtype b)
+{
+    return a.color.fg.r == b.color.fg.r &&
+           a.color.fg.g == b.color.fg.g &&
+           a.color.fg.b == b.color.fg.b &&
+           a.color.bg.r == b.color.bg.r &&
+           a.color.bg.g == b.color.bg.g &&
+           a.color.bg.b == b.color.bg.b &&
+           a.ascii == b.ascii;
 }

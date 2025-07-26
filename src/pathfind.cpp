@@ -1,5 +1,7 @@
 #include "pathfind.h"
 
+pathfind pathfinder;
+
 pathfind::pathfind()
 {
 }

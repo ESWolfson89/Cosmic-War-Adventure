@@ -3,8 +3,10 @@
 
 #include "globals.h"
 #include "rng.h"
+#include "mob.h"
 
 std::string genName(int);
+std::string getNamePrefix(MobShip*);
 
 static std::string starting_consonant[10] =
 {

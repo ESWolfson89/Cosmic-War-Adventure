@@ -81,7 +81,7 @@ void race::generateOneProcgenNativeShip(int dl, shipmob_classtype smct, npc_ship
     shipmobstat_struct procgen_struct = getProcgenShipStatStruct(dl, smct);
     procgen_struct.ship_name = race_name_str + " " + classtype_name_strings[(int)smct];
     procgen_struct.ship_symbol = getRandShipSymbol(smct,dl,(int)procgen_struct.ship_name[0]);
-    native_ships.push_back(ship_mob(false,procgen_struct,nst,procgen_struct.max_hull,point(0,0)));
+    native_ships.push_back(MobShip(false,procgen_struct,nst,procgen_struct.max_hull,point(0,0)));
     // for now there are no modified weapons
     generateGuaranteedNPCShipMobModules(&native_ships[(int)native_ships.size()-1]);
 }
@@ -90,13 +90,13 @@ void race::cleanupEverything()
 {
     for (int i = 0; i < (int)native_ships.size(); ++i)
          native_ships[i].cleanupEverything();
-    std::vector<ship_mob>().swap(native_ships);
+    std::vector<MobShip>().swap(native_ships);
     std::vector<homeworld_struct>().swap(homeworld_objs);
     std::map<int,rel_status>().swap(rel_race_map);
     std::map<int,int>().swap(att_race_map);
 }
 
-void race::addNativeShip(ship_mob *added_ship)
+void race::addNativeShip(MobShip *added_ship)
 {
     native_ships.push_back(*added_ship);
 }
@@ -157,7 +157,7 @@ homeworld_struct race::getHomeworldStruct(point p)
     return homeworld_objs[0];
 }
 
-ship_mob *race::getNativeShip(int i)
+MobShip *race::getNativeShip(int i)
 {
     return &native_ships[i];
 }
@@ -199,7 +199,7 @@ int race::getPlayerAttStatus()
     return att_towards_player;
 }
 
-point race::getStarmapLoc()
+point race::getStarmapLoc() const
 {
     return sm_loc;
 }
@@ -302,7 +302,7 @@ std::string race::getNameString()
     return race_name_str;
 }
 
-void generateGuaranteedNPCShipMobModules(ship_mob *sm)
+void generateGuaranteedNPCShipMobModules(MobShip *sm)
 {
     module mod_ins;
     int weapon_fill_val;
@@ -336,7 +336,7 @@ void generateGuaranteedNPCShipMobModules(ship_mob *sm)
 }
 
 // standard for now
-int weaponFillValFormula(ship_mob *sm, int default_consumption_rate)
+int weaponFillValFormula(MobShip *sm, int default_consumption_rate)
 {
     return (sm->getDangerLevel() * default_consumption_rate * 3);
 }
@@ -389,9 +389,9 @@ shipmobstat_struct getProcgenShipStatStruct(int dl, shipmob_classtype smct)
     procgen_struct.evasion = getProcgenEvasion(smct,dl);
     procgen_struct.base_speed = getProcgenBaseSpeed(smct,dl);
     procgen_struct.crew_operable = true;
-    procgen_struct.num_crew = std::min(144,10 + randInt(1,dl+1)*2*(int)(smct));
+    procgen_struct.num_crew = std::min(96,10 + randInt(1,dl+1)*2*(int)(smct));
     procgen_struct.num_fuel = 10 + randInt(1,dl+1)*(int)(smct);
-    procgen_struct.max_hull = (smct != CLASSTYPE_FIGHTER ? 60 + randInt(1,dl+2)*7*(int)(smct) : 23 + randInt(2,(dl*2)+27));
+    procgen_struct.max_hull = (smct != CLASSTYPE_FIGHTER ? 60 + randInt(1,dl)*7*(int)(smct) : 23 + randInt(2,dl+27));
     procgen_struct.shoot_frequency = 25 + randInt(0,dl)*2 + randInt(0,25);
     procgen_struct.destruction_radius = 2 + (int)(dl/4);
     procgen_struct.mtype = SHIP_PROCGEN;
@@ -479,7 +479,7 @@ double getProcgenEvasion(shipmob_classtype smct, int dl)
         case(CLASSTYPE_DESTROYER):
         case(CLASSTYPE_JUGGERNAUT):
         {
-            base_evasion = (double)(randInt(3,dl+5));
+            base_evasion = (double)(randInt(3,dl));
             break;
         }
         default:
