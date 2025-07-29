@@ -2,7 +2,6 @@
 #define MISC_H_
 
 #include "globals.h"
-#include <fstream>
 
 struct dice_roll
 {
@@ -26,6 +25,10 @@ void colorPairLoad(std::ifstream&, color_pair&);
 void colorTypeSave(std::ofstream&, const color_type &);
 
 void colorTypeLoad(std::ifstream&, color_type&);
+
+void saveDiceRoll(std::ofstream& os, const dice_roll&);
+
+void loadDiceRoll(std::ifstream& is, dice_roll&);
 
 std::string double2String(double);
 

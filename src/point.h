@@ -27,6 +27,7 @@ class point
 		int x() const;
 		// assignment overload
 		point operator=(point);
+		point operator+(const point& other) const;
 		// save point to file
         void save(std::ofstream &) const;
         // load point to file

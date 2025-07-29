@@ -29,7 +29,7 @@ class game
 public:
     game();
     void run();
-    void primaryGameLoop();
+    void primaryGameLoop(bool loaded);
     void checkForUniversalRaceEvent();
     void checkForSubAreaRaceEvent();
     void checkForUnEnslavementRaceEvent();
@@ -82,6 +82,8 @@ public:
     void printTogglePromptMessage(input_t, bool);
     void cycleTarget();
     void setPointIfInMapRangeAndLOS(point, point&);
+    void initMenus();
+    void promptQuit();
     bool isTargetableNPC(int, input_t);
     bool converseViaContactMenu(race *);
     bool executeConverseEvent(race *);
@@ -92,6 +94,7 @@ public:
     point getNextToggleDeltaForFireWeapon(point, point);
     void save();
     void load();
+    void setupLoadedGame();
     // template functions
     template <typename M> void useMachinePlayer(M*);
     template <typename M> void featurePlayerToggle(M*);
@@ -112,5 +115,9 @@ private:
 bool eightDirectionRestrictedWeaponSelected(MobShip*);
 
 bool inRangeStarMapBackdropGreen(backdrop_t);
+
+void saveCurrentRegion();
+
+void printExitPromptMessage();
 
 #endif

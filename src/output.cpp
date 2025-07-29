@@ -395,6 +395,7 @@ void display::displayNPCShipInfo(MobShip *s)
     addString(evasion_string+"       ",cp_darkredonblack,point(SHOWWID+23,3));
 
     displayNPCShipGraphic(s);
+    //printShipGraphic(s, -2);
 }
 
 void display::printShipStatsSection(MobShip* s)
@@ -409,7 +410,7 @@ void display::printShipStatsSection(MobShip* s)
     std::string shields_string = "Shields: " + int2String(s->getTotalMTFillRemaining(MODULE_SHIELD)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_SHIELD));
     addString(hull_string + "                      ", cp_grayonblack, point(SHOWWID + 3, SHOWHGT / 2 + 2));
     addString(crew_string + "                      ", cp_lightgrayonblack, point(SHOWWID + 3, SHOWHGT / 2 + 3));
-    addString(credit_string + "                      ", cp_whiteonblack, point(SHOWWID + 3, SHOWHGT / 2 + 5));
+    addString(credit_string + "                  ", cp_whiteonblack, point(SHOWWID + 3, SHOWHGT / 2 + 5));
     addString(shields_string + "                      ", cp_lightblueonblack, point(SHOWWID + 3, SHOWHGT / 2 + 4));
     addString(spd_string + "       ", cp_purpleonblack, point(SHOWWID + 23, SHOWHGT / 2 + 2));
     addString(acc_string + "       ", cp_redonblack, point(SHOWWID + 23, SHOWHGT / 2 + 3));

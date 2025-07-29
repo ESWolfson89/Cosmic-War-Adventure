@@ -2,337 +2,327 @@
 
 void activateAllNPCAI()
 {
-    if (current_maptype != MAPTYPE_LOCALEMAP)
-        return;
-
-    if (!playerHasMoved)
+    if (current_maptype != MAPTYPE_LOCALEMAP || !playerHasMoved)
         return;
 
     gmti = 0;
 
-    double npc_speed, npc_timer;
-
-    double spd_reference = getPlayerShip()->getSpeed();
-
-    int initial_num_NPCs = CSYS->getNumShipNPCs();
+    const double playerSpeed = getPlayerShip()->getSpeed();
+    const int initialNPCCount = CSYS->getNumShipNPCs();
 
     while (gmti < CSYS->getNumShipNPCs())
     {
-        // if this NPC ship is activated
-        if (CSYS->getNPCShip(gmti)->isActivated())
+        MobShip* npc = CSYS->getNPCShip(gmti);
+        if (!npc || !npc->isActivated())
         {
-            npc_speed = CSYS->getNPCShip(gmti)->getSpeed();
-
-            npc_timer = CSYS->getNPCShip(gmti)->getTurnTimer();
-
-            CSYS->getNPCShip(gmti)->setTurnTimer(npc_timer + (npc_speed / spd_reference));
-
-            if (CSYS->getNPCShip(gmti)->inTimerRange())
-                CSYS->getNPCShip(gmti)->setTurnTimer(0.0);
-
-            // ActivateOneNPC gets called a certain number of times
-            // for a particular NPC -> based on how fast it moves
-            // relative to player
-            while (CSYS->getNPCShip(gmti)->getTurnTimer() > 0.0)
-            {
-                CSYS->getNPCShip(gmti)->decrementTurnTimer();
-                activateOneNPC(CSYS->getNPCShip(gmti));
-                if (initial_num_NPCs != CSYS->getNumShipNPCs())
-                    return;
-            }
+            ++gmti;
+            continue;
         }
-        // increment global mob turn iterator
-        gmti++;
+
+        // Update turn timer based on relative speed
+        double updatedTimer = npc->getTurnTimer() + (npc->getSpeed() / playerSpeed);
+        npc->setTurnTimer(updatedTimer);
+
+        if (npc->inTimerRange())
+            npc->setTurnTimer(0.0);
+
+        // Process as many actions as turn timer allows
+        while (npc->getTurnTimer() > 0.0)
+        {
+            npc->decrementTurnTimer();
+            activateOneNPC(npc);
+
+            // If the number of NPCs changed (e.g. spawned/destroyed), abort loop
+            if (CSYS->getNumShipNPCs() != initialNPCCount)
+                return;
+        }
+
+        ++gmti;
     }
 }
 
 void activateOneNPC(MobShip* mb)
 {
     current_mob_turn = mb->getMobSubAreaID();
+
     checkNPCFlags(mb);
     checkNPCAggroEvent(mb);
     setNPCAIPattern(mb);
     setNPCGoalDestinationLoc(mb);
+
     if (checkNPCWeaponEvent(mb))
         return;
+
     checkNPCMoveEvent(mb);
 }
 
 void checkNPCFlags(MobShip* mb)
 {
     checkMobHasEngine(mb);
-    checkNPCPlanetAttackEvent(mb);
+    checkNPCPlanetEnslaveEvent(mb);
 }
 
-// Set behavior of NPC AI
-void setNPCAIPattern(MobShip* mb)
+void setNPCAIPattern(MobShip* mob)
 {
-    if (mb->getMobSubAreaAttackID() >= 0)
-    {
-        if (getCurrentMobSelectedModule(mb)->getFillQuantity() >= getWeaponModuleConsumptionPerTurn(getCurrentMobSelectedModule(mb)))
-            mb->setAIPattern(AIPATTERN_ATTACKING);
-        else
-            mb->setAIPattern(AIPATTERN_FLEEING);
-    }
-    else
-    {
-        if (rollPerc(mb->getStatStruct().rove_chance))
-            mb->setAIPattern(AIPATTERN_ROVING);
-        else
-            mb->setAIPattern(AIPATTERN_NEUTRAL);
-    }
-
-    checkNPCPlanetMoveEvent(mb);
-}
-
-void setNPCGoalDestinationLoc(MobShip* mb)
-{
-    switch (mb->getAIPattern())
-    {
-        case(AIPATTERN_NEUTRAL):
-            mb->setDestination(mb->getInitLoc());
-            mb->setGoalStatus(GOALSTATUS_COMPLETE);
-            break;
-        case(AIPATTERN_ATTACKING):
-            setNPCAttackPositionDestination(mb);
-            mb->setGoalStatus(GOALSTATUS_COMPLETE);
-            break;
-        case(AIPATTERN_ROVING):
-        case(AIPATTERN_FLEEING):
-            if (mb->getGoalStatus() == GOALSTATUS_COMPLETE)
-            {
-                setNPCRandDestination(mb);
-                mb->setGoalStatus(GOALSTATUS_INCOMPLETE);
-            }
-            break;
-        case(AIPATTERN_APPROACHPLANET):
-            if (mb->getGoalStatus() == GOALSTATUS_COMPLETE)
-            {
-                setNPCRandFreePlanetDestination(mb);
-                mb->setGoalStatus(GOALSTATUS_INCOMPLETE);
-            }
-            break;
-        default:
-            break;
-    }
-}
-
-void setNPCRandDestination(MobShip* mb)
-{
-    mb->setDestination(getRandNPCShipOpenPoint(getMap(), point(1, 1), addPoints(getMapSize(), point(-2, -2)), LBACKDROP_SPACE_UNLIT, LBACKDROP_WHITESTARBACKGROUND));
-}
-
-void setNPCRandFreePlanetDestination(MobShip* mb)
-{
-    mb->setDestination(universe.getRace(CSYS->getNativeRaceID())->getFirstFreeHomeworldLoc());
-}
-
-
-void setNPCAttackPositionDestination(MobShip* mb)
-{
-    module* weapon_mod = getCurrentMobSelectedModule(mb);
-
-    weapon_struct current_ws = weapon_mod->getWeaponStruct();
-
-    bool eightDirectionRestricted = current_ws.eightDirectionRestricted;
-
-    if (eightDirectionRestricted)
-    {
-        mb->setDestination(getClosestNPCTargetInRangeLine(mb, current_ws));
-    }
-    else
-    {
-        mb->setDestination(getMobFromID(mb->getMobSubAreaAttackID())->at());
-    }
-}
-
-point getClosestNPCTargetInRangeLine(MobShip* mb, weapon_struct current_ws)
-{
-    int travelRange = current_ws.travel_range;
-
-    point attackLoc = getMobFromID(mb->getMobSubAreaAttackID())->at();
-
-    std::vector<point> eightFarthestShootPoints;
-    std::vector<int> eightFarthestShootPointsDistances;
-
-    int increment = 0;
-
-    for (int xx = -1; xx <= 1; xx++)
-    {
-        for (int yy = -1; yy <= 1; yy++)
-        {
-            if (xx != 0 || yy != 0)
-            {
-                point addedPoints = addPoints(attackLoc, point(travelRange * xx, travelRange * yy));
-                if (inRange(addedPoints, point(0, 0), point(STARMAPWID - 1, STARMAPHGT - 1)))
-                {
-                    eightFarthestShootPoints.push_back(addPoints(attackLoc, point(travelRange * xx, travelRange * yy)));
-                    eightFarthestShootPointsDistances.push_back(distanceSquared(mb->at(), eightFarthestShootPoints[increment]));
-                    increment++;
-                }
-            }
-        }
-    }
-
-    if (increment == 0)
-    {
-        return attackLoc;
-    }
-
-    int minDistance = *min_element(eightFarthestShootPointsDistances.begin(), eightFarthestShootPointsDistances.end());
-
-    int index = std::find(eightFarthestShootPointsDistances.begin(), eightFarthestShootPointsDistances.end(), minDistance) - eightFarthestShootPointsDistances.begin();
-
-    return eightFarthestShootPoints[index];
-}
-
-
-void checkNPCMoveEvent(MobShip* mb)
-{
-    if (mb->getMoveState() == false)
+    if (!mob)
         return;
 
-    point source = mb->at();
+    const int attackTargetID = mob->getMobSubAreaAttackID();
 
-    point dest = mb->getDestination();
-
-    if (!isAt(source, dest))
+    if (attackTargetID >= 0)
     {
-        if (shortestPath(source, dest) <= mb->getDetectRadius() ||
-            mb->getAIPattern() != AIPATTERN_ATTACKING)
-        {
-            point next_loc;
-
-            bool blockage;
-
-            bool not_on_map_border;
-
-            blockage = tracer.isBlocking(getMap(), source, dest, true, false);
-
-            not_on_map_border = (notOnMapBorder(dest, getMap()->getSize()) &&
-                notOnMapBorder(source, getMap()->getSize()));
-
-            if (blockage && not_on_map_border)
-                next_loc = pathfinder.dijkstra(getMap(), source, dest);
-            else
-                next_loc = tracer.getLinePoint(tracer.getLineSize() - 2);
-
-            moveNPC(mb, next_loc);
-        }
+        module* weaponMod = getCurrentMobSelectedModule(mob);
+        if (weaponMod && weaponMod->getFillQuantity() >= getWeaponModuleConsumptionPerTurn(weaponMod))
+            mob->setAIPattern(AIPATTERN_ATTACKING);
+        else
+            mob->setAIPattern(AIPATTERN_FLEEING);
     }
     else
-        mb->setGoalStatus(GOALSTATUS_COMPLETE);
+    {
+        const int roveChance = mob->getStatStruct().rove_chance;
+        mob->setAIPattern(rollPerc(roveChance) ? AIPATTERN_ROVING : AIPATTERN_NEUTRAL);
+    }
+
+    checkNPCPlanetMoveEvent(mob);
+}
+
+void setNPCGoalDestinationLoc(MobShip* mob)
+{
+    if (!mob)
+        return;
+
+    switch (mob->getAIPattern())
+    {
+        case AIPATTERN_NEUTRAL:
+            mob->setDestination(mob->getInitLoc());
+            mob->setGoalStatus(GOALSTATUS_COMPLETE);
+            break;
+        
+        case AIPATTERN_ATTACKING:
+            setNPCAttackPositionDestination(mob);
+            mob->setGoalStatus(GOALSTATUS_COMPLETE);
+            break;
+        
+        case AIPATTERN_ROVING:
+        case AIPATTERN_FLEEING:
+            if (mob->getGoalStatus() == GOALSTATUS_COMPLETE)
+            {
+                setNPCRandDestination(mob);
+                mob->setGoalStatus(GOALSTATUS_INCOMPLETE);
+            }
+            break;
+        
+        case AIPATTERN_APPROACHPLANET:
+            if (mob->getGoalStatus() == GOALSTATUS_COMPLETE)
+            {
+                setNPCRandFreePlanetDestination(mob);
+                mob->setGoalStatus(GOALSTATUS_INCOMPLETE);
+            }
+            break;
+        
+        default:
+            // Unknown or unhandled pattern — do nothing
+            break;
+    }
+}
+
+void setNPCRandDestination(MobShip* mob)
+{
+    if (!mob) 
+        return;
+
+    const point minBound(1, 1);
+    const point maxBound = addPoints(getMapSize(), point(-2, -2));
+
+    const point destination = getRandNPCShipOpenPoint(
+        getMap(), minBound, maxBound, LBACKDROP_SPACE_UNLIT, LBACKDROP_WHITESTARBACKGROUND
+    );
+
+    mob->setDestination(destination);
+}
+
+void setNPCRandFreePlanetDestination(MobShip* mob)
+{
+    if (!mob) 
+        return;
+
+    const int nativeRaceID = CSYS->getNativeRaceID();
+    const point destination = universe.getRace(nativeRaceID)->getFirstFreeHomeworldLoc();
+
+    mob->setDestination(destination);
+}
+
+void setNPCAttackPositionDestination(MobShip* mob)
+{
+    if (!mob) 
+        return;
+
+    module * weaponMod = getCurrentMobSelectedModule(mob);
+    if (!weaponMod) 
+        return;
+
+    weapon_struct weapon = weaponMod->getWeaponStruct();
+
+    const point target = weapon.eightDirectionRestricted
+        ? getClosestNPCTargetInRangeLine(mob, weapon.travel_range)
+        : getMobFromID(mob->getMobSubAreaAttackID())->at();
+
+    mob->setDestination(target);
+}
+
+point getClosestNPCTargetInRangeLine(MobShip* mob, int travelRange)
+{
+    const point attackLoc = getMobFromID(mob->getMobSubAreaAttackID())->at();
+    const point origin = mob->at();
+
+    std::vector<point> candidatePoints;
+    std::vector<int> distancesSquared;
+
+    for (int dx = -1; dx <= 1; ++dx)
+    {
+        for (int dy = -1; dy <= 1; ++dy)
+        {
+            if (dx == 0 && dy == 0)
+                continue;
+
+            const point target = addPoints(attackLoc, point(dx * travelRange, dy * travelRange));
+
+            if (!inRange(target, point(0, 0), point(STARMAPWID - 1, STARMAPHGT - 1)))
+                continue;
+
+            candidatePoints.push_back(target);
+            distancesSquared.push_back(distanceSquared(origin, target));
+        }
+    }
+
+    if (candidatePoints.empty())
+        return attackLoc;
+
+    auto minIt = std::min_element(distancesSquared.begin(), distancesSquared.end());
+    const size_t index = std::distance(distancesSquared.begin(), minIt);
+
+    return candidatePoints[index];
+}
+
+void checkNPCMoveEvent(MobShip* mob)
+{
+    if (!mob || !mob->getMoveState())
+        return;
+
+    const point source = mob->at();
+    const point dest = mob->getDestination();
+
+    if (isAt(source, dest))
+    {
+        mob->setGoalStatus(GOALSTATUS_COMPLETE);
+        return;
+    }
+
+    const bool inDetectionRange = (shortestPath(source, dest) <= mob->getDetectRadius());
+    const bool notAttacking = (mob->getAIPattern() != AIPATTERN_ATTACKING);
+
+    if (!inDetectionRange && !notAttacking)
+        return;
+
+    const bool isBlocked = tracer.isBlocking(getMap(), source, dest, true, false);
+    const auto& mapSize = getMap()->getSize();
+    const bool notOnBorder = notOnMapBorder(source, mapSize) && notOnMapBorder(dest, mapSize);
+
+    const point nextLoc = (isBlocked && notOnBorder)
+        ? pathfinder.dijkstra(getMap(), source, dest)
+        : tracer.getLinePoint(tracer.getLineSize() - 2);
+
+    moveNPC(mob, nextLoc);
 }
 
 void checkNPCPlanetMoveEvent(MobShip* mb)
 {
-    if (universe.getSubAreaMapType() == SMT_PERSISTENT)
-        if (CSYS->isRaceAffiliated())
-        {
-            int victim_race_id = CSYS->getNativeRaceID();
-            int offending_race_id = mb->getMobSubAreaGroupID();
-
-            if (offending_race_id == victim_race_id)
-                return;
-
-            if (universe.getRace(victim_race_id)->getNumHomeworlds() != 0)
-                if (universe.getRace(victim_race_id)->getRaceOverallMajorStatus() != RMS_ENSLAVED)
-                    if (universe.getRace(offending_race_id)->getRaceOverallMajorStatus() != RMS_ENSLAVED)
-                        if (CSYS->getNumActiveNativeShipsPresent() == 0)
-                            if (universe.getRace(offending_race_id)->getRaceAttStatus(victim_race_id) <= -1)
-                                mb->setAIPattern(AIPATTERN_APPROACHPLANET);
-        }
-}
-
-
-void checkMobHasEngine(MobShip* mb)
-{
-    if (mb->getNumInstalledModulesOfType(MODULE_ENGINE) == 0)
-        mb->setMoveState(false);
-    else
-        mb->setMoveState(true);
-}
-
-void checkNPCPlanetAttackEvent(MobShip* mb)
-{
-    if (universe.getSubAreaMapType() == SMT_PERSISTENT)
+    if (universe.getSubAreaMapType() == SMT_PERSISTENT && CSYS->isRaceAffiliated())
     {
-        if (CSYS->isRaceAffiliated())
+        const int victim_race_id = CSYS->getNativeRaceID();
+        const int offending_race_id = mb->getMobSubAreaGroupID();
+        
+        if (offending_race_id == victim_race_id)
+            return;
+        
+        if (approachPlanetPatternSetCondition(offending_race_id, victim_race_id))
         {
-            if (universe.getRace(mb->getMobSubAreaGroupID())->getRaceOverallMajorStatus() != RMS_ENSLAVED)
-            {
-                if (mb->getAIPattern() == AIPATTERN_APPROACHPLANET)
-                {
-                    if (getMap()->getBackdrop(mb->at()) == LBACKDROP_PLANET)
-                    {
-                        universe.getRace(CSYS->getNativeRaceID())->setHomeworldMajorStatus(mb->at(), RMS_ENSLAVED);
-                        universe.getRace(CSYS->getNativeRaceID())->setHomeworldOwnerRaceID(mb->at(), mb->getMobSubAreaGroupID());
-                        getMap()->setBackdrop(mb->at(), LBACKDROP_ENSLAVEDPLANET);
-                        if (getMap()->getv(mb->at()))
-                        {
-                            msgeAdd("The " + mb->getShipName() + " deploys a slave shield over the homeworld!", cp_whiteonblack);
-                        }
-                        for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
-                        {
-                            if (CSYS->getNPCShip(i)->getAIPattern() == AIPATTERN_APPROACHPLANET && mb->getMobSubAreaGroupID() == CSYS->getNPCShip(i)->getMobSubAreaGroupID())
-                            {
-                                CSYS->getNPCShip(i)->setAIPattern(AIPATTERN_NEUTRAL);
-                                CSYS->getNPCShip(i)->setGoalStatus(GOALSTATUS_COMPLETE);
-                            }
-                        }
-                    }
-                }
-            }
+            mb->setAIPattern(AIPATTERN_APPROACHPLANET);
         }
     }
 }
 
-void checkNPCAggroEvent(MobShip* mb)
+void checkNPCPlanetEnslaveEvent(MobShip* mob)
 {
-    if (mb->getMobType() == SHIP_PLAYER)
+    if (!planetEnslaveEventCondition(mob))
         return;
 
-    int max_anger_factor = 0;
-    int npc_anger_factor = -1;
-    int npc_tgid = -1;
-    int agid = mb->getMobSubAreaGroupID();
-    int pattstatus = universe.getRace(agid)->getPlayerAttStatus();
-    // check if hated player is nearby to attack
-    if (pattstatus <= -1)
+    const point& loc = mob->at();
+    const int mobRaceID = mob->getMobSubAreaGroupID();
+    const int nativeRaceID = CSYS->getNativeRaceID();
+    auto* nativeRace = universe.getRace(nativeRaceID);
+
+    nativeRace->setHomeworldMajorStatus(loc, RMS_ENSLAVED);
+    nativeRace->setHomeworldControllerRace(loc, mobRaceID, getMobRaceDangerLevel(mob));
+    getMap()->setBackdrop(loc, LBACKDROP_ENSLAVEDPLANET);
+
+    if (getMap()->getv(loc))
     {
-        if (shortestPath(mb->at(), getPlayerShip()->at()) <= mb->getDetectRadius())
-        {
-            max_anger_factor = pattstatus;
-            mb->setMobSubAreaAttackID(0);
-            resetWaitCounter();
-        }
+        msgeAdd("The " + mob->getShipName() + " deploys a slave shield over the homeworld!", cp_purpleonblack);
     }
-    // check if hated npc is nearby to attack
+
     for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
     {
-        // mob cannot attack itself
-        if (mb->getMobSubAreaID() != CSYS->getNPCShip(i)->getMobSubAreaID())
+        MobShip* npc = CSYS->getNPCShip(i);
+        if (!npc)
+            continue;
+
+        if (npc->getAIPattern() == AIPATTERN_APPROACHPLANET &&
+            npc->getMobSubAreaGroupID() == mobRaceID)
         {
-            npc_tgid = CSYS->getNPCShip(i)->getMobSubAreaGroupID();
-            // mob cannot attack an ally
-            if (agid != npc_tgid)
-            {
-                npc_anger_factor = universe.getRace(agid)->getRaceAttStatus(npc_tgid);
-                if (npc_anger_factor <= -1)
-                {
-                    if (shortestPath(mb->at(), CSYS->getNPCShip(i)->at()) <= mb->getDetectRadius())
-                    {
-                        if (CSYS->getNPCShip(i)->isActivated())
-                        {
-                            if (npc_anger_factor < max_anger_factor)
-                            {
-                                mb->setMobSubAreaAttackID(CSYS->getNPCShip(i)->getMobSubAreaID());
-                                max_anger_factor = npc_anger_factor;
-                            }
-                        }
-                    }
-                }
-            }
+            npc->setAIPattern(AIPATTERN_NEUTRAL);
+            npc->setGoalStatus(GOALSTATUS_COMPLETE);
+        }
+    }
+}
+
+void checkNPCAggroEvent(MobShip* mob)
+{
+    if (!mob || mob->getMobType() == SHIP_PLAYER)
+        return;
+
+    const int mobGroupID = mob->getMobSubAreaGroupID();
+    const int playerAttitude = universe.getRace(mobGroupID)->getPlayerAttStatus();
+    int maxAngerFactor = 0;
+
+    // Check if player is hated and within detection range
+    if (playerAttitude <= -1 &&
+        shortestPath(mob->at(), getPlayerShip()->at()) <= mob->getDetectRadius())
+    {
+        maxAngerFactor = playerAttitude;
+        mob->setMobSubAreaAttackID(0);
+        resetWaitCounter();
+    }
+
+    // Check nearby hostile NPCs
+    for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
+    {
+        auto* npc = CSYS->getNPCShip(i);
+        if (!npc || mob->getMobSubAreaID() == npc->getMobSubAreaID())
+            continue;
+
+        const int npcGroupID = npc->getMobSubAreaGroupID();
+        if (npcGroupID == mobGroupID)
+            continue;
+
+        const int npcAnger = universe.getRace(mobGroupID)->getRaceAttStatus(npcGroupID);
+        if (npcAnger > -1 || npcAnger >= maxAngerFactor)
+            continue;
+
+        if (shortestPath(mob->at(), npc->at()) <= mob->getDetectRadius() && npc->isActivated())
+        {
+            mob->setMobSubAreaAttackID(npc->getMobSubAreaID());
+            maxAngerFactor = npcAnger;
         }
     }
 }
@@ -346,17 +336,53 @@ void resetWaitCounter()
     }
 }
 
-void moveNPC(MobShip* mb, point new_loc)
+void moveNPC(MobShip* mob, point newLoc)
 {
-    if (inRange(new_loc, point(1, 1), addPoints(getMapSize(), point(-2, -2))))
-    {
-        if (!isBlockingCell(getMap()->getCell(new_loc)))
-        {
-            if (!isAt(new_loc, getSubAreaSystemStartPoint(getMapSize())))
-            {
-                changeMobTile(mb->at(), new_loc, mb->getMobType());
-                mb->setLoc(new_loc);
-            }
-        }
-    }
+    if (!mob || !moveNPCCondition(mob, newLoc))
+        return;
+
+    changeMobTile(mob->at(), newLoc, mob->getMobType());
+    mob->setLoc(newLoc);
+}
+
+void checkMobHasEngine(MobShip* mob)
+{
+    if (!mob) return;
+    mob->setMoveState(mob->getNumInstalledModulesOfType(MODULE_ENGINE) > 0);
+}
+
+bool planetEnslaveEventCondition(MobShip* mob)
+{
+    if (!mob) return false;
+
+    auto* race = universe.getRace(mob->getMobSubAreaGroupID());
+
+    return universe.getSubAreaMapType() == SMT_PERSISTENT &&
+        CSYS->isRaceAffiliated() &&
+        race->getRaceOverallMajorStatus() != RMS_ENSLAVED &&
+        mob->getAIPattern() == AIPATTERN_APPROACHPLANET &&
+        getMap()->getBackdrop(mob->at()) == LBACKDROP_PLANET;
+}
+
+bool approachPlanetPatternSetCondition(int offendingRaceID, int victimRaceID)
+{
+    auto* offender = universe.getRace(offendingRaceID);
+    auto* victim = universe.getRace(victimRaceID);
+
+    return victim->getNumHomeworlds() > 0 &&
+        victim->getRaceOverallMajorStatus() != RMS_ENSLAVED &&
+        offender->getRaceOverallMajorStatus() != RMS_ENSLAVED &&
+        CSYS->getNumActiveNativeShipsPresent() == 0 &&
+        offender->getRaceAttStatus(victimRaceID) <= -1;
+}
+
+bool moveNPCCondition(MobShip* mob, point newLoc)
+{
+    const point mapSize = getMapSize();
+    const point minBound(1, 1);
+    const point maxBound = addPoints(mapSize, point(-2, -2));
+
+    return inRange(newLoc, minBound, maxBound) &&
+        !isBlockingCell(getMap()->getCell(newLoc)) &&
+        !isAt(newLoc, getSubAreaSystemStartPoint(mapSize));
 }

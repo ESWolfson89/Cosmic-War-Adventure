@@ -150,7 +150,9 @@ void mobChangeSelectedWeapon(MobShip* mb)
 void printShipmobWeaponEventMessage(MobShip* mb, std::string action_str)
 {
     if (!getMap()->getv(mb->at()))
+    {
         return;
+    }
     msgeAdd(getNamePrefix(mb), cp_grayonblack);
     msgeAdd(mb->getShipName(), mb->getShipSymbol().color);
     msgeAdd(action_str + " its", cp_grayonblack);
@@ -245,56 +247,6 @@ void mobFire(MobShip* mb, point p)
     }
 }
 
-void mobShootSingleProjectile(MobShip* mb, point dest)
-{
-    module* current_mod = getCurrentMobSelectedModule(mb);
-    point source = mb->at(), lof = point(1, 1);
-    int point_iter = 0;
-    int primary_iter = 0;
-    int range = current_mod->getWeaponStruct().travel_range;
-    bool is_detectable = (getMap()->getv(mb->at()) || isAt(dest, getPlayerShip()->at()));
-    bool hitmob_condition;
-
-    tracer.bresenham(getMapSize(), source, dest);
-
-    do
-    {
-        point_iter = tracer.getLineSize() - 2;
-
-        do
-        {
-            lof = tracer.getLinePoint(point_iter);
-
-            if (is_detectable)
-            { 
-                outputLOFTransition(lof, mb->at(), dest, current_mod->getWeaponStruct().ftile);
-            }
-
-            hitmob_condition = checkForMobInLOF(mb, lof, true, false);
-
-            if (hitmob_condition || primary_iter == range - 1 || terrainBlocked(getMap()->getBackdrop(lof)))
-            {
-                endOfProjectileLoop(mb, lof, is_detectable);
-                return;
-            }
-
-            point_iter--;
-            primary_iter++;
-        } while (point_iter >= 0);
-
-        extrapolateLine(source, dest, getMapSize());
-
-        if (tracer.getLineSize() <= 1)
-        {
-            if (is_detectable)
-            {
-                clearAllFireCells(getMap());
-            }
-            return;
-        }
-    } while (1);
-}
-
 // returns true if fire projectile/laser/wallop etc... hits something
 bool checkForMobInLOF(MobShip* mb, point lof, bool add_hitsprite, bool guaranteed_hit)
 {
@@ -329,10 +281,7 @@ bool checkForMobInLOF(MobShip* mb, point lof, bool add_hitsprite, bool guarantee
 
         checkCreateDamagingExplosion(lof, blast_radius, 15, FIRET_DAMAGINGEXPLOSION, true, dr, true);
 
-        if (rollPerc(getCurrentMobSelectedModule(mb)->getWeaponStruct().travel_through_chance))
-            return false;
-        else
-            return true;
+        return !rollPerc(getCurrentMobSelectedModule(mb)->getWeaponStruct().travel_through_chance);
     }
     else
     {
@@ -343,169 +292,6 @@ bool checkForMobInLOF(MobShip* mb, point lof, bool add_hitsprite, bool guarantee
     }
 
     return false;
-}
-
-// shoot spread burst sprites that are width tiles wide
-void mobShootSpread(MobShip* mb, point dest, int width)
-{
-    module* current_mod = getCurrentMobSelectedModule(mb);
-
-    int dist_counter = 0;
-
-    int range = current_mod->getWeaponStruct().travel_range;
-
-    point source = mb->at(), adjp;
-
-    point dl = point(dest.x() - source.x(), dest.y() - source.y());
-
-    std::vector<bool> block;
-    std::vector<point> lof;
-
-    for (int i = 0; i < width; ++i)
-        block.push_back(false);
-
-    lof.resize(width);
-
-    bool is_detectable = (getMap()->getv(mb->at()) || isAt(dest, getPlayerShip()->at()));
-
-    bool all_blocked;
-
-    int point_iter = 0;
-
-    if (std::abs(dl.y()) > std::abs(dl.x()))
-        adjp = point(1, 0);
-    else
-        adjp = point(0, 1);
-
-    tracer.bresenham(getMapSize(), source, dest);
-
-    point_iter = tracer.getLineSize() - 2;
-
-    do
-    {
-        dest = tracer.getLinePoint(point_iter);
-
-        for (int i = 0; i < width; ++i)
-            lof[i].set(dest.x() + (i - (int)(width / 2)) * adjp.x(), dest.y() + (i - (int)(width / 2)) * adjp.y());
-
-        for (int i = 0; i < width; ++i)
-            if (!block[i])
-            {
-                if (!inMapRange(lof[i], getMapSize()) || terrainBlocked(getMap()->getBackdrop(lof[i])))
-                    block[i] = true;
-                else
-                {
-                    if (is_detectable)
-                        printAndSetFireCell(getMap(), lof[i], current_mod->getWeaponStruct().ftile);
-                    checkForMobInLOF(mb, lof[i], false, false);
-                }
-            }
-
-        if (is_detectable)
-            display_obj.delayAndUpdate(15);
-
-        dist_counter++;
-
-        point_iter--;
-
-        if (point_iter == -1)
-        {
-            extrapolateLine(source, dest, getMapSize());
-
-            if (!inMapRange(dest, getMapSize()))
-            {
-                break;
-            }
-
-            point_iter = tracer.getLineSize() - 2;
-        }
-
-        all_blocked = true;
-        for (int i = 0; i < width; ++i)
-            if (!block[i])
-                all_blocked = false;
-    } while ((dist_counter < range) && !all_blocked);
-
-    if (is_detectable)
-        clearAllFireCells(getMap());
-}
-
-void mobShootPulse(MobShip* mb, point dest)
-{
-    module* current_mod = getCurrentMobSelectedModule(mb);
-
-    bool end_hit = false;
-    bool hit_being = false;
-
-    point lof, lof_hit, source = mb->at();
-
-    tracer.bresenham(getMapSize(), source, dest);
-
-    int point_iter = tracer.getLineSize() - 1;
-
-    int max_dist = current_mod->getWeaponStruct().travel_range;
-
-    int dist_counter = 0;
-
-    bool is_detectable = (getMap()->getv(mb->at()) || isAt(dest, getPlayerShip()->at()));
-
-    do
-    {
-        // condition: fire_t has NOT hit something
-        if (!end_hit)
-        {
-            if (point_iter == 0)
-            {
-                extrapolateLine(source, dest, getMapSize());
-                if (tracer.getLineSize() <= 1)
-                    break;
-                point_iter = tracer.getLineSize() - 1;
-            }
-            point_iter--;
-            lof = tracer.getLinePoint(point_iter);
-
-            if (checkForMobInLOF(mb, lof, false, false))
-                hit_being = true;
-
-            if (hit_being || dist_counter >= max_dist || terrainBlocked(getMap()->getBackdrop(lof)))
-            {
-                lof_hit = lof;
-                tracer.bresenham(getMapSize(), mb->at(), lof_hit);
-                point_iter = tracer.getLineSize() - 1;
-                end_hit = true;
-            }
-
-            if (is_detectable)
-            {
-                printAndSetFireCell(getMap(), lof, current_mod->getWeaponStruct().ftile);
-                display_obj.delayAndUpdate(15);
-            }
-        }
-        // it has hit something or reached end
-        else
-        {
-            if (point_iter <= 0)
-                break;
-
-            lof = tracer.getLinePoint(point_iter);
-
-            //set farthest cell from enemy/player with "t" fire_t value to NIL
-            if (is_detectable)
-            {
-                clearAllFireCellsInRange(getMap(), lof, 1);
-                display_obj.delayAndUpdate(15);
-            }
-
-            if (hit_being)
-                checkForMobInLOF(mb, lof_hit, false, true);
-
-            point_iter--;
-        }
-        dist_counter++;
-    } while (1);
-
-    if (is_detectable)
-        clearAllFireCells(getMap());
 }
 
 void displayEvasionReport(int acc_val, MobShip* mb)
@@ -670,6 +456,230 @@ void checkMobExplosionRadiusDamage(point p, int mradius, damage_report dr, bool 
                 }
             }
         }
+    }
+}
+
+void mobShootSingleProjectile(MobShip* mb, point dest)
+{
+    module* current_mod = getCurrentMobSelectedModule(mb);
+    point source = mb->at(), lof = point(1, 1);
+    int point_iter = 0;
+    int primary_iter = 0;
+    int range = current_mod->getWeaponStruct().travel_range;
+    bool is_detectable = (getMap()->getv(mb->at()) || isAt(dest, getPlayerShip()->at()));
+    bool hitmob_condition;
+
+    tracer.bresenham(getMapSize(), source, dest);
+
+    do
+    {
+      point_iter = tracer.getLineSize() - 2;
+      
+      do
+      {
+        lof = tracer.getLinePoint(point_iter);
+        
+        if (is_detectable)
+        {
+          outputLOFTransition(lof, mb->at(), dest, current_mod->getWeaponStruct().ftile);
+        }
+        
+        hitmob_condition = checkForMobInLOF(mb, lof, true, false);
+        
+        if (hitmob_condition || primary_iter == range - 1 || terrainBlocked(getMap()->getBackdrop(lof)))
+        {
+          endOfProjectileLoop(mb, lof, is_detectable);
+          return;
+        }
+        
+        point_iter--;
+        primary_iter++;
+      } while (point_iter >= 0);
+      
+      extrapolateLine(source, dest, getMapSize());
+      
+      if (tracer.getLineSize() <= 1)
+      {
+        if (is_detectable)
+        {
+          clearAllFireCells(getMap());
+        }
+        return;
+      }
+    } while (1);
+}
+
+
+// shoot spread burst sprites that are width tiles wide
+void mobShootSpread(MobShip* mb, point dest, int width)
+{
+    module* current_mod = getCurrentMobSelectedModule(mb);
+    const auto& weapon = current_mod->getWeaponStruct();
+    int range = weapon.travel_range;
+
+    point source = mb->at();
+    point delta(dest.x() - source.x(), dest.y() - source.y());
+    point adjp = std::abs(delta.y()) > std::abs(delta.x()) ? point(1, 0) : point(0, 1);
+
+    std::vector<point> lof(width);
+    std::vector<bool> block(width, false);
+
+    bool is_detectable = getMap()->getv(source) || isAt(dest, getPlayerShip()->at());
+
+    tracer.bresenham(getMapSize(), source, dest);
+    int point_iter = tracer.getLineSize() - 2;
+    int dist_counter = 0;
+
+    bool all_blocked = true;
+
+    do
+    {
+      dest = tracer.getLinePoint(point_iter);
+      
+      const int half_width = width / 2;
+
+      for (int i = 0; i < width; ++i) 
+      {
+          int offset = i - half_width;
+          lof[i] = point(dest.x() + offset * adjp.x(), dest.y() + offset * adjp.y());
+      }
+
+      for (int i = 0; i < width; ++i) 
+      {
+          if (block[i]) continue;
+
+          const point& p = lof[i];
+
+          if (!inMapRange(p, getMapSize()) || terrainBlocked(getMap()->getBackdrop(p))) 
+          {
+              block[i] = true;
+              continue;
+          }
+
+          if (is_detectable) 
+          {
+              printAndSetFireCell(getMap(), p, weapon.ftile);
+          }
+
+          checkForMobInLOF(mb, p, false, false);
+      }
+      
+      if (is_detectable)
+      {
+        display_obj.delayAndUpdate(15);
+      }
+      
+      dist_counter++;
+      
+      point_iter--;
+      
+      if (point_iter == -1)
+      {
+        extrapolateLine(source, dest, getMapSize());
+      
+        if (!inMapRange(dest, getMapSize()))
+        {
+          break;
+        }
+      
+        point_iter = tracer.getLineSize() - 2;
+      }
+      
+      all_blocked = std::all_of(block.begin(), block.end(), [](bool b) { return b; });
+
+    } while ((dist_counter < range) && !all_blocked);
+
+    if (is_detectable)
+    {
+      clearAllFireCells(getMap());
+    }
+}
+
+void mobShootPulse(MobShip* mb, point dest)
+{
+    module* current_mod = getCurrentMobSelectedModule(mb);
+
+    bool end_hit = false;
+    bool hit_being = false;
+
+    point lof, lof_hit, source = mb->at();
+
+    tracer.bresenham(getMapSize(), source, dest);
+
+    int point_iter = tracer.getLineSize() - 1;
+
+    int max_dist = current_mod->getWeaponStruct().travel_range;
+
+    int dist_counter = 0;
+
+    bool is_detectable = (getMap()->getv(mb->at()) || isAt(dest, getPlayerShip()->at()));
+
+    do
+    {
+      // condition: fire_t has NOT hit something
+      if (!end_hit)
+      {
+        if (point_iter == 0)
+        {
+          extrapolateLine(source, dest, getMapSize());
+          if (tracer.getLineSize() <= 1)
+          {
+              break;
+          }
+          point_iter = tracer.getLineSize() - 1;
+        }
+        point_iter--;
+        lof = tracer.getLinePoint(point_iter);
+       
+        if (checkForMobInLOF(mb, lof, false, false))
+        {
+          hit_being = true;
+        }
+       
+        if (hit_being || dist_counter >= max_dist || terrainBlocked(getMap()->getBackdrop(lof)))
+        {
+          lof_hit = lof;
+          tracer.bresenham(getMapSize(), mb->at(), lof_hit);
+          point_iter = tracer.getLineSize() - 1;
+          end_hit = true;
+        }
+       
+        if (is_detectable)
+        {
+          printAndSetFireCell(getMap(), lof, current_mod->getWeaponStruct().ftile);
+          display_obj.delayAndUpdate(15);
+        }
+      }
+      // it has hit something or reached end
+      else
+      {
+        if (point_iter <= 0)
+        {
+            break;
+        }
+      
+        lof = tracer.getLinePoint(point_iter);
+      
+        //set farthest cell from enemy/player with "t" fire_t value to NIL
+        if (is_detectable)
+        {
+          clearAllFireCellsInRange(getMap(), lof, 1);
+          display_obj.delayAndUpdate(15);
+        }
+      
+        if (hit_being)
+        {
+          checkForMobInLOF(mb, lof_hit, false, true);
+        }
+      
+        point_iter--;
+      }
+      dist_counter++;
+    } while (1);
+
+    if (is_detectable)
+    {
+      clearAllFireCells(getMap());
     }
 }
 

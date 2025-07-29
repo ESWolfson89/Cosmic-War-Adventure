@@ -82,6 +82,8 @@ class cell_pile : public item_container
 {
     public:
     
+        cell_pile() = default;
+
         cell_pile(point);
     
         point getLoc();

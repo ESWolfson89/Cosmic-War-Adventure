@@ -256,4 +256,16 @@ int getWeaponModuleConsumptionPerTurn(module *);
 
 module rollOneModule(int);
 
+void saveWeaponStruct(std::ofstream& os, const weapon_struct& w);
+
+void loadWeaponStruct(std::ifstream& is, weapon_struct& w);
+
+void saveShieldStruct(std::ofstream& os, const shield_struct& s);
+
+void loadShieldStruct(std::ifstream& is, shield_struct& s);
+
+void saveEngineStruct(std::ofstream& os, const shipengine_struct& e);
+
+void loadEngineStruct(std::ifstream& is, shipengine_struct& e);
+
 #endif

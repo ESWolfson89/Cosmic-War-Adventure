@@ -439,8 +439,8 @@ void slot::initSlots()
         reel_state[i][2] = (reel_state[i][1] + 1) % num_slot_reel_tiles;
     }
 
-    std::random_shuffle(reel.begin(),reel.end());
-    std::random_shuffle(reel.begin(),reel.end());
+    std::shuffle(reel.begin(),reel.end(),random_number_generator);
+    std::shuffle(reel.begin(),reel.end(),random_number_generator);
 
     uint multiplier = 1;
 

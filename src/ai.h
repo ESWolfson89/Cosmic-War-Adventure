@@ -17,11 +17,15 @@ void setNPCAttackPositionDestination(MobShip* mb);
 void checkNPCMoveEvent(MobShip* mb);
 void checkNPCPlanetMoveEvent(MobShip* mb);
 void checkMobHasEngine(MobShip* mb);
-void checkNPCPlanetAttackEvent(MobShip* mb);
+void checkNPCPlanetEnslaveEvent(MobShip* mob);
 void checkNPCAggroEvent(MobShip* mb);
 void resetWaitCounter();
 void moveNPC(MobShip* mb, point new_loc);
 
-point getClosestNPCTargetInRangeLine(MobShip* mb, weapon_struct current_ws);
+bool planetEnslaveEventCondition(MobShip* mob);
+bool approachPlanetPatternSetCondition(int offendingRaceID, int victimRaceID);
+bool moveNPCCondition(MobShip* mob, point newLoc);
+
+point getClosestNPCTargetInRangeLine(MobShip* mb, int travelRange);
 
 #endif

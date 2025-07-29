@@ -4,46 +4,83 @@ game::game()
 {
     game_active = true;
     playerHasMoved = false;
+    usingMachine = false;
+    wait_counter = 0;
 }
 
 void game::run()
 {
     if(gfx_obj.initSDL())
     {
+        bool loaded = false;
 
-        /*
+        point titleTextLocation = point(GRIDWID / 2 - 16, 8);
 
-
-        NOTE:
-
-        Save/Load at the moment is BROKEN. It has been disabled.
-
-
-        */
-        display_obj.addString("<<< Cosmic War Adventure >>>",cp_redondarkgray,point(GRIDWID/2 - 12,1));
-        display_obj.addString("Press \' \' to begin.",cp_whiteonblack,point(GRIDWID/2 - 6,5));
-
-        display_obj.addString("Movement: keys yujklbn, numpad, arrows.",cp_lightgrayonblack,point(16,24));
-        display_obj.addString("Target/fire at ship: 't'",cp_lightgrayonblack,point(16,25));
-        display_obj.addString("Tab toggle window area (change weapon): 'tab'",cp_lightgrayonblack,point(16,26));
-        display_obj.addString("Enter star system/space station: [space]",cp_lightgrayonblack,point(16,27));
-        display_obj.addString("Display some debug info in terminal: 'enter'",cp_lightgrayonblack,point(16,28));
-        display_obj.addString("Wait for 100 turns in starmap only: '0'",cp_lightgrayonblack,point(16,29));
-        display_obj.addString("quit (in game, to quit now: press \' \' first): 'q' (twice)", cp_lightgrayonblack, point(16, 30));
-        display_obj.addString("Copyright Eric Wolfson 2015-2025",cp_greenonblack,point(GRIDWID/2 - 15,40));
+        display_obj.addString("      COSMIC WAR ADVENTURE       ", cp_darkredonblack,  titleTextLocation);
+        display_obj.addString("           v0.1.0-dev            ", cp_darkgrayonblack, titleTextLocation + point(0,2));
+        display_obj.addString(" Press ENTER to start a new game ", cp_grayonblack,     titleTextLocation + point(0,8));
+        display_obj.addString("Press R to reload a previous game", cp_grayonblack,     titleTextLocation + point(0,10));
+        display_obj.addString(" Copyright (c) Eric Wolfson 2025 ", cp_whiteonblack,    titleTextLocation + point(0,GRIDHGT-17));
         gfx_obj.updateScreen();
-        event_handler.waitForKey(' ');
-        initGameObjects();
-        primaryGameLoop();
+        // set player input
+        do
+        {
+            event_handler.setAction();
+            if (event_handler.getAction() == INP_TOGGLE)
+            {
+                initGameObjects();
+            }
+            if (event_handler.getAction() == INP_LOAD)
+            {
+                setupLoadedGame();
+                loaded = true;
+            }
+        } while (event_handler.getAction() != INP_TOGGLE && event_handler.getAction() != INP_LOAD && event_handler.getAction() != INP_QUIT);
+
+        if (event_handler.getAction() != INP_QUIT)
+        {
+            primaryGameLoop(loaded);
+        }
+
+        do
+        {
+            event_handler.setAction();
+        } while (event_handler.getAction() != INP_TOGGLE);
     }
     else
     {
         std::cout << "failed to initialize... press enter to terminate.";
         std::cin.get();
     }
-    event_handler.waitForKey('q');
+
     cleanupEverything();
 }
+
+void game::promptQuit()
+{
+    display_obj.clearAndDeleteAllMessages();
+    msgeAdd("Do you really want to quit? (y/n)", cp_whiteonblack);
+    gfx_obj.updateScreen();
+
+    // Wait for a valid input: yes or no
+    int action = INP_NONE;
+    do 
+    {
+        event_handler.setAction();
+        action = event_handler.getAction();
+    } while (action != INP_YES && action != INP_NO);
+
+    if (action == INP_YES)
+    {
+        printExitPromptMessage();
+        game_active = false;
+    }
+    else
+    {
+        msgeAdd("Resuming Game...", cp_whiteonblack);
+    }
+}
+
 
 void game::cleanupEverything()
 {
@@ -79,14 +116,18 @@ void game::promptInput()
     // offset to next location (abs(delta.x()) and abs(delta.y()) is probably always 1)
     point delta = point(0,0);
 
+    current_mob_turn = getPlayerShip()->getMobSubAreaID();
+
+    playerHasMoved = true;
+
     // set player input
     event_handler.setAction();
 
-    // flush and clear msgbuffer
-    display_obj.clearAndDeleteAllMessages();
-
-    current_mob_turn = getPlayerShip()->getMobSubAreaID();
-    playerHasMoved = true;
+    if (!event_handler.isShiftOrCaps())
+    {
+        // flush and clear msgbuffer
+        display_obj.clearAndDeleteAllMessages();
+    }
 
     // get action indicating what action was triggered by player
     switch(event_handler.getAction())
@@ -113,16 +154,19 @@ void game::promptInput()
         }
         case(INP_QUIT):
         {
-            game_active = false;
+            playerHasMoved = false;
+            promptQuit();
             break;
         }
         case(INP_CHANGETABFOCUS):
         {
+            playerHasMoved = false;
             changeGameTabFocus();
             break;
         }
         case(INP_WEAPONFIRE):
         {
+            playerHasMoved = false;
             playerTargetToggle(INP_WEAPONFIRE);
             break;
         }
@@ -139,7 +183,17 @@ void game::promptInput()
         }
         case(INP_EXAMINE):
         {
+            playerHasMoved = false;
             playerTargetToggle(INP_EXAMINE);
+            break;
+        }
+        case(INP_SAVE):
+        {
+            playerHasMoved = false;
+            msgeAdd("Saving...", cp_whiteonblack);
+            gfx_obj.updateScreen();
+            save();
+            msgeAdd("Saved", cp_whiteonblack);
             break;
         }
         default:
@@ -244,87 +298,25 @@ void game::stripShipMobOfResources(MobShip *offender, MobShip *victim)
     }
 }
 
-void game::initGameObjects()
+void game::primaryGameLoop(bool loaded)
 {
-    universe.setupUniverse();
-    universe.setSubAreaMapType(SMT_NONE);
-    contact_menu_obj = menu(point(2,GRIDHGT/4),point(GRIDWID-4,GRIDHGT/2));
-    station_menu_obj = menu(point(2,2),point(GRIDWID-4,SHOWHGT/2-2));
-    entertainmentStationMenu = menu(point(2, 2), point(GRIDWID - 4, SHOWHGT / 2 - 2));
-    turn_timer = 0U;
-    wait_counter = 0;
-    current_maptype = MAPTYPE_STARMAP;
-    current_tab = TABTYPE_PLAYAREA;
-    current_subarea_id = -1;
-    current_player_target = 0;
-    usingMachine = false;
-    getPlayerShip()->setShipMob(true,allshipmob_data[(int)SHIP_PLAYER],
-                                NPCSHIPTYPE_NONE,allshipmob_data[(int)SHIP_PLAYER].max_hull,point(PLAYER_START_X,PLAYER_START_Y));
-    getPlayerShip()->initMobSubAreaID(0);
-    getPlayerShip()->setMobSubAreaAttackID(-1);
-    getPlayerShip()->setMobSubAreaGroupID(-1);
-    getPlayerShip()->setNumCredits(5000ULL);
-    display_obj.updateUpperLeft(getPlayerShip()->at(),getMap()->getSize());
-    changeMobTile(point(0,0),getPlayerShip()->at(),getPlayerShip()->getMobType());
-
-    //getPlayerShip()->setNumMaxModules(25);
-
-    module cm1 = module(MODULE_CREW,24,32);
-    getPlayerShip()->addModule(cm1);
-
-    module fm1 = module(MODULE_FUEL,100,100);
-    getPlayerShip()->addModule(fm1);
-
-    module sm1 = module(MODULE_SHIELD,allbasicshield_stats[1].base_num_layers,allbasicshield_stats[1].base_num_layers);
-    sm1.setShieldStruct(allbasicshield_stats[1]);
-    getPlayerShip()->addModule(sm1);
-
-    module em1 = module(MODULE_ENGINE,10,10);
-    em1.setEngineStruct(allbasicengine_stats[1]);
-    getPlayerShip()->addModule(em1);
-
-    module wm1 = module(MODULE_WEAPON, 50, 50);
-    wm1.setWeaponStruct(allbasicweapon_stats[1]);
-    getPlayerShip()->addModule(wm1);
-
-/*    
-    for (int i = 11; i <= 16; i++)
+    if (loaded)
     {
-        module wm = module(MODULE_WEAPON, 100, 100);
-        wm.setWeaponStruct(allbasicweapon_stats[i]);
-        getPlayerShip()->addModule(wm);
+        msgeAdd("Welcome back to Cosmic War Adventure!", cp_purpleonblack);
+    }
+    else
+    {
+        msgeAdd("Welcome to Cosmic War Adventure!", cp_purpleonblack);
     }
 
-    module cm2 = module(MODULE_CREW, 96, 96);
-    getPlayerShip()->addModule(cm2);
-
-    module cm3 = module(MODULE_CREW, 96, 96);
-    getPlayerShip()->addModule(cm3);
-
-    module cm4 = module(MODULE_CREW, 96, 96);
-    getPlayerShip()->addModule(cm4);
-
-    module cm5 = module(MODULE_CREW, 96, 96);
-    getPlayerShip()->addModule(cm5);
-*/    
-
-    getPlayerShip()->setModuleSelectionIndex(4);
-    last_smloc = getPlayerShip()->at();
-}
-
-void game::primaryGameLoop()
-{
-    msgeAdd("Welcome to Cosmic War Adventure.", cp_purpleonblack);
-    msgeAdd("Press 'q' twice to quit.",cp_whiteonblack);
     do
     {
         reDisplay(true);
         promptInput();
-        executeMiscPlayerTurnBasedData();
-        //std::cout << CSYS->getNumActiveNativeShipsPresent() << "\n";
-        reDisplay(true);
         if (game_active)
         {
+            executeMiscPlayerTurnBasedData();
+            reDisplay(true);
             activateAllNPCAI();
             executeMiscNPCTurnBasedData();
             turn_timer++;
@@ -463,8 +455,8 @@ void game::checkForSubAreaRaceEvent()
 
     for (int i = 0; i < universe.getRace(hw_race_id)->getNumHomeworlds(); ++i)
     {
-        plnt_loc = universe.getRace(hw_race_id)->getHomeworldStruct(i).loc;
-        plnt_race_id = universe.getRace(hw_race_id)->getHomeworldStruct(i).race_owner_id;
+        plnt_loc = universe.getRace(hw_race_id)->getHomeworld(i)->getLoc();
+        plnt_race_id = universe.getRace(hw_race_id)->getHomeworld(i)->getControlRaceID();
         plnt_race_dl = universe.getRace(plnt_race_id)->getDangerLevel();
         num_plnt_race_native_ships = universe.getRace(plnt_race_id)->getNumNativeShips();
         if (!mobBlocked(getMap()->getMob(plnt_loc)))
@@ -616,7 +608,7 @@ void game::printTileCharacteristics()
              msgeAdd("There is a homeworld here belonging to The " + CSYS->getSubAreaName() + ".",cp_lightblueonblack);
              break;
         case(LBACKDROP_ENSLAVEDPLANET):
-             msgeAdd("There is an enslaved planet here under the authority of The " + universe.getRace(universe.getRace(CSYS->getNativeRaceID())->getHomeworldStruct(getPlayerShip()->at()).race_owner_id)->getNameString() + ".",cp_purpleonblack);
+             msgeAdd("There is an enslaved planet here under the authority of The " + universe.getRace(universe.getRace(CSYS->getNativeRaceID())->getHomeworld(getPlayerShip()->at())->getControlRaceID())->getNameString() + ".",cp_purpleonblack);
              break;
         default:
              break;
@@ -637,11 +629,11 @@ void game::checkForUnEnslavementRaceEvent()
                 {
                     for (int pl = 0; pl < universe.getRace(j)->getNumHomeworlds(); ++pl)
                     {
-                        if (universe.getRace(j)->getHomeworldStruct(pl).race_owner_id == universe.getRace(i)->getRaceID())
+                        if (universe.getRace(j)->getHomeworld(pl)->getControlRaceID() == universe.getRace(i)->getRaceID())
                         {
-                            hw_loc = universe.getRace(j)->getHomeworldStruct(pl).loc;
+                            hw_loc = universe.getRace(j)->getHomeworld(pl)->getLoc();
                             universe.getRace(j)->setHomeworldMajorStatus(hw_loc,RMS_FREE);
-                            universe.getRace(j)->setHomeworldOwnerRaceID(hw_loc,universe.getRace(j)->getRaceID());
+                            universe.getRace(j)->setHomeworldControllerRace(hw_loc,universe.getRace(j)->getRaceID(),universe.getRace(j)->getDangerLevel());
                             universe.getSubArea(universe.getSubAreaIndex(universe.getRace(j)->getStarmapLoc()))->getMap()->setBackdrop(hw_loc,LBACKDROP_PLANET);
                         }
                     }
@@ -1627,6 +1619,8 @@ void game::playerTargetToggle(input_t type)
 
     } while (event_handler.getAction() != INP_WEAPONFIRE);
 
+    playerHasMoved = true;
+
     clearAllFireCells(getMap());
 
     gfx_obj.updateScreen();
@@ -1798,7 +1792,7 @@ void game::checkPlayerDefeatedEvent()
     {
         p = getPlayerShip()->at();
         msgeAdd("Your ship has been destroyed!",cp_darkredonblack);
-        msgeAdd("Press 'q' to quit...",cp_whiteonblack);
+        printExitPromptMessage();
         display_obj.printShipStatsSection(getPlayerShip());
         setMobTileToNIL(getMap(), p);
         explosion_data.push_back({p,getPlayerShip()->getStatStruct().destruction_radius,0});
@@ -1810,6 +1804,7 @@ void game::checkPlayerDefeatedEvent()
     if (getPlayerShip()->getTotalMTFillRemaining(MODULE_CREW) <= 0)
     {
         msgeAdd("All crew members aboard your ship have vanquished!",cp_darkredonblack);
+        printExitPromptMessage();
         display_obj.printShipStatsSection(getPlayerShip());
         resetAttackIDs(0);
         game_active = false;
@@ -1878,31 +1873,125 @@ void game::pickUpItems(MobShip *mb, int s, int q)
     CSYS->deleteItemFromPile(mb->at(),s,q);
 }
 
+void game::initMenus()
+{
+    contact_menu_obj = menu(point(2, GRIDHGT / 4), point(GRIDWID - 4, GRIDHGT / 2));
+    station_menu_obj = menu(point(2, 2), point(GRIDWID - 4, SHOWHGT / 2 - 2));
+    entertainmentStationMenu = menu(point(2, 2), point(GRIDWID - 4, SHOWHGT / 2 - 2));
+}
+
+void game::setupLoadedGame()
+{
+    load();
+    initMenus();
+    display_obj.updateUpperLeft(getPlayerShip()->at(), getMap()->getSize());
+    current_player_target = 0;
+    current_tab = TABTYPE_PLAYAREA;
+    if (current_maptype != MAPTYPE_STARMAP)
+    {
+        pathfinder.setupPathfindDistVector(getMapSize());
+    }
+}
+
+void game::initGameObjects()
+{
+    universe.setupUniverse();
+    universe.setSubAreaMapType(SMT_NONE);
+    initMenus();
+    turn_timer = 0U;
+    current_maptype = MAPTYPE_STARMAP;
+    current_tab = TABTYPE_PLAYAREA;
+    current_subarea_id = -1;
+    current_player_target = 0;
+    getPlayerShip()->setShipMob(true, allshipmob_data[(int)SHIP_PLAYER],
+        NPCSHIPTYPE_NONE, allshipmob_data[(int)SHIP_PLAYER].max_hull, point(PLAYER_START_X, PLAYER_START_Y));
+    getPlayerShip()->initMobSubAreaID(0);
+    getPlayerShip()->setMobSubAreaAttackID(-1);
+    getPlayerShip()->setMobSubAreaGroupID(-1);
+    getPlayerShip()->setNumCredits(5000ULL);
+    display_obj.updateUpperLeft(getPlayerShip()->at(), getMap()->getSize());
+    changeMobTile(point(0, 0), getPlayerShip()->at(), getPlayerShip()->getMobType());
+
+    //getPlayerShip()->setNumMaxModules(25);
+
+    module cm1 = module(MODULE_CREW, 24, 32);
+    getPlayerShip()->addModule(cm1);
+
+    module fm1 = module(MODULE_FUEL, 100, 100);
+    getPlayerShip()->addModule(fm1);
+
+    module sm1 = module(MODULE_SHIELD, allbasicshield_stats[1].base_num_layers, allbasicshield_stats[1].base_num_layers);
+    sm1.setShieldStruct(allbasicshield_stats[1]);
+    getPlayerShip()->addModule(sm1);
+
+    module em1 = module(MODULE_ENGINE, 10, 10);
+    em1.setEngineStruct(allbasicengine_stats[1]);
+    getPlayerShip()->addModule(em1);
+
+    module wm1 = module(MODULE_WEAPON, 50, 50);
+    wm1.setWeaponStruct(allbasicweapon_stats[1]);
+    getPlayerShip()->addModule(wm1);
+
+    /*
+        for (int i = 11; i <= 16; i++)
+        {
+            module wm = module(MODULE_WEAPON, 100, 100);
+            wm.setWeaponStruct(allbasicweapon_stats[i]);
+            getPlayerShip()->addModule(wm);
+        }
+
+        module cm2 = module(MODULE_CREW, 96, 96);
+        getPlayerShip()->addModule(cm2);
+
+        module cm3 = module(MODULE_CREW, 96, 96);
+        getPlayerShip()->addModule(cm3);
+
+        module cm4 = module(MODULE_CREW, 96, 96);
+        getPlayerShip()->addModule(cm4);
+
+        module cm5 = module(MODULE_CREW, 96, 96);
+        getPlayerShip()->addModule(cm5);
+    */
+
+    getPlayerShip()->setModuleSelectionIndex(4);
+    last_smloc = getPlayerShip()->at();
+}
+
+
 void game::save()
 {
-    std::ofstream os("cosmicsave.txt");
-    os.write((const char *)&current_maptype,sizeof(MapType));
-    os.write((const char *)&current_subarea_id,sizeof(int));
-    last_smloc.save(os);
-    last_subarealoc.save(os);
-    player_ship.save(os);
-    display_obj.save(os);
-    universe.save(os);
-    os.close();
+    std::ofstream os("save.sav", std::ios::binary);
+    if (!os) return;
+
+    // Save game class members
+    last_smloc.save(os); // DONE
+    last_subarealoc.save(os); // NOT NEEDED
+    os.write(reinterpret_cast<const char*>(&turn_timer), sizeof(uint)); // DONE
+
+    // Save externs
+    player_ship.save(os); //DONE
+    universe.save(os); // DONE
+    os.write(reinterpret_cast<const char*>(&current_maptype), sizeof(MapType));
+    os.write(reinterpret_cast<const char*>(&current_subarea_id), sizeof(int)); // DONE
 }
 
 void game::load()
 {
-    std::ifstream is("cosmicsave.txt");
-    is.read((char *)&current_maptype,sizeof(MapType));
-    is.read((char *)&current_subarea_id,sizeof(int));
+    std::ifstream is("save.sav", std::ios::binary);
+    if (!is) return;
+
+    // Load game class members
     last_smloc.load(is);
     last_subarealoc.load(is);
+    is.read(reinterpret_cast<char*>(&turn_timer), sizeof(uint));
+
+    // Load externs
     player_ship.load(is);
-    display_obj.load(is);
     universe.load(is);
-    is.close();
+    is.read(reinterpret_cast<char*>(&current_maptype), sizeof(MapType));
+    is.read(reinterpret_cast<char*>(&current_subarea_id), sizeof(int));
 }
+
 
 bool eightDirectionRestrictedWeaponSelected(MobShip* mb)
 {
@@ -1913,4 +2002,9 @@ bool inRangeStarMapBackdropGreen(backdrop_t starTile)
 {
     return (int)starTile >= SMBACKDROP_FRIENDRACE_MAINSEQSTARSUBAREAENTRANCE &&
            (int)starTile <= SMBACKDROP_FRIENDRACE_WHITESTARSUBAREAENTRANCE;
+}
+
+void printExitPromptMessage()
+{
+    msgeAdd("Press ENTER to exit game now...", cp_whiteonblack);
 }

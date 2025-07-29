@@ -325,38 +325,64 @@ void StarMapRegion::setSubAreaMapType(subarea_MapType samt_param)
     samt = samt_param;
 }
 
-void StarMapRegion::saveAllSubAreas(std::ofstream &os) const
-{
-    int temp_num_subareas = (int)subareaVector.size();
-    os.write((const char *)&temp_num_subareas,sizeof(int));
-    for (int i = 0; i < temp_num_subareas; ++i)
-    {
-        subareaVector[i].save(os);
-    }
-}
-
-void StarMapRegion::loadAllSubAreas(std::ifstream &is)
-{
-    int temp_num_subareas = 0;
-    is.read((char *)&temp_num_subareas,sizeof(int));
-    std::vector < SubAreaRegion > temp_lvec(temp_num_subareas);
-    subareaVector.swap(temp_lvec);
-    for (int i = 0; i < temp_num_subareas; ++i)
-    {
-        subareaVector[i].load(is);
-    }
-}
-
-void StarMapRegion::save(std::ofstream & os) const
+void StarMapRegion::save(std::ofstream& os) const 
 {
     m.save(os);
-    saveAllSubAreas(os);
+
+    // Races
+    int race_count = static_cast<int>(raceVector.size());
+    os.write(reinterpret_cast<const char*>(&race_count), sizeof(int));
+    for (const auto& r : raceVector)
+        r.save(os);
+
+    // Subareas
+    int subarea_count = static_cast<int>(subareaVector.size());
+    os.write(reinterpret_cast<const char*>(&subarea_count), sizeof(int));
+    for (const auto& sa : subareaVector)
+        sa.save(os);
+
+    // Nonpersistent subarea
+    nonpersistent_subarea.save(os);
+
+    // Map type
+    os.write(reinterpret_cast<const char*>(&samt), sizeof(subarea_MapType));
 }
 
-void StarMapRegion::load(std::ifstream & is)
+void StarMapRegion::load(std::ifstream& is) 
 {
     m.load(is);
-    loadAllSubAreas(is);
+
+    // Races
+    int race_count;
+    is.read(reinterpret_cast<char*>(&race_count), sizeof(int));
+    raceVector.resize(race_count);
+    for (int i = 0; i < race_count; ++i)
+    {
+        gfx_obj.addBitmapString("loading races", cp_whiteonblack, point(GRIDWID / 2 - 16, 20));
+        gfx_obj.updateScreen();
+        raceVector[i].load(is);
+        gfx_obj.addBitmapCharacter(getHighestDangerLevelShipForRace(&raceVector[i])->getShipSymbol(), point(GRIDWID / 2 - 16 + (i % 33), 21 + i / 33));
+        gfx_obj.updateScreen();
+    }
+
+    // Subareas
+    int subarea_count;
+    is.read(reinterpret_cast<char*>(&subarea_count), sizeof(int));
+    subareaVector.resize(subarea_count);
+    for (int i = 0; i < subarea_count; ++i)
+    {      
+        gfx_obj.addBitmapString("loading star systems", cp_whiteonblack, point(GRIDWID / 2 - 16, 25));
+        gfx_obj.updateScreen();
+        subareaVector[i].load(is);
+        gfx_obj.addBitmapCharacter(m.getCellP(subareaVector[i].getSubAreaLoc())->getCurrentBackdropSymbol(), point(GRIDWID / 2 - 16 + (i % 33), 26 + i / 33));
+        gfx_obj.updateScreen();
+    }
+
+    // Nonpersistent subarea
+    nonpersistent_subarea.load(is);
+
+    // Map type
+    is.read(reinterpret_cast<char*>(&samt), sizeof(subarea_MapType));
 }
 
 // star system implementation
@@ -586,42 +612,109 @@ MobShip* SubAreaRegion::getNPCShip(int i)
     return &NPCShips[i];
 }
 
-void SubAreaRegion::saveAllNPCShips(std::ofstream &os) const
+void SubAreaRegion::save(std::ofstream& os) const 
 {
-    int temp_num_npcs = (int)NPCShips.size();
-    os.write((const char *)&temp_num_npcs,sizeof(int));
-    for (int i = 0; i < temp_num_npcs; ++i)
-    {
-        NPCShips[i].save(os);
-    }
-}
-
-void SubAreaRegion::loadAllNPCShips(std::ifstream &is)
-{
-    int temp_num_npcs = 0;
-    is.read((char *)&temp_num_npcs,sizeof(int));
-    std::vector < MobShip > temp_npcvec(temp_num_npcs);
-    NPCShips.swap(temp_npcvec);
-    for (int i = 0; i < temp_num_npcs; ++i)
-    {
-        NPCShips[i].load(is);
-    }
-}
-
-void SubAreaRegion::save(std::ofstream & os) const
-{
-    subarea_loc.save(os);
-    stringSave(os,subarea_name);
     m.save(os);
-    saveAllNPCShips(os);
+    subarea_loc.save(os);
+    os.write(reinterpret_cast<const char*>(&npc_id_counter), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&nativeRaceID), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&layout_config_roller), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&star_radius), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&race_affiliated), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&sast), sizeof(subarea_specific_type));
+    os.write(reinterpret_cast<const char*>(&s_type), sizeof(star_type));
+    stringSave(os, subarea_name);
+
+    // NPCShips
+    int npc_count = static_cast<int>(NPCShips.size());
+    os.write(reinterpret_cast<const char*>(&npc_count), sizeof(int));
+    for (const auto& ship : NPCShips)
+        ship.save(os);
+
+    // Stations
+    int station_count = static_cast<int>(station_objs.size());
+    os.write(reinterpret_cast<const char*>(&station_count), sizeof(int));
+    for (const auto& st : station_objs)
+        st.save(os);
+
+    // EntertainmentStations
+    int ent_count = static_cast<int>(entertainmentStations.size());
+    os.write(reinterpret_cast<const char*>(&ent_count), sizeof(int));
+    for (const auto& ent : entertainmentStations)
+        ent.save(os);
+
+    // Piles
+    int pile_count = static_cast<int>(piles.size());
+    os.write(reinterpret_cast<const char*>(&pile_count), sizeof(int));
+    for (const auto& pile : piles)
+        pile.save(os);
+
+    // Flood fill flags (vector<vector<bool>>)
+    int outer = static_cast<int>(flood_fill_flags.size());
+    os.write(reinterpret_cast<const char*>(&outer), sizeof(int));
+    for (const auto& row : flood_fill_flags) {
+        int inner = static_cast<int>(row.size());
+        os.write(reinterpret_cast<const char*>(&inner), sizeof(int));
+        for (bool b : row) {
+            os.write(reinterpret_cast<const char*>(&b), sizeof(bool));
+        }
+    }
 }
 
-void SubAreaRegion::load(std::ifstream & is)
+void SubAreaRegion::load(std::ifstream& is) 
 {
-    subarea_loc.load(is);
-    stringLoad(is,subarea_name);
     m.load(is);
-    loadAllNPCShips(is);
+    subarea_loc.load(is);
+    is.read(reinterpret_cast<char*>(&npc_id_counter), sizeof(int));
+    is.read(reinterpret_cast<char*>(&nativeRaceID), sizeof(int));
+    is.read(reinterpret_cast<char*>(&layout_config_roller), sizeof(int));
+    is.read(reinterpret_cast<char*>(&star_radius), sizeof(int));
+    is.read(reinterpret_cast<char*>(&race_affiliated), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&sast), sizeof(subarea_specific_type));
+    is.read(reinterpret_cast<char*>(&s_type), sizeof(star_type));
+    stringLoad(is, subarea_name);
+
+    // NPCShips
+    int npc_count = 0;
+    is.read(reinterpret_cast<char*>(&npc_count), sizeof(int));
+    NPCShips.resize(npc_count);
+    for (int i = 0; i < npc_count; ++i)
+        NPCShips[i].load(is);
+
+    // Stations
+    int station_count = 0;
+    is.read(reinterpret_cast<char*>(&station_count), sizeof(int));
+    station_objs.resize(station_count);
+    for (int i = 0; i < station_count; ++i)
+        station_objs[i].load(is);
+
+    // EntertainmentStations
+    int ent_count = 0;
+    is.read(reinterpret_cast<char*>(&ent_count), sizeof(int));
+    entertainmentStations.resize(ent_count);
+    for (int i = 0; i < ent_count; ++i)
+        entertainmentStations[i].load(is);
+
+    // Piles
+    int pile_count = 0;
+    is.read(reinterpret_cast<char*>(&pile_count), sizeof(int));
+    piles.resize(pile_count);
+    for (int i = 0; i < pile_count; ++i)
+        piles[i].load(is);
+
+    int outer = 0;
+    is.read(reinterpret_cast<char*>(&outer), sizeof(int));
+    flood_fill_flags.resize(outer);
+    for (auto& row : flood_fill_flags) {
+        int inner = 0;
+        is.read(reinterpret_cast<char*>(&inner), sizeof(int));
+        row.resize(inner);
+        for (int i = 0; i < inner; ++i) {
+            bool b;
+            is.read(reinterpret_cast<char*>(&b), sizeof(bool));
+            row[i] = b;
+        }
+    }
 }
 
 void SubAreaRegion::setupProcgenNonTerritorialSubArea(point loc)
@@ -931,7 +1024,7 @@ void SubAreaRegion::addAllHomeworlds(race *race_obj)
 void SubAreaRegion::insertOneHomeworld(race *race_obj, point p)
 {
     getMap()->setBackdrop(p,LBACKDROP_PLANET);
-    race_obj->addHomeworldStruct(p,race_obj->getRaceID(),RMS_FREE);
+    race_obj->addHomeworld(p,race_obj->getRaceID(), race_obj->getRaceID(), race_obj->getDangerLevel());
 }
 
 void SubAreaRegion::addProcgenSubAreaNativeShips(race *race_obj, int num_types)
@@ -1256,4 +1349,36 @@ MobShip* getCurrentMobTurn()
     }
 
     return getPlayerShip();
+}
+
+/*
+
+int getDominantRaceControllerID(SubAreaRegion * region)
+{
+    int nativeRaceID = region->getNativeRaceID();
+
+    int dominantController = nativeRaceID;
+
+    race * nativeRace = universe.getRace(nativeRaceID);
+
+    int numHomeworlds = nativeRace->getNumHomeworlds();
+
+    int maxDanger = std::numeric_limits<int>::min();
+
+    std::vector<Planet*> homeworlds;
+
+    for (int i = 0; i < numHomeworlds; i++)
+    {
+        Planet* homeworld = nativeRace->getHomeworld(i);
+
+        raceCIDDLPair.first = homeworld->getControlRaceID();
+        raceCIDDLPair.second = homeworld->getDangerLevel();
+
+        raceIDVector.push_back(nativeRace->getHomeworld(i)->getControlRaceID());
+    }
+}
+*/
+int getMobRaceDangerLevel(MobShip* mob)
+{
+    return universe.getRace(mob->getMobSubAreaGroupID())->getDangerLevel();
 }

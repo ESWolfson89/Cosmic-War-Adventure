@@ -78,8 +78,6 @@ class SubAreaRegion
         EntertainmentStation* getEntertainmentCenter(point p);
         point getSubAreaLoc() const;
         // save load functions
-        void saveAllNPCShips(std::ofstream &) const;
-        void loadAllNPCShips(std::ifstream &);
         void save(std::ofstream &) const;
         void load(std::ifstream &);
     private:
@@ -124,8 +122,6 @@ class StarMapRegion
         void createNonPersistentSubArea(point,bool,subarea_specific_type);
         void createPersistentSubArea(point,bool,star_type,subarea_specific_type);
         void populateWarZone(int);
-        void saveAllSubAreas(std::ofstream &) const;
-        void loadAllSubAreas(std::ifstream &);
         void save(std::ofstream &) const;
         void load(std::ifstream &);
     private:
@@ -171,6 +167,17 @@ race_domain_type getRaceDomainTypeFromDangerLevel(int dangerLevel);
 int getMaxDangerLevel(point smLoc);
 
 int getStartingRaceAttitudeTowardsPlayer();
+
+int getDominantControllerRaceID(SubAreaRegion *);
+
+std::vector<int> getRaceIDsWithMaxHomeworlds(SubAreaRegion *);
+
+std::vector<int> getRaceIDsWithMaxDangerLevel(SubAreaRegion *);
+
+std::vector<int> getRaceIDsWithMaxHighestShip(SubAreaRegion *);
+
+int getMobRaceDangerLevel(MobShip*);
+
 
 extern StarMapRegion universe;
 extern MapType current_maptype;

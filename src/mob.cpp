@@ -530,72 +530,127 @@ void MobShip::setNumMaxModules(int nmm)
 
 void MobShip::save(std::ofstream& os) const
 {
-    int temp_num_modules = (int)module_vec.size();
-    os.write((const char *)&temp_num_modules,sizeof(int));
-    for (int i = 0; i < temp_num_modules; ++i)
-    {
-        module_vec[i].save(os);
-    }
-    loc.save(os);
+    os.write(reinterpret_cast<const char*>(&player_controlled), sizeof(bool));
+    saveShipMobStatStruct(os, sms_data); // Manual serialization
+    os.write(reinterpret_cast<const char*>(&npc_ship_type_obj), sizeof(npc_ship_type));
+    os.write(reinterpret_cast<const char*>(&is_activated), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&can_move), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&smgs), sizeof(shipmob_goalStatus));
+    os.write(reinterpret_cast<const char*>(&smAIp), sizeof(shipmob_AIpattern));
+    os.write(reinterpret_cast<const char*>(&NPC_turn_timer), sizeof(double));
+    os.write(reinterpret_cast<const char*>(&mob_subarea_id), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&hull_status), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&danger_level), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&module_selection_index), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&mob_subarea_group_id), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&mob_subarea_attack_id), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&design_obj), sizeof(ship_design_struct));
+
     destination.save(os);
-    os.write((const char *)&player_controlled,sizeof(bool));
-    os.write((const char *)&sms_data.crew_operable,sizeof(bool));
-    os.write((const char *)&is_activated,sizeof(bool));
-    os.write((const char *)&NPC_turn_timer,sizeof(double));
-    os.write((const char *)&smgs,sizeof(shipmob_goalStatus));
-    os.write((const char *)&smAIp,sizeof(shipmob_AIpattern));
-    os.write((const char *)&danger_level,sizeof(int));
-    os.write((const char *)&hull_status,sizeof(int));
-    os.write((const char *)&sms_data.max_hull,sizeof(int));
-    os.write((const char *)&sms_data.detect_radius,sizeof(int));
-    os.write((const char *)&sms_data.num_max_modules,sizeof(int));
-    os.write((const char *)&sms_data.crash_factor,sizeof(int));
-    os.write((const char *)&sms_data.num_crew,sizeof(int));
-    os.write((const char *)&sms_data.num_fuel,sizeof(int));
-    os.write((const char *)&sms_data.frequency,sizeof(int));
-    os.write((const char *)&sms_data.shoot_frequency,sizeof(int));
-    os.write((const char *)&sms_data.accuracy,sizeof(double));
-    os.write((const char *)&sms_data.evasion,sizeof(double));
-    os.write((const char *)&sms_data.base_speed,sizeof(double));
-    os.write((const char *)&sms_data.mtype,sizeof(mob_t));
-    stringSave(os,sms_data.ship_name);
-    chtypeSave(os,sms_data.ship_symbol);
+    loc.save(os);
+    init_loc.save(os);
+
+    os.write(reinterpret_cast<const char*>(&num_credits), sizeof(uint_64));
+
+    int module_count = static_cast<int>(module_vec.size());
+    os.write(reinterpret_cast<const char*>(&module_count), sizeof(int));
+    for (const module& m : module_vec)
+        m.save(os);
 }
 
 void MobShip::load(std::ifstream& is)
 {
-    int temp_num_modules = 0;
-    is.read((char *)&temp_num_modules,sizeof(int));
-    std::vector < module > temp_mv(temp_num_modules);
-    module_vec.swap(temp_mv);
-    for (int i = 0; i < temp_num_modules; ++i)
-    {
-        module_vec[i].load(is);
-    }
-    loc.load(is);
+    is.read(reinterpret_cast<char*>(&player_controlled), sizeof(bool));
+    loadShipMobStatStruct(is, sms_data);
+    is.read(reinterpret_cast<char*>(&npc_ship_type_obj), sizeof(npc_ship_type));
+    is.read(reinterpret_cast<char*>(&is_activated), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&can_move), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&smgs), sizeof(shipmob_goalStatus));
+    is.read(reinterpret_cast<char*>(&smAIp), sizeof(shipmob_AIpattern));
+    is.read(reinterpret_cast<char*>(&NPC_turn_timer), sizeof(double));
+    is.read(reinterpret_cast<char*>(&mob_subarea_id), sizeof(int));
+    is.read(reinterpret_cast<char*>(&hull_status), sizeof(int));
+    is.read(reinterpret_cast<char*>(&danger_level), sizeof(int));
+    is.read(reinterpret_cast<char*>(&module_selection_index), sizeof(int));
+    is.read(reinterpret_cast<char*>(&mob_subarea_group_id), sizeof(int));
+    is.read(reinterpret_cast<char*>(&mob_subarea_attack_id), sizeof(int));
+    is.read(reinterpret_cast<char*>(&design_obj), sizeof(ship_design_struct));
+
     destination.load(is);
-    is.read((char *)&player_controlled,sizeof(bool));
-    is.read((char *)&sms_data.crew_operable,sizeof(bool));
-    is.read((char *)&is_activated,sizeof(bool));
-    is.read((char *)&NPC_turn_timer,sizeof(double));
-    is.read((char *)&smgs,sizeof(shipmob_goalStatus));
-    is.read((char *)&smAIp,sizeof(shipmob_AIpattern));
-    is.read((char *)&danger_level,sizeof(int));
-    is.read((char *)&hull_status,sizeof(int));
-    is.read((char *)&sms_data.max_hull,sizeof(int));
-    is.read((char *)&sms_data.detect_radius,sizeof(int));
-    is.read((char *)&sms_data.num_max_modules,sizeof(int));
-    is.read((char *)&sms_data.crash_factor,sizeof(int));
-    is.read((char *)&sms_data.num_crew,sizeof(int));
-    is.read((char *)&sms_data.num_fuel,sizeof(int));
-    is.read((char *)&sms_data.frequency,sizeof(int));
-    is.read((char *)&sms_data.shoot_frequency,sizeof(int));
-    is.read((char *)&sms_data.accuracy,sizeof(double));
-    is.read((char *)&sms_data.evasion,sizeof(double));
-    is.read((char *)&sms_data.base_speed,sizeof(double));
-    is.read((char *)&sms_data.mtype,sizeof(mob_t));
-    stringLoad(is,sms_data.ship_name);
-    chtypeLoad(is,sms_data.ship_symbol);
+    loc.load(is);
+    init_loc.load(is);
+
+    is.read(reinterpret_cast<char*>(&num_credits), sizeof(uint_64));
+
+    int module_count = 0;
+    is.read(reinterpret_cast<char*>(&module_count), sizeof(int));
+    module_vec.resize(module_count);
+    for (int i = 0; i < module_count; ++i)
+        module_vec[i].load(is);
+}
+
+void saveShipMobStatStruct(std::ofstream& os, const shipmobstat_struct& s)
+{
+    os.write(reinterpret_cast<const char*>(&s.mtype), sizeof(mob_t));
+    os.write(reinterpret_cast<const char*>(&s.danger_level), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.accuracy), sizeof(double));
+    os.write(reinterpret_cast<const char*>(&s.evasion), sizeof(double));
+    os.write(reinterpret_cast<const char*>(&s.base_speed), sizeof(double));
+    os.write(reinterpret_cast<const char*>(&s.max_hull), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.detect_radius), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.num_max_modules), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.crash_factor), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.num_crew), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.num_fuel), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.frequency), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.shoot_frequency), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.destruction_radius), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.weapon_change_chance), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.rove_chance), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&s.min_attack_pfind_distance), sizeof(int));
+
+    os.write(reinterpret_cast<const char*>(s.num_weapons_of_type), sizeof(s.num_weapons_of_type));
+    os.write(reinterpret_cast<const char*>(s.num_engines_of_type), sizeof(s.num_engines_of_type));
+    os.write(reinterpret_cast<const char*>(s.num_shields_of_type), sizeof(s.num_shields_of_type));
+
+    os.write(reinterpret_cast<const char*>(&s.crew_operable), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&s.sctype), sizeof(shipmob_classtype));
+    os.write(reinterpret_cast<const char*>(&s.rtype), sizeof(race_type));
+
+    chtypeSave(os, s.ship_symbol);
+    stringSave(os, s.ship_name);
+}
+
+void loadShipMobStatStruct(std::ifstream& is, shipmobstat_struct& s)
+{
+    is.read(reinterpret_cast<char*>(&s.mtype), sizeof(mob_t));
+    is.read(reinterpret_cast<char*>(&s.danger_level), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.accuracy), sizeof(double));
+    is.read(reinterpret_cast<char*>(&s.evasion), sizeof(double));
+    is.read(reinterpret_cast<char*>(&s.base_speed), sizeof(double));
+    is.read(reinterpret_cast<char*>(&s.max_hull), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.detect_radius), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.num_max_modules), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.crash_factor), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.num_crew), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.num_fuel), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.frequency), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.shoot_frequency), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.destruction_radius), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.weapon_change_chance), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.rove_chance), sizeof(int));
+    is.read(reinterpret_cast<char*>(&s.min_attack_pfind_distance), sizeof(int));
+
+    is.read(reinterpret_cast<char*>(s.num_weapons_of_type), sizeof(s.num_weapons_of_type));
+    is.read(reinterpret_cast<char*>(s.num_engines_of_type), sizeof(s.num_engines_of_type));
+    is.read(reinterpret_cast<char*>(s.num_shields_of_type), sizeof(s.num_shields_of_type));
+
+    is.read(reinterpret_cast<char*>(&s.crew_operable), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&s.sctype), sizeof(shipmob_classtype));
+    is.read(reinterpret_cast<char*>(&s.rtype), sizeof(race_type));
+
+    chtypeLoad(is, s.ship_symbol);
+    stringLoad(is, s.ship_name);
 }
 
 MobShip* getPlayerShip()

@@ -247,6 +247,10 @@ MobShip* getPlayerShip();
 
 MobShip* getCurrentMobTurn();
 
+void saveShipMobStatStruct(std::ofstream& os, const shipmobstat_struct& s);
+
+void loadShipMobStatStruct(std::ifstream& is, shipmobstat_struct& s);
+
 extern MobShip player_ship;
 
 #endif

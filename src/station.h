@@ -61,6 +61,8 @@ class station
         void addFuelModuleToStation();
         void cleanupEverything();
         void eraseModule(int i);
+        void save(std::ofstream&) const;
+        void load(std::ifstream&);
         basic_station_trade_choice getBasicStationTradeChoice(int);
         module *getModuleForTrade(int);
         uint_64 getModuleForTradeCost(int);
@@ -99,13 +101,14 @@ class EntertainmentStation
         void initStation();
         void addSlotMachines();
         void addDiamondMachines();
+        void save(std::ofstream&) const;
+        void load(std::ifstream&);
         slot * getSlotMachine(int);
         diamond * getDiamondsMachine(int);
         int getNumOptions();
     private:
         int danger_level;
         point subarea_loc;
-        std::vector<EntertainmentType> entertainmentTypes;
         std::vector<slot> slotMachines;
         std::vector<diamond> diamondMachines;
 };

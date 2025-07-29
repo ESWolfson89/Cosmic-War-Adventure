@@ -279,6 +279,58 @@ basic_station_trade_choice station::getBasicStationTradeChoice(int i)
     return choices_lev0[i];
 }
 
+void station::save(std::ofstream& os) const
+{
+    os.write(reinterpret_cast<const char*>(&fuel_cost), sizeof(uint_64));
+    os.write(reinterpret_cast<const char*>(&repair_cost), sizeof(uint_64));
+    os.write(reinterpret_cast<const char*>(&hull_upgrade_cost), sizeof(uint_64));
+    os.write(reinterpret_cast<const char*>(&slot_upgrade_cost), sizeof(uint_64));
+    os.write(reinterpret_cast<const char*>(&crew_cost), sizeof(uint_64));
+    os.write(reinterpret_cast<const char*>(&danger_level), sizeof(int));
+    subarea_loc.save(os);
+
+    // Save modules_for_trade
+    int tradeCount = static_cast<int>(modules_for_trade.size());
+    os.write(reinterpret_cast<const char*>(&tradeCount), sizeof(int));
+    for (const auto& pair : modules_for_trade) {
+        pair.first.save(os);                      // module
+        os.write(reinterpret_cast<const char*>(&pair.second), sizeof(uint_64));  // cost
+    }
+
+    // Save choices_lev0
+    int choiceCount = static_cast<int>(choices_lev0.size());
+    os.write(reinterpret_cast<const char*>(&choiceCount), sizeof(int));
+    for (const auto& choice : choices_lev0)
+        os.write(reinterpret_cast<const char*>(&choice), sizeof(basic_station_trade_choice));
+}
+
+void station::load(std::ifstream& is)
+{
+    is.read(reinterpret_cast<char*>(&fuel_cost), sizeof(uint_64));
+    is.read(reinterpret_cast<char*>(&repair_cost), sizeof(uint_64));
+    is.read(reinterpret_cast<char*>(&hull_upgrade_cost), sizeof(uint_64));
+    is.read(reinterpret_cast<char*>(&slot_upgrade_cost), sizeof(uint_64));
+    is.read(reinterpret_cast<char*>(&crew_cost), sizeof(uint_64));
+    is.read(reinterpret_cast<char*>(&danger_level), sizeof(int));
+    subarea_loc.load(is);
+
+    // Load modules_for_trade
+    int tradeCount = 0;
+    is.read(reinterpret_cast<char*>(&tradeCount), sizeof(int));
+    modules_for_trade.resize(tradeCount);
+    for (int i = 0; i < tradeCount; ++i) {
+        modules_for_trade[i].first.load(is);
+        is.read(reinterpret_cast<char*>(&modules_for_trade[i].second), sizeof(uint_64));
+    }
+
+    // Load choices_lev0
+    int choiceCount = 0;
+    is.read(reinterpret_cast<char*>(&choiceCount), sizeof(int));
+    choices_lev0.resize(choiceCount);
+    for (int i = 0; i < choiceCount; ++i)
+        is.read(reinterpret_cast<char*>(&choices_lev0[i]), sizeof(basic_station_trade_choice));
+}
+
 // constructor (do not call implicitly)
 EntertainmentStation::EntertainmentStation()
 {
@@ -323,29 +375,43 @@ void EntertainmentStation::addDiamondMachines()
     }
 }
 
-/*
-void EntertainmentStation::addSlotMachines()
+void EntertainmentStation::save(std::ofstream& os) const
 {
-    int numMachines = randInt(0, randInt(1, randInt(1, 6)));
+    os.write(reinterpret_cast<const char*>(&danger_level), sizeof(int));
+    subarea_loc.save(os);
 
-    for (int i = 0; i < numMachines; i++)
-    {
-        slotMachines.push_back(slot(subarea_loc, std::min(20, (int)randIntZ(5 + (int)(danger_level / 2)) + 1),0));
-        slotMachines[slotMachines.size() - 1].initSlots();
-    }
+    // Save slot machines
+    int slotCount = static_cast<int>(slotMachines.size());
+    os.write(reinterpret_cast<const char*>(&slotCount), sizeof(int));
+    for (const auto& s : slotMachines)
+        s.save(os);
+
+    // Save diamond machines
+    int diamondCount = static_cast<int>(diamondMachines.size());
+    os.write(reinterpret_cast<const char*>(&diamondCount), sizeof(int));
+    for (const auto& d : diamondMachines)
+        d.save(os);
 }
 
-void EntertainmentStation::addDiamondMachines()
+void EntertainmentStation::load(std::ifstream& is)
 {
-    int numMachines = randInt(0, randInt(1, randInt(1, 6)));
+    is.read(reinterpret_cast<char*>(&danger_level), sizeof(int));
+    subarea_loc.load(is);
 
-    for (int i = 0; i < numMachines; i++)
-    {
-        diamondMachines.push_back(diamond(subarea_loc, std::min(20, (int)randIntZ(5 + (int)(danger_level / 2)) + 1), 0));
-        diamondMachines[diamondMachines.size() - 1].initDiamonds();
-    }
+    // Load slot machines
+    int slotCount = 0;
+    is.read(reinterpret_cast<char*>(&slotCount), sizeof(int));
+    slotMachines.resize(slotCount);
+    for (int i = 0; i < slotCount; ++i)
+        slotMachines[i].load(is);
+
+    // Load diamond machines
+    int diamondCount = 0;
+    is.read(reinterpret_cast<char*>(&diamondCount), sizeof(int));
+    diamondMachines.resize(diamondCount);
+    for (int i = 0; i < diamondCount; ++i)
+        diamondMachines[i].load(is);
 }
-*/
 
 slot * EntertainmentStation::getSlotMachine(int i)
 {

@@ -1,7 +1,7 @@
 #ifndef RACE_H_
 #define RACE_H_
 
-#include "mob.h"
+#include "planet.h"
 #include "namegen.h"
 #include <map>
 
@@ -118,13 +118,6 @@ enum star_type
     STARTYPE_WHITE
 };
 
-enum race_major_status
-{
-    RMS_FREE,
-    RMS_ENSLAVED,
-    RMS_DESTROYED
-};
-
 enum rel_status
 {
     REL_NEUTRAL,
@@ -155,13 +148,6 @@ static std::string race_domain_suffix_string[3] =
     "Empire"
 };
 
-struct homeworld_struct
-{
-    point loc;
-    int race_owner_id;
-    race_major_status rms_planet_state;
-};
-
 struct entrance_contact_struct
 {
     int num_prerecorded_lines;
@@ -184,18 +170,18 @@ class race
         void setupRelationshipVectors();
         void generateNativeShips();
         void generateOneProcgenNativeShip(int, shipmob_classtype, npc_ship_type);
-        void setHomeworldMajorStatus(point,race_major_status);
-        void setHomeworldOwnerRaceID(point,int);
-        void addHomeworldStruct(point,int,race_major_status);
-        homeworld_struct getHomeworldStruct(int);
-        homeworld_struct getHomeworldStruct(point);
+        void setHomeworldMajorStatus(point, RaceMajorStatus);
+        void setHomeworldControllerRace(point,int, int);
+        void addHomeworld(point,int, int, int);
+        Planet * getHomeworld(int);
+        Planet * getHomeworld(point);
         entrance_contact_struct *getEntranceContactStruct();
         MobShip *getNativeShip(int);
         point getStarmapLoc() const;
         point getSubAreaSize();
         point getFirstFreeHomeworldLoc();
         rel_status getRaceRelStatus(int);
-        race_major_status getRaceOverallMajorStatus();
+        RaceMajorStatus getRaceOverallMajorStatus();
         race_domain_type getRaceDomainType();
         int getPlayerAttStatus();
         int getRaceAttStatus(int);
@@ -207,13 +193,15 @@ class race
         bool playerIdentifiedByRace();
         void setRaceIDByPlayerStatus(bool);
         void setPlayerIDByRaceStatus(bool);
+        void save(std::ofstream&) const;
+        void load(std::ifstream&);
         star_type getStarType();
         std::string getNameString();
         race_type getRaceType();
         race_personality_type getRacePersonalityType();
     private:
         std::vector<MobShip> native_ships;
-        std::vector<homeworld_struct> homeworld_objs;
+        std::vector<Planet> homeworlds;
         std::map<int,rel_status> rel_race_map;
         std::map<int,int> att_race_map;
         point sm_loc;
@@ -244,5 +232,7 @@ double getProcgenAccuracy(int);
 double getProcgenEvasion(shipmob_classtype, int);
 
 double getProcgenBaseSpeed(shipmob_classtype, int);
+
+MobShip* getHighestDangerLevelShipForRace(race* r);
 
 #endif

@@ -24,75 +24,102 @@ void input::setAction()
 {
     promptAction();
 
-    switch(evt.key.keysym.sym)
+    const SDL_Keycode key = evt.key.keysym.sym;
+
+    switch(key)
     {
-    case(SDLK_KP_7):
-    case(SDLK_y):
-        setDelta(point(-1,-1));
-        break;
-    case(SDLK_KP_8):
-    case(SDLK_k):
-        setDelta(point(0,-1));
-        break;
-    case(SDLK_KP_9):
-    case(SDLK_u):
-        setDelta(point(1,-1));
-        break;
-    case(SDLK_KP_4):
-    case(SDLK_h):
-        setDelta(point(-1,0));
-        break;
-    case(SDLK_KP_6):
-    case(SDLK_l):
-        setDelta(point(1,0));
-        break;
-    case(SDLK_KP_1):
-    case(SDLK_b):
-        setDelta(point(-1,1));
-        break;
-    case(SDLK_KP_2):
-    case(SDLK_j):
-        setDelta(point(0,1));
-        break;
-    case(SDLK_KP_3):
-    case(SDLK_n):
-        setDelta(point(1,1));
-        break;
-    case(SDLK_SPACE):
-        action = INP_SELECT;
-        break;
-    case(SDLK_t):
-        action = INP_WEAPONFIRE;
-        break;
-    case(SDLK_x):
-        action = INP_EXAMINE;
-        break;
-    case(SDLK_TAB):
-        action = INP_CHANGETABFOCUS;
-        break;
-    case(SDLK_q):
-        action = INP_QUIT;
-        break;
-    case(SDLK_p):
-        action = INP_SAVE;
-        break;
-    case(SDLK_RETURN):
-        action = INP_TOGGLE;
-        break;
-    case(SDLK_d):
-        action = INP_DEBUG;
-        break;
-    case(SDLK_KP_5):
-    case(SDLK_PERIOD):
-        action = INP_WAIT;
-        break;
-    case(SDLK_0):
-        action = INP_WAITSPECIFY;
-        break;
-    default:
-        break;
+        case(SDLK_KP_7):
+            setDelta(point(-1,-1));
+            break;
+        case(SDLK_KP_8):
+            setDelta(point(0,-1));
+            break;
+        case(SDLK_KP_9):
+            setDelta(point(1,-1));
+            break;
+        case(SDLK_KP_4):
+            setDelta(point(-1,0));
+            break;
+        case(SDLK_KP_6):
+            setDelta(point(1,0));
+            break;
+        case(SDLK_KP_1):
+            setDelta(point(-1,1));
+            break;
+        case(SDLK_KP_2):
+            setDelta(point(0,1));
+            break;
+        case(SDLK_KP_3):
+            setDelta(point(1,1));
+            break;
+        case(SDLK_SPACE):
+            action = INP_SELECT;
+            break;
+        case(SDLK_t):
+            action = INP_WEAPONFIRE;
+            break;
+        case(SDLK_x):
+            action = INP_EXAMINE;
+            break;
+        case(SDLK_TAB):
+            action = INP_CHANGETABFOCUS;
+            break;
+        case(SDLK_q):
+        {
+            if (isShiftOrCaps())
+            {
+                action = INP_QUIT;
+            }
+            break;
+        }
+        case(SDLK_RETURN):
+            action = INP_TOGGLE;
+            break;
+        case(SDLK_d):
+            action = INP_DEBUG;
+            break;
+        case(SDLK_KP_5):
+        case(SDLK_PERIOD):
+            action = INP_WAIT;
+            break;
+        case(SDLK_w):
+        {
+            if (isShiftOrCaps())
+            {
+                action = INP_WAITSPECIFY;
+            }
+            break;
+        }
+        case(SDLK_s):
+        {
+            if (isShiftOrCaps())
+            {
+                action = INP_SAVE;
+            }
+            break;
+        }
+        case(SDLK_r):
+        {
+            action = INP_LOAD;
+            break;
+        }
+        case(SDLK_y):
+            action = INP_YES;
+            break;
+        case(SDLK_n):
+            action = INP_NO;
+            break;
+        default:
+            break;
     }
 }
+
+bool input::isShiftOrCaps()
+{
+    SDL_Keymod mod = SDL_GetModState();
+    return (mod & KMOD_SHIFT) || (mod & KMOD_CAPS);
+}
+
 
 void input::setDelta(point p)
 {

@@ -91,7 +91,7 @@ void race::cleanupEverything()
     for (int i = 0; i < (int)native_ships.size(); ++i)
          native_ships[i].cleanupEverything();
     std::vector<MobShip>().swap(native_ships);
-    std::vector<homeworld_struct>().swap(homeworld_objs);
+    std::vector<Planet>().swap(homeworlds);
     std::map<int,rel_status>().swap(rel_race_map);
     std::map<int,int>().swap(att_race_map);
 }
@@ -111,28 +111,27 @@ void race::incPlayerAttStatus(int offset)
     att_towards_player += offset;
 }
 
-void race::setHomeworldOwnerRaceID(point p, int oid)
+void race::setHomeworldControllerRace(point p, int cID, int dl)
 {
-    for (int i = 0; i < (int)homeworld_objs.size(); ++i)
+    for (int i = 0; i < (int)homeworlds.size(); ++i)
     {
-        if (isAt(homeworld_objs[i].loc,p))
-            homeworld_objs[i].race_owner_id = oid;
+        if (isAt(homeworlds[i].getLoc(), p))
+            homeworlds[i].setControlRace(cID, dl);
     }
 }
 
-void race::setHomeworldMajorStatus(point p, race_major_status rms)
+void race::setHomeworldMajorStatus(point p, RaceMajorStatus rms)
 {
-    for (int i = 0; i < (int)homeworld_objs.size(); ++i)
+    for (int i = 0; i < (int)homeworlds.size(); ++i)
     {
-        if (isAt(homeworld_objs[i].loc,p))
-            homeworld_objs[i].rms_planet_state = rms;
+        if (isAt(homeworlds[i].getLoc(), p))
+            homeworlds[i].setRaceMajorStatus(rms);
     }
 }
 
-void race::addHomeworldStruct(point p, int oid, race_major_status rms)
+void race::addHomeworld(point p, int oid, int cid, int dl)
 {
-    homeworld_struct added_hs = {p,oid,rms};
-    homeworld_objs.push_back(added_hs);
+    homeworlds.push_back(Planet(p, oid, cid, dl));
 }
 
 entrance_contact_struct *race::getEntranceContactStruct()
@@ -140,21 +139,21 @@ entrance_contact_struct *race::getEntranceContactStruct()
     return &ecs_obj;
 }
 
-homeworld_struct race::getHomeworldStruct(int i)
+Planet * race::getHomeworld(int i)
 {
-    return homeworld_objs[i];
+    return &homeworlds[i];
 }
 
-homeworld_struct race::getHomeworldStruct(point p)
+Planet * race::getHomeworld(point p)
 {
-    for (int i = 0; i < (int)homeworld_objs.size(); ++i)
+    for (int i = 0; i < (int)homeworlds.size(); ++i)
     {
-        if (isAt(p,homeworld_objs[i].loc))
-            return homeworld_objs[i];
+        if (isAt(p,homeworlds[i].getLoc()))
+            return &homeworlds[i];
     }
 
     // should never happen
-    return homeworld_objs[0];
+    return &homeworlds[0];
 }
 
 MobShip *race::getNativeShip(int i)
@@ -174,7 +173,7 @@ int race::getRaceID()
 
 int race::getNumHomeworlds()
 {
-    return (int)homeworld_objs.size();
+    return (int)homeworlds.size();
 }
 
 int race::getDangerLevel()
@@ -211,14 +210,14 @@ point race::getSubAreaSize()
 
 point race::getFirstFreeHomeworldLoc()
 {
-    for (int i = 0; i < (int)homeworld_objs.size(); ++i)
+    for (int i = 0; i < (int)homeworlds.size(); ++i)
     {
-        if (homeworld_objs[i].rms_planet_state == RMS_FREE)
-            return homeworld_objs[i].loc;
+        if (homeworlds[i].getRaceMajorStatus() == RMS_FREE)
+            return homeworlds[i].getLoc();
     }
 
     // should never happen
-    return homeworld_objs[0].loc;
+    return homeworlds[0].getLoc();
 }
 
 void race::setRaceRelStatus(int rid, rel_status rs)
@@ -280,17 +279,17 @@ race_domain_type race::getRaceDomainType()
     return rdtype;
 }
 
-race_major_status race::getRaceOverallMajorStatus()
+RaceMajorStatus race::getRaceOverallMajorStatus()
 {
     if (!race_identified_by_player)
         return RMS_FREE;
 
-    if ((int)homeworld_objs.size() == 0)
+    if ((int)homeworlds.size() == 0)
         return RMS_DESTROYED;
 
-    for (int i = 0; i < (int)homeworld_objs.size(); ++i)
+    for (int i = 0; i < (int)homeworlds.size(); ++i)
     {
-        if (homeworld_objs[i].rms_planet_state == RMS_FREE)
+        if (homeworlds[i].getRaceMajorStatus() == RMS_FREE)
             return RMS_FREE;
     }
 
@@ -300,6 +299,114 @@ race_major_status race::getRaceOverallMajorStatus()
 std::string race::getNameString()
 {
     return race_name_str;
+}
+
+void race::save(std::ofstream& os) const
+{
+    sm_loc.save(os);
+    subarea_size.save(os);
+
+    os.write(reinterpret_cast<const char*>(&att_towards_player), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&race_id), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&danger_level), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&race_identified_by_player), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&player_identified_by_race), sizeof(bool));
+
+    os.write(reinterpret_cast<const char*>(&rdtype), sizeof(race_domain_type));
+    os.write(reinterpret_cast<const char*>(&rptype), sizeof(race_personality_type));
+    os.write(reinterpret_cast<const char*>(&rtype), sizeof(race_type));
+    os.write(reinterpret_cast<const char*>(&parent_star), sizeof(star_type));
+
+    stringSave(os, race_name_str);
+
+    // Save ecs_obj
+    os.write(reinterpret_cast<const char*>(&ecs_obj.num_prerecorded_lines), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&ecs_obj.num_welcome_lines), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&ecs_obj.num_converse_choices), sizeof(int));
+
+    // Save native_ships
+    int ship_count = static_cast<int>(native_ships.size());
+    os.write(reinterpret_cast<const char*>(&ship_count), sizeof(int));
+    for (const MobShip& s : native_ships)
+        s.save(os);
+
+    // Save homeworld_objs
+    int hw_count = static_cast<int>(homeworlds.size());
+    os.write(reinterpret_cast<const char*>(&hw_count), sizeof(int));
+    for (const Planet& hw : homeworlds)
+        hw.save(os);
+
+    // Save rel_race_map
+    int rel_count = static_cast<int>(rel_race_map.size());
+    os.write(reinterpret_cast<const char*>(&rel_count), sizeof(int));
+    for (const auto& [k, v] : rel_race_map) {
+        os.write(reinterpret_cast<const char*>(&k), sizeof(int));
+        os.write(reinterpret_cast<const char*>(&v), sizeof(rel_status));
+    }
+
+    // Save att_race_map
+    int att_count = static_cast<int>(att_race_map.size());
+    os.write(reinterpret_cast<const char*>(&att_count), sizeof(int));
+    for (const auto& [k, v] : att_race_map) {
+        os.write(reinterpret_cast<const char*>(&k), sizeof(int));
+        os.write(reinterpret_cast<const char*>(&v), sizeof(int));
+    }
+}
+
+void race::load(std::ifstream& is)
+{
+    sm_loc.load(is);
+    subarea_size.load(is);
+
+    is.read(reinterpret_cast<char*>(&att_towards_player), sizeof(int));
+    is.read(reinterpret_cast<char*>(&race_id), sizeof(int));
+    is.read(reinterpret_cast<char*>(&danger_level), sizeof(int));
+    is.read(reinterpret_cast<char*>(&race_identified_by_player), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&player_identified_by_race), sizeof(bool));
+
+    is.read(reinterpret_cast<char*>(&rdtype), sizeof(race_domain_type));
+    is.read(reinterpret_cast<char*>(&rptype), sizeof(race_personality_type));
+    is.read(reinterpret_cast<char*>(&rtype), sizeof(race_type));
+    is.read(reinterpret_cast<char*>(&parent_star), sizeof(star_type));
+
+    stringLoad(is, race_name_str);
+
+    is.read(reinterpret_cast<char*>(&ecs_obj.num_prerecorded_lines), sizeof(int));
+    is.read(reinterpret_cast<char*>(&ecs_obj.num_welcome_lines), sizeof(int));
+    is.read(reinterpret_cast<char*>(&ecs_obj.num_converse_choices), sizeof(int));
+
+    int ship_count = 0;
+    is.read(reinterpret_cast<char*>(&ship_count), sizeof(int));
+    native_ships.resize(ship_count);
+    for (int i = 0; i < ship_count; ++i)
+        native_ships[i].load(is);
+
+    int hw_count = 0;
+    is.read(reinterpret_cast<char*>(&hw_count), sizeof(int));
+    homeworlds.resize(hw_count);
+    for (int i = 0; i < hw_count; ++i)
+        homeworlds[i].load(is);
+
+    int rel_count = 0;
+    is.read(reinterpret_cast<char*>(&rel_count), sizeof(int));
+    rel_race_map.clear();
+    for (int i = 0; i < rel_count; ++i) {
+        int key = 0;
+        rel_status val;
+        is.read(reinterpret_cast<char*>(&key), sizeof(int));
+        is.read(reinterpret_cast<char*>(&val), sizeof(rel_status));
+        rel_race_map[key] = val;
+    }
+
+    int att_count = 0;
+    is.read(reinterpret_cast<char*>(&att_count), sizeof(int));
+    att_race_map.clear();
+    for (int i = 0; i < att_count; ++i) {
+        int key = 0, val = 0;
+        is.read(reinterpret_cast<char*>(&key), sizeof(int));
+        is.read(reinterpret_cast<char*>(&val), sizeof(int));
+        att_race_map[key] = val;
+    }
 }
 
 void generateGuaranteedNPCShipMobModules(MobShip *sm)
@@ -515,4 +622,22 @@ double getProcgenBaseSpeed(shipmob_classtype smct, int dl)
     }
 
     return base_speed;
+}
+
+MobShip* getHighestDangerLevelShipForRace(race* r)
+{
+    int iteration = 0;
+    int maxDangerLevel = 0;
+
+    for (int i = 0; i < r->getNumNativeShips(); i++)
+    {
+        int dangerLevel = r->getNativeShip(i)->getDangerLevel();
+        if (dangerLevel > maxDangerLevel)
+        {
+            maxDangerLevel = dangerLevel;
+            iteration = i;
+        }
+    }
+
+    return r->getNativeShip(iteration);
 }

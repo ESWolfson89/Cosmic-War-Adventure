@@ -11,6 +11,8 @@ enum input_t
 	INP_QUIT,
 	INP_SAVE,
 	INP_LOAD,
+	INP_YES,
+	INP_NO,
 	INP_SELECT,
 	INP_WEAPONFIRE,
 	INP_EXAMINE,
@@ -35,6 +37,8 @@ public:
 
 	bool checkForKey(char);
 
+	bool isShiftOrCaps();
+
 	void clearInputBuffer(SDL_Event *);
 
 	void promptAction();
@@ -49,6 +53,7 @@ private:
 	SDL_Event evt;
 	point delta;
 	input_t action;
+	bool shiftFlag;
 
 };
 

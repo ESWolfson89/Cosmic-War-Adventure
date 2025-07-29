@@ -16,19 +16,19 @@ void stringLoad(std::ifstream& is, std::string& s)
     is.read(&s[0], string_size);  // read all characters at once
 }
 
-void chtypeSave(std::ofstream &os, const chtype &ct)
+void chtypeSave(std::ofstream& os, const chtype& ct)
 {
-    os.write((const char *)&ct.ascii,sizeof(int));
+    os.write(reinterpret_cast<const char*>(&ct.ascii), sizeof(int));
     colorPairSave(os, ct.color);
 }
 
-void chtypeLoad(std::ifstream &is, chtype &ct)
+void chtypeLoad(std::ifstream& is, chtype& ct)
 {
-    is.read((char *)&ct.ascii,sizeof(int));
+    is.read(reinterpret_cast<char*>(&ct.ascii), sizeof(int));
     colorPairLoad(is, ct.color);
 }
 
-void colorPairSave(std::ofstream& os, const color_pair &cp)
+void colorPairSave(std::ofstream& os, const color_pair& cp)
 {
     colorTypeSave(os, cp.fg);
     colorTypeSave(os, cp.bg);
@@ -40,18 +40,32 @@ void colorPairLoad(std::ifstream& is, color_pair& cp)
     colorTypeLoad(is, cp.bg);
 }
 
-void colorTypeSave(std::ofstream& os, const color_type &col)
+void colorTypeSave(std::ofstream& os, const color_type& col)
 {
-    os.write((const char*)&col.r, sizeof(Uint8));
-    os.write((const char*)&col.g, sizeof(Uint8));
-    os.write((const char*)&col.b, sizeof(Uint8));
+    os.write(reinterpret_cast<const char*>(&col.r), sizeof(Uint8));
+    os.write(reinterpret_cast<const char*>(&col.g), sizeof(Uint8));
+    os.write(reinterpret_cast<const char*>(&col.b), sizeof(Uint8));
 }
 
 void colorTypeLoad(std::ifstream& is, color_type& col)
 {
-    is.read((char*)&col.r, sizeof(Uint8));
-    is.read((char*)&col.g, sizeof(Uint8));
-    is.read((char*)&col.b, sizeof(Uint8));
+    is.read(reinterpret_cast<char*>(&col.r), sizeof(Uint8));
+    is.read(reinterpret_cast<char*>(&col.g), sizeof(Uint8));
+    is.read(reinterpret_cast<char*>(&col.b), sizeof(Uint8));
+}
+
+void saveDiceRoll(std::ofstream& os, const dice_roll& d)
+{
+    os.write(reinterpret_cast<const char*>(&d.num_dice), sizeof(uint));
+    os.write(reinterpret_cast<const char*>(&d.num_sides), sizeof(uint));
+    os.write(reinterpret_cast<const char*>(&d.num_bonus), sizeof(uint));
+}
+
+void loadDiceRoll(std::ifstream& is, dice_roll& d)
+{
+    is.read(reinterpret_cast<char*>(&d.num_dice), sizeof(uint));
+    is.read(reinterpret_cast<char*>(&d.num_sides), sizeof(uint));
+    is.read(reinterpret_cast<char*>(&d.num_bonus), sizeof(uint));
 }
 
 std::string uint642String(uint_64 u64)
