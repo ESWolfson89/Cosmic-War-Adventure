@@ -5,51 +5,35 @@
 #include "race.h"
 #include "station.h"
 #include "mob.h"
+#include <functional>
 
-#define MAX_CONTACT_MENU_LEVEL 2
-
-enum enter_subarea_event
+struct ContactScenario
 {
-    ENTERSUBAREA_ENTER,
-    ENTERSUBAREA_CONVERSE,
-    ENTERSUBAREA_IGNORE
+    int id = 0;
+    std::string message;
+    std::vector<std::string> menuOptions;
+    std::vector<int> nextScenarioIDs;
+    std::function<void()> onSelectCallback = nullptr;
+    bool endConversation = false;
 };
 
-enum converse_event
+class ContactTree
 {
-    CONVERSE_ENTERSUBAREA,
-    CONVERSE_SERVICE,
-    CONVERSE_INFORMATION,
-    CONVERSE_FIGHT,
-    CONVERSE_EXIT
+public:
+    std::unordered_map<int, ContactScenario> scenarios;
+    int startingScenarioID = 0;
+
+    const ContactScenario& getScenario(int id) const
+    {
+        return scenarios.at(id);
+    }
 };
 
-static std::string contact_menu_options_type1[4] =
-{
-    "[Request Entry]",
-    "[Trade]",
-    "[Ask For Information]",
-    "[Intimidate]"
-};
+ContactTree createFullNonHostileContactTree(race*, race*, bool&);
 
-static std::string contact_menu_options_type2[2] =
-{
-    "\"Who are you at war with?\"",
-    "\"Who are your allies?\""
-};
+ContactTree createFullHostileContactTree(race*, race*, bool&);
 
-static std::string prerecorded_message_string = "<<<<<INCOMING PRERECORDED TRANSMISSION>>>>>";
-
-static std::string live_message_string = "<<<<<INCOMING LIVE TRANSMISSION>>>>>";
-
-
-void loadContactMainTextSequence(menu *, race *, std::string, int, int);
-
-void loadDiscoveryContactMenuText(race *, menu *, entrance_contact_struct *);
-
-void loadCurrentContactMenuText(race *, menu *, entrance_contact_struct *);
-
-void setEntranceContactData(race *, menu *, int);
+void addInitialContactScenarios(ContactTree& tree, race *, race *);
 
 void setStationContactData(race *, station *, menu *, MobShip *, int);
 
@@ -62,7 +46,5 @@ void loadEntertainmentCenterInitialContactMenu(EntertainmentStation *, menu *);
 void loadStationBuyModulesMenu(station *, menu *);
 
 void loadStationSellModulesMenu(station *, menu *, MobShip *);
-
-std::string loadConverseStringFromFile(std::string, int, int);
 
 #endif

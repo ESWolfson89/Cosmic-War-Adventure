@@ -1,4 +1,5 @@
 #include "region.h"
+#include <stack>
 
 StarMapRegion universe;
 MapType current_maptype;
@@ -82,7 +83,7 @@ void StarMapRegion::generateAllRaces()
         raceDomainType = getRaceDomainTypeFromDangerLevel(dangerLevel);
         mapSize = getMapSizeBasedOnDomainType(raceDomainType);
         attitudeTowardsPlayer = getStartingRaceAttitudeTowardsPlayer();
-        std::string raceName = genName(randInt(5, 10));
+        std::string raceName = genAlienName(randInt(3, 7));
 
 
         generateOneGuaranteedRace(i,
@@ -258,32 +259,41 @@ void StarMapRegion::createPersistentSubArea(point loc, bool race_affiliated, sta
     }
 }
 
-void StarMapRegion::populateWarZone(int subarea_idx)
+void StarMapRegion::populateWarZone(int subareaIdx)
 {
-    int num_ships = randInt(6,35);
-    int max_num_races = randInt(3,8);
-    int current_id = 0;
-    int ns_index = 0;
-    point msize = subareaVector[subarea_idx].getMap()->getSize();
-    point spawn_loc;
+    auto* map = subareaVector[subareaIdx].getMap();
+    const point mapSize = map->getSize();
 
-    std::vector<int> race_ids;
+    const int numShips = randInt(6, 35);
+    const int numRaces = randInt(3, 8);
+    const int racePoolMax = static_cast<int>(raceVector.size()) - 1;
 
-    for (int i = 0; i < max_num_races; ++i)
+    std::vector<int> raceIds;
+    raceIds.reserve(numRaces);
+    for (int r = 0; r < numRaces; ++r)
+        raceIds.push_back(randInt(0, racePoolMax));
+
+    for (int i = 0; i < numShips; ++i)
     {
-         race_ids.push_back(randInt(0,(int)raceVector.size()-1));
-    }
+        const int raceIdx = raceIds[randInt(0, static_cast<int>(raceIds.size()) - 1)];
+        auto* racePtr = getRace(raceIdx);
+        const int nativeCount = racePtr->getNumNativeShips();
+        if (nativeCount <= 0)
+            continue;
 
-    for (int i = 0; i < num_ships; ++i)
-    {
-         current_id = race_ids[randInt(0,(int)race_ids.size()-1)];
-         spawn_loc = getRandNPCShipOpenPoint(subareaVector[subarea_idx].getMap(),point(1,1),addPoints(msize,point(-2,-9)),LBACKDROP_SPACE_UNLIT,LBACKDROP_WHITESTARBACKGROUND);
-         ns_index = randInt(0,getRace(current_id)->getNumNativeShips()-1);
-         subareaVector[subarea_idx].createNPCShip(getRace(current_id)->getNativeShip(ns_index),spawn_loc,current_id);
-         subareaVector[subarea_idx].getNPCShip(spawn_loc)->setRoveChance(100);
-    }
+        const int nsIndex = randInt(0, nativeCount - 1);
 
-    race_ids.clear();
+        const point spawn = getRandNPCShipOpenPoint(
+            map,
+            point(1, 1),
+            addPoints(mapSize, point(-2, -9)),
+            LBACKDROP_SPACE_UNLIT,
+            LBACKDROP_WHITESTARBACKGROUND
+        );
+
+        subareaVector[subareaIdx].createNPCShip(racePtr->getNativeShip(nsIndex), spawn, raceIdx);
+        subareaVector[subareaIdx].getNPCShip(spawn)->setRoveChance(100);
+    }
 }
 
 void StarMapRegion::createNonPersistentSubArea(point loc, bool wild_encounter, subarea_specific_type sast_param)
@@ -426,7 +436,7 @@ void SubAreaRegion::initMap(point lsize)
 void SubAreaRegion::setupSubAreaMapGenerics(point lloc, backdrop_t filler)
 {
     initEmptyTiles(getMap(),filler);
-    flood_fill_flags.resize(m.getSize().y(), std::vector<bool>(m.getSize().x()));
+    flood_fill_flags.resize(m.getSize().y(), std::vector<uint8_t>(m.getSize().x()));
     subarea_loc = lloc;
 }
 
@@ -435,7 +445,7 @@ void SubAreaRegion::initFloodFillFlags()
     for (int y = 0; y < getMap()->getSize().y(); ++y)
     for (int x = 0; x < getMap()->getSize().x(); ++x)
     {
-        flood_fill_flags[y][x] = false;
+        flood_fill_flags[y][x] = 0;
     }
 }
 
@@ -452,7 +462,7 @@ void SubAreaRegion::cleanupEverything()
     }
     std::vector<MobShip>().swap(NPCShips);
     std::vector<station>().swap(station_objs);
-    std::vector<std::vector<bool>>().swap(flood_fill_flags);
+    std::vector<std::vector<uint8_t>>().swap(flood_fill_flags);
     deleteAllPiles();
 }
 
@@ -655,8 +665,8 @@ void SubAreaRegion::save(std::ofstream& os) const
     for (const auto& row : flood_fill_flags) {
         int inner = static_cast<int>(row.size());
         os.write(reinterpret_cast<const char*>(&inner), sizeof(int));
-        for (bool b : row) {
-            os.write(reinterpret_cast<const char*>(&b), sizeof(bool));
+        for (uint8_t f : row) {
+            os.write(reinterpret_cast<const char*>(&f), sizeof(uint8_t));
         }
     }
 }
@@ -710,9 +720,9 @@ void SubAreaRegion::load(std::ifstream& is)
         is.read(reinterpret_cast<char*>(&inner), sizeof(int));
         row.resize(inner);
         for (int i = 0; i < inner; ++i) {
-            bool b;
-            is.read(reinterpret_cast<char*>(&b), sizeof(bool));
-            row[i] = b;
+            uint8_t f;
+            is.read(reinterpret_cast<char*>(&f), sizeof(uint8_t));
+            row[i] = f;
         }
     }
 }
@@ -952,24 +962,38 @@ void SubAreaRegion::deleteAllPiles()
     std::vector<cell_pile>().swap(piles);
 }
 
-void SubAreaRegion::executeFloodFill(point p)
+void SubAreaRegion::executeFloodFill(point start)
 {
-    if (!inMapRange(p,getMap()->getSize()))
-        return;
+    auto size = getMap()->getSize();
+    if (!inMapRange(start, size)) return;
 
-    if (getMap()->getBackdrop(p) != LBACKDROP_SPACEWALL && !flood_fill_flags[p.y()][p.x()])
-        flood_fill_flags[p.y()][p.x()] = true;
-    else
-        return;
+    std::stack<point> stk;
+    stk.push(start);
 
-    executeFloodFill(point(p.x()+1,p.y()));
-    executeFloodFill(point(p.x()-1,p.y()));
-    executeFloodFill(point(p.x(),p.y()+1));
-    executeFloodFill(point(p.x(),p.y()-1));
-    executeFloodFill(point(p.x()+1,p.y()+1));
-    executeFloodFill(point(p.x()-1,p.y()-1));
-    executeFloodFill(point(p.x()-1,p.y()+1));
-    executeFloodFill(point(p.x()+1,p.y()-1));
+    static const std::array<point, 8> offsets = {
+        point(1,0), point(-1,0), point(0,1), point(0,-1),
+        point(1,1), point(-1,-1), point(-1,1), point(1,-1)
+    };
+
+    while (!stk.empty()) {
+        point p = stk.top();
+        stk.pop();
+
+        if (!inMapRange(p, size)) continue;
+
+        uint8_t& flag = flood_fill_flags[p.y()][p.x()];
+        if (flag != 0) continue;
+
+        if (getMap()->getBackdrop(p) == LBACKDROP_SPACEWALL) continue;
+
+        flag = 1;  // mark visited
+
+        for (const auto& off : offsets) {
+            point np{ p.x() + off.x(), p.y() + off.y() };
+            if (inMapRange(np, size))
+                stk.push(np);
+        }
+    }
 }
 
 bool SubAreaRegion::isLevelBlocked()
@@ -979,7 +1003,7 @@ bool SubAreaRegion::isLevelBlocked()
     for (int x = 0; x < getMap()->getSize().x(); ++x)
     {
         p.set(x,y);
-        if (getMap()->getBackdrop(p) != LBACKDROP_SPACEWALL && !flood_fill_flags[y][x])
+        if (getMap()->getBackdrop(p) != LBACKDROP_SPACEWALL && flood_fill_flags[y][x] == 0)
         {
             return true;
         }
@@ -1351,33 +1375,59 @@ MobShip* getCurrentMobTurn()
     return getPlayerShip();
 }
 
-/*
-
-int getDominantRaceControllerID(SubAreaRegion * region)
+int getDominantRaceIDInRegion(SubAreaRegion* region)
 {
-    int nativeRaceID = region->getNativeRaceID();
+    if (!region)
+        return -1;
 
-    int dominantController = nativeRaceID;
+    const int nativeRaceID = region->getNativeRaceID();
+    race* nativeRace = universe.getRace(nativeRaceID);
+    const int numHomeworlds = nativeRace->getNumHomeworlds();
 
-    race * nativeRace = universe.getRace(nativeRaceID);
+    if (numHomeworlds == 0)
+        return nativeRaceID;
 
-    int numHomeworlds = nativeRace->getNumHomeworlds();
+    // Map: raceID -> (count, danger)
+    std::unordered_map<int, std::pair<int, int>> raceDangerInfo;
 
-    int maxDanger = std::numeric_limits<int>::min();
-
-    std::vector<Planet*> homeworlds;
-
-    for (int i = 0; i < numHomeworlds; i++)
+    for (int i = 0; i < numHomeworlds; ++i)
     {
         Planet* homeworld = nativeRace->getHomeworld(i);
+        const int raceID = homeworld->getControlRaceID();
+        const int danger = homeworld->getDangerLevel();
 
-        raceCIDDLPair.first = homeworld->getControlRaceID();
-        raceCIDDLPair.second = homeworld->getDangerLevel();
-
-        raceIDVector.push_back(nativeRace->getHomeworld(i)->getControlRaceID());
+        auto& entry = raceDangerInfo[raceID];
+        ++entry.first;        // increment count
+        entry.second = danger; // will always be same, so just overwrite
     }
+
+    // Compute total danger = count * danger
+    int maxTotalDanger = std::numeric_limits<int>::min();
+    std::unordered_map<int, int> totalDangers;
+
+    for (const auto& [raceID, info] : raceDangerInfo)
+    {
+        const int totalDanger = info.first * info.second;
+        totalDangers[raceID] = totalDanger;
+        if (totalDanger > maxTotalDanger)
+            maxTotalDanger = totalDanger;
+    }
+
+    // Collect raceIDs with max danger
+    std::vector<int> candidates;
+    for (const auto& [raceID, totalDanger] : totalDangers)
+    {
+        if (totalDanger == maxTotalDanger)
+            candidates.push_back(raceID);
+    }
+
+    // Return one random raceID from candidates
+    if (candidates.empty())
+        return nativeRaceID;
+
+    return candidates[randInt(0, static_cast<int>(candidates.size()) - 1)];
 }
-*/
+
 int getMobRaceDangerLevel(MobShip* mob)
 {
     return universe.getRace(mob->getMobSubAreaGroupID())->getDangerLevel();

@@ -74,9 +74,9 @@ class display
         void updateLOSBrightness(map *, point, chtype &);
         void updateGridCharacters(map *, point, chtype &);
         void addPlayerShipGraphicDetails(int);
-        void printMeter(module *, int,int,int, module_type,color_type,int);
-        void printCrewMeter(module *, int,int,int);
-        void printWeaponShieldEngineGraphic(module *,int,int,int);
+        void printMeter(Module *, int,int,int, module_type,color_type,int);
+        void printCrewMeter(Module *, int,int,int);
+        void printWeaponShieldEngineGraphic(Module *,int,int,int);
         void delayAndUpdate(int);
         void displayMonitor(monitor_type, MobShip *);
         void displayMenu(menu *);
@@ -99,7 +99,7 @@ class display
         int npc_ship_pixels_temp[NPCSHIP_PIXEL_MAXHEIGHT][NPCSHIP_PIXEL_MAXWIDTH];
 };
 
-color_type getFuelMeterColor(module *m);
+color_type getFuelMeterColor(Module *m);
 
 chtype getShipAdditiveModuloChtypeIndex(chtype,chtype);
 

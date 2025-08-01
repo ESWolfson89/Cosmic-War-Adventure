@@ -25,7 +25,7 @@ bool gfx_engine::initSDL()
 
     // initialize SDL_Window instance screen
     screen = SDL_CreateWindow("Cosmic War Adventure", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        SCREENWID, SCREENHGT, SDL_WINDOW_FULLSCREEN_DESKTOP);
+        SCREENWID*3, SCREENHGT*3, SDL_WINDOW_SHOWN);
 
     if (screen == NULL)
     {
@@ -39,7 +39,7 @@ bool gfx_engine::initSDL()
     {
         return false;
     }
-
+    /*
     renderTarget = SDL_CreateTexture(renderer,
         SDL_PIXELFORMAT_RGBA8888,
         SDL_TEXTUREACCESS_TARGET,
@@ -49,8 +49,8 @@ bool gfx_engine::initSDL()
     {
         return false;
     }
-
-    //SDL_RenderSetScale(renderer, 2.0f, 2.0f);
+    */
+    SDL_RenderSetScale(renderer, 3.0f, 3.0f);
 
     text_bitmap = IMG_LoadTexture(renderer, "8x8font.png");
     std::cout << SDL_GetError() << std::endl;
@@ -107,7 +107,7 @@ void gfx_engine::addBitmapString(std::string string_val, color_pair colp, point 
 
     for (int i = 0; i < (int)string_val.size(); ++i)
     {
-        ct.ascii = (int)string_val[i];
+        ct.ascii = static_cast<unsigned char>(string_val[i]);
         ct.color = colp;
         addBitmapCharacter(ct,point(p.x()+i,p.y()));
     }
@@ -179,7 +179,7 @@ void gfx_engine::drawRectangle(color_type c, point loc, point area, bool filled)
 // clear screen to black
 void gfx_engine::clearScreen()
 {
-    renderTargetGE();
+    //renderTargetGE();
     SDL_SetRenderDrawColor(renderer,0,0,0,0);
     SDL_RenderClear(renderer);
 }
@@ -187,14 +187,14 @@ void gfx_engine::clearScreen()
 // update display
 void gfx_engine::updateScreen()
 {
-    SDL_SetRenderTarget(renderer, NULL);
-    SDL_RenderCopy(renderer, renderTarget, NULL, NULL);
+    //SDL_SetRenderTarget(renderer, NULL);
+    //SDL_RenderCopy(renderer, renderTarget, NULL, NULL);
     SDL_RenderPresent(renderer);
 }
 
 void gfx_engine::renderTargetGE()
 {
-    SDL_SetRenderTarget(renderer, renderTarget);
+    //SDL_SetRenderTarget(renderer, renderTarget);
 }
 
 color_type getDimmedColor(color_type c, Uint8 f, Uint8 o)

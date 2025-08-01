@@ -71,7 +71,7 @@ void setNPCAIPattern(MobShip* mob)
 
     if (attackTargetID >= 0)
     {
-        module* weaponMod = getCurrentMobSelectedModule(mob);
+        Module * weaponMod = getCurrentMobSelectedModule(mob);
         if (weaponMod && weaponMod->getFillQuantity() >= getWeaponModuleConsumptionPerTurn(weaponMod))
             mob->setAIPattern(AIPATTERN_ATTACKING);
         else
@@ -157,7 +157,7 @@ void setNPCAttackPositionDestination(MobShip* mob)
     if (!mob) 
         return;
 
-    module * weaponMod = getCurrentMobSelectedModule(mob);
+    Module * weaponMod = getCurrentMobSelectedModule(mob);
     if (!weaponMod) 
         return;
 
@@ -284,6 +284,10 @@ void checkNPCPlanetEnslaveEvent(MobShip* mob)
             npc->setGoalStatus(GOALSTATUS_COMPLETE);
         }
     }
+
+    int newControllerID = getDominantRaceIDInRegion(CSYS);
+
+    nativeRace->setControllerRaceID(newControllerID);
 }
 
 void checkNPCAggroEvent(MobShip* mob)

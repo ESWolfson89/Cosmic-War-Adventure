@@ -57,6 +57,8 @@ private:
 
 };
 
+void flushKeyPresses();
+
 extern input event_handler;
 
 #endif

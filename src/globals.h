@@ -11,6 +11,8 @@
 #include <numeric>
 #include <cstdint>
 #include <fstream>
+#include <array>
+#include <unordered_map>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -49,7 +51,7 @@
 
 #define NUM_TOTAL_MODULE_TYPES 7
 
-#define NUM_TOTAL_WEAPON_TYPES 17
+#define NUM_TOTAL_WEAPON_TYPES 18
 
 #define NUM_TOTAL_ENGINE_TYPES 3
 
@@ -196,6 +198,10 @@ enum fire_t
     FIRET_PURPLELINEHORIZ,
     FIRET_PURPLELINEDIAG1,
     FIRET_PURPLELINEDIAG2,
+    FIRET_LIGHTREDLINE,
+    FIRET_LIGHTREDLINEHORIZ,
+    FIRET_LIGHTREDLINEDIAG1,
+    FIRET_LIGHTREDLINEDIAG2,
     FIRET_GRAYLINE,
     FIRET_GRAYLINEHORIZ,
     FIRET_GRAYLINEDIAG1,
@@ -347,7 +353,7 @@ static const color_pair procgen_ship_colors[NUM_POSSIBLE_SHIP_COLORS] =
   {{225,225,225},color_black}
 };
 
-static const chtype fire_symbol[24] =
+static const chtype fire_symbol[28] =
 {
     blank_ch,
     {cp_cyanonblack,179},
@@ -362,6 +368,10 @@ static const chtype fire_symbol[24] =
     {cp_purpleonblack,196},
     {cp_purpleonblack,92},
     {cp_purpleonblack,(int)'/'},
+    {cp_lightredonblack,179},
+    {cp_lightredonblack,196},
+    {cp_lightredonblack,92},
+    {cp_lightredonblack,(int)'/'},
     {cp_grayonblack,179},
     {cp_grayonblack,196},
     {cp_grayonblack,92},
@@ -446,7 +456,7 @@ enum npc_ship_type
     NPCSHIPTYPE_PIRATE
 };
 
-extern bool game_active;
+extern bool Game_active;
 extern bool playerHasMoved;
 extern int wait_counter;
 extern int gmti;

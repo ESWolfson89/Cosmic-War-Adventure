@@ -1,16 +1,16 @@
 #include "module.h"
 
-module::module()
+Module::Module()
 {
 
 }
 
-module::module(module_type m, int q, int mq)
+Module::Module(module_type m, int q, int mq)
 {
     setModule(m,q,mq);
 }
 
-void module::setModule(module_type m, int q, int mq)
+void Module::setModule(module_type m, int q, int mq)
 {
     mt = m;
     fill_quantity = q;
@@ -21,54 +21,54 @@ void module::setModule(module_type m, int q, int mq)
     engine_stats = allbasicengine_stats[0];
 }
 
-void module::setWeaponStruct(weapon_struct w)
+void Module::setWeaponStruct(weapon_struct w)
 {
     weapon_stats = w;
 }
 
-void module::setShieldStruct(shield_struct s)
+void Module::setShieldStruct(shield_struct s)
 {
     shield_stats = s;
 }
 
-void module::setEngineStruct(shipengine_struct e)
+void Module::setEngineStruct(shipengine_struct e)
 {
     engine_stats = e;
 }
 
-weapon_struct module::getWeaponStruct()
+weapon_struct Module::getWeaponStruct()
 {
     return weapon_stats;
 }
 
-shield_struct module::getShieldStruct()
+shield_struct Module::getShieldStruct()
 {
     return shield_stats;
 }
 
-shipengine_struct module::getEngineStruct()
+shipengine_struct Module::getEngineStruct()
 {
     return engine_stats;
 }
 
-module_type module::getModuleType()
+module_type Module::getModuleType()
 {
     return mt;
 }
 
-void module::offFillQuantity(int offset)
+void Module::offFillQuantity(int offset)
 {
     fill_quantity += offset;
     checkFillQuantity();
 }
 
-void module::setFillQuantity(int amount)
+void Module::setFillQuantity(int amount)
 {
     fill_quantity = amount;
     checkFillQuantity();
 }
 
-void module::checkFillQuantity()
+void Module::checkFillQuantity()
 {
     if (fill_quantity < 0)
         fill_quantity = 0;
@@ -76,17 +76,17 @@ void module::checkFillQuantity()
         fill_quantity = max_fill_quantity;
 }
 
-int module::getFillQuantity()
+int Module::getFillQuantity()
 {
     return fill_quantity;
 }
 
-int module::getMaxFillQuantity()
+int Module::getMaxFillQuantity()
 {
     return max_fill_quantity;
 }
 
-int module::getBaseCost()
+int Module::getBaseCost()
 {
     int base_cost = 1ULL;
 
@@ -114,7 +114,7 @@ int module::getBaseCost()
     return base_cost;
 }
 
-void module::save(std::ofstream& os) const
+void Module::save(std::ofstream& os) const
 {
     os.write(reinterpret_cast<const char*>(&mt), sizeof(module_type));
     os.write(reinterpret_cast<const char*>(&fill_quantity), sizeof(int));
@@ -129,7 +129,7 @@ void module::save(std::ofstream& os) const
     stringSave(os, name_modifier);
 }
 
-void module::load(std::ifstream& is)
+void Module::load(std::ifstream& is)
 {
     is.read(reinterpret_cast<char*>(&mt), sizeof(module_type));
     is.read(reinterpret_cast<char*>(&fill_quantity), sizeof(int));
@@ -162,12 +162,14 @@ void saveWeaponStruct(std::ofstream& os, const weapon_struct& w)
     os.write(reinterpret_cast<const char*>(&w.num_shots), sizeof(int));
     os.write(reinterpret_cast<const char*>(&w.consumption_rate), sizeof(int));
     os.write(reinterpret_cast<const char*>(&w.regen_rate), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&w.extender_line_disp), sizeof(bool));
     os.write(reinterpret_cast<const char*>(&w.is_firet_line), sizeof(bool));
     os.write(reinterpret_cast<const char*>(&w.ignores_shields), sizeof(bool));
     os.write(reinterpret_cast<const char*>(&w.eightDirectionRestricted), sizeof(bool));
     os.write(reinterpret_cast<const char*>(&w.ftile), sizeof(fire_t));
     chtypeSave(os, w.disp_chtype);
     stringSave(os, w.name_modifier);
+    os.write(reinterpret_cast<const char*>(&w.delay_value), sizeof(int));
     os.write(reinterpret_cast<const char*>(&w.base_cost), sizeof(int));
 }
 
@@ -189,12 +191,14 @@ void loadWeaponStruct(std::ifstream& is, weapon_struct& w)
     is.read(reinterpret_cast<char*>(&w.num_shots), sizeof(int));
     is.read(reinterpret_cast<char*>(&w.consumption_rate), sizeof(int));
     is.read(reinterpret_cast<char*>(&w.regen_rate), sizeof(int));
+    is.read(reinterpret_cast<char*>(&w.extender_line_disp), sizeof(bool));
     is.read(reinterpret_cast<char*>(&w.is_firet_line), sizeof(bool));
     is.read(reinterpret_cast<char*>(&w.ignores_shields), sizeof(bool));
     is.read(reinterpret_cast<char*>(&w.eightDirectionRestricted), sizeof(bool));
     is.read(reinterpret_cast<char*>(&w.ftile), sizeof(fire_t));
     chtypeLoad(is, w.disp_chtype);
     stringLoad(is, w.name_modifier);
+    is.read(reinterpret_cast<char*>(&w.delay_value), sizeof(int));
     is.read(reinterpret_cast<char*>(&w.base_cost), sizeof(int));
 }
 
@@ -236,7 +240,7 @@ void loadEngineStruct(std::ifstream& is, shipengine_struct& e)
     is.read(reinterpret_cast<char*>(&e.base_cost), sizeof(int));
 }
 
-int getWeaponModuleConsumptionPerTurn(module *m)
+int getWeaponModuleConsumptionPerTurn(Module *m)
 {
     return m->getWeaponStruct().consumption_rate * m->getWeaponStruct().num_shots;
 }

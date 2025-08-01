@@ -14,7 +14,7 @@ struct damage_report
     int hull_damage;
 };
 
-void outputLOFTransition(point, point, point, fire_t);
+void outputLOFTransition(point, point, point, fire_t, bool, int);
 
 damage_report damageShipMobFromBlastRadius(MobShip *,point,int,int);
 
@@ -24,7 +24,7 @@ int baseHitChance(MobShip *, MobShip *);
 
 int rollMultipleDice(dice_roll);
 
-module *getCurrentMobSelectedModule(MobShip *);
+Module *getCurrentMobSelectedModule(MobShip *);
 
 void mobChangeSelectedWeapon(MobShip*);
 

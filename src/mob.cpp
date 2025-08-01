@@ -224,7 +224,7 @@ int MobShip::getDetectRadius()
     return sms_data.detect_radius;
 }
 
-void MobShip::addModule(module m)
+void MobShip::addModule(Module m)
 {
     if ((int)module_vec.size() < sms_data.num_max_modules)
         module_vec.push_back(m);
@@ -247,7 +247,7 @@ void MobShip::setActivationStatus(bool b)
     is_activated = b;
 }
 
-module *MobShip::getModule(int index)
+Module *MobShip::getModule(int index)
 {
     return &(module_vec[index]);
 }
@@ -416,7 +416,7 @@ bool MobShip::isCurrentPlayerShip()
 
 void MobShip::cleanupEverything()
 {
-    std::vector<module>().swap(module_vec);
+    std::vector<Module>().swap(module_vec);
 }
 
 void MobShip::setDestination(point p)
@@ -554,7 +554,7 @@ void MobShip::save(std::ofstream& os) const
 
     int module_count = static_cast<int>(module_vec.size());
     os.write(reinterpret_cast<const char*>(&module_count), sizeof(int));
-    for (const module& m : module_vec)
+    for (const Module& m : module_vec)
         m.save(os);
 }
 

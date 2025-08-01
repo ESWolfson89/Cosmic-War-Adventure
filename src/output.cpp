@@ -538,7 +538,7 @@ void display::addModuleGraphic(MobShip *s, int i, int ship_body_size,int y_globa
 }
 
 // print fill meter of module
-void display::printMeter(module *m, int ship_body_size, int i, int fill_width, module_type mt, color_type fill_color, int y_global_offset)
+void display::printMeter(Module *m, int ship_body_size, int i, int fill_width, module_type mt, color_type fill_color, int y_global_offset)
 {
     int quantity = m->getFillQuantity();
     int max_quantity = m->getMaxFillQuantity();
@@ -554,7 +554,7 @@ void display::printMeter(module *m, int ship_body_size, int i, int fill_width, m
 // * * * *
 //
 // * * * *
-void display::printCrewMeter(module *m, int ship_body_size, int i, int y_global_offset)
+void display::printCrewMeter(Module *m, int ship_body_size, int i, int y_global_offset)
 {
     int quantity = m->getFillQuantity();
     int max_qmq_print_ratio = 6*TILEHGT;
@@ -577,7 +577,7 @@ void display::printCrewMeter(module *m, int ship_body_size, int i, int y_global_
     }
 }
 
-void display::printWeaponShieldEngineGraphic(module *m, int ship_body_size, int i, int y_global_offset)
+void display::printWeaponShieldEngineGraphic(Module *m, int ship_body_size, int i, int y_global_offset)
 {
     point p = point(SHOWWID+36-ship_body_size+i+1,y_global_offset+10);
     chtype ct;
@@ -714,7 +714,7 @@ color_pair msgbuffer::getMessageColorData(int i)
     return message_color_data[i];
 }
 
-color_type getFuelMeterColor(module *m)
+color_type getFuelMeterColor(Module *m)
 {
     if (m->getMaxFillQuantity() >= 1024)
         return color_white;
@@ -727,7 +727,7 @@ void msgeAdd(std::string msg, color_pair col_p)
     // adding a message returns a boolean that says whether
     // or not the message buffer is full after adding last
     // message
-    if (game_active)
+    if (Game_active)
     {
         reached_buffer_limit = display_obj.addMessage(msg, col_p);
     }
@@ -815,11 +815,12 @@ void printMobCells()
     }
 }
 
-void outputLOFTransition(point lof, point source, point dest, fire_t ft)
+void outputLOFTransition(point lof, point source, point dest, fire_t ft, bool disp_full_line, int delay_value)
 {
-    clearAllFireCellsInRange(getMap(), lof, 1);
+    if (!disp_full_line)
+        clearAllFireCellsInRange(getMap(), lof, 1);
     printAndSetFireCell(getMap(), lof, selectFireCell(source, dest, ft));
-    display_obj.delayAndUpdate(16);
+    display_obj.delayAndUpdate(delay_value);
 }
 
 void clearAllFireCellsInRange(map* m, point lof, int r)

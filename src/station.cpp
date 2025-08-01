@@ -145,7 +145,7 @@ void station::addWeaponModuleToStation(int i)
 {
     int fill_usage = allbasicweapon_stats[i].consumption_rate*allbasicweapon_stats[i].num_shots;
     int fill_val = randInt(fill_usage,fill_usage*danger_level) + randInt(fill_usage,fill_usage*10);
-    module mod_added = module(MODULE_WEAPON,fill_val,fill_val);
+    Module mod_added = Module(MODULE_WEAPON,fill_val,fill_val);
     mod_added.setWeaponStruct(allbasicweapon_stats[i]);
     uint_64 mod_cost = getModuleBuyCost(MODULE_WEAPON,(fill_val/fill_usage),mod_added.getBaseCost());
     modules_for_trade.push_back(std::make_pair(mod_added,mod_cost));
@@ -154,7 +154,7 @@ void station::addWeaponModuleToStation(int i)
 void station::addShieldModuleToStation(int i)
 {
     int fill_val = allbasicshield_stats[i].base_num_layers;
-    module mod_added = module(MODULE_SHIELD,fill_val,fill_val);
+    Module mod_added = Module(MODULE_SHIELD,fill_val,fill_val);
     mod_added.setShieldStruct(allbasicshield_stats[i]);
     uint_64 mod_cost = getModuleBuyCost(MODULE_SHIELD,fill_val,mod_added.getBaseCost());
     modules_for_trade.push_back(std::make_pair(mod_added,mod_cost));
@@ -163,7 +163,7 @@ void station::addShieldModuleToStation(int i)
 void station::addEngineModuleToStation(int i)
 {
     int fill_val = danger_level;
-    module mod_added = module(MODULE_ENGINE,fill_val,fill_val);
+    Module mod_added = Module(MODULE_ENGINE,fill_val,fill_val);
     mod_added.setEngineStruct(allbasicengine_stats[i]);
     uint_64 mod_cost = getModuleBuyCost(MODULE_ENGINE,fill_val,mod_added.getBaseCost());
     modules_for_trade.push_back(std::make_pair(mod_added,mod_cost));
@@ -172,7 +172,7 @@ void station::addEngineModuleToStation(int i)
 void station::addCrewpodModuleToStation(int i)
 {
     int fill_val = 16*i;
-    module mod_added = module(MODULE_CREW,0,fill_val);
+    Module mod_added = Module(MODULE_CREW,0,fill_val);
     uint_64 mod_cost = getModuleBuyCost(MODULE_CREW,fill_val,mod_added.getBaseCost());
     modules_for_trade.push_back(std::make_pair(mod_added,mod_cost));
 }
@@ -180,14 +180,14 @@ void station::addCrewpodModuleToStation(int i)
 void station::addFuelModuleToStation()
 {
     int fill_val = randInt(50,danger_level*20+50);
-    module mod_added = module(MODULE_FUEL,0,fill_val);
+    Module mod_added = Module(MODULE_FUEL,0,fill_val);
     uint_64 mod_cost = getModuleBuyCost(MODULE_FUEL,fill_val,mod_added.getBaseCost());
     modules_for_trade.push_back(std::make_pair(mod_added,mod_cost));
 }
 
 void station::cleanupEverything()
 {
-    std::vector<std::pair<module,uint_64>>().swap(modules_for_trade);
+    std::vector<std::pair<Module,uint_64>>().swap(modules_for_trade);
     std::vector<basic_station_trade_choice>().swap(choices_lev0);
 }
 
@@ -263,13 +263,13 @@ uint_64 station::getModuleBuyCost(module_type mt, int power_val, int base_cost)
     return cost;
 }
 
-uint_64 station::getModuleSellCost(module *m)
+uint_64 station::getModuleSellCost(Module *m)
 {
     uint_64 buy_cost = getModuleBuyCost(m->getModuleType(),m->getMaxFillQuantity(),m->getBaseCost());
     return buy_cost/((uint_64)(30 - danger_level));
 }
 
-module *station::getModuleForTrade(int i)
+Module *station::getModuleForTrade(int i)
 {
     return &(modules_for_trade[i].first);
 }

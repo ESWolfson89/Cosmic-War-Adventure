@@ -1,70 +1,5 @@
 #include "contact.h"
 
-void loadContactMainTextSequence(menu *menu_obj, race *race_obj, std::string initial_text, int num_lines, int file_line_offset)
-{
-    menu_obj->addMenuMainText(initial_text);
-
-    for (int i = 0; i < num_lines; ++i)
-    {
-        menu_obj->addMenuMainText("\"" + loadConverseStringFromFile(race_obj->getNameString(), i + file_line_offset + 1, race_obj->getPlayerAttStatus()) + "\"");
-    }
-}
-
-void loadDiscoveryContactMenuText(race *race_obj, menu *menu_obj, entrance_contact_struct *ecs_obj)
-{
-    if (!race_obj->playerIdentifiedByRace())
-    {
-        loadContactMainTextSequence(menu_obj,race_obj,prerecorded_message_string,ecs_obj->num_prerecorded_lines,0);
-    }
-}
-
-void loadCurrentContactMenuText(race *race_obj, menu *menu_obj, entrance_contact_struct *ecs_obj)
-{
-    switch(menu_obj->getMenuLevel())
-    {
-        case(0):
-        {
-            loadContactMainTextSequence(menu_obj, race_obj, live_message_string, ecs_obj->num_welcome_lines, ecs_obj->num_prerecorded_lines);
-            menu_obj->addMenuItem("[continue]", blank_ch);
-            race_obj->setPlayerIDByRaceStatus(true);
-            break;
-        }
-        case(1):
-        {
-            for (int i = 0; i < ecs_obj->num_converse_choices; ++i)
-            {
-                menu_obj->addMenuItem(contact_menu_options_type1[i], blank_ch);
-            }
-            menu_obj->addMenuItem("[leave]", blank_ch);
-            break;
-        }
-        case(2):
-        {
-            menu_obj->clearMenuMainText();
-            menu_obj->addMenuMainText("\"" + loadConverseStringFromFile(race_obj->getNameString(),
-                ecs_obj->num_prerecorded_lines + ecs_obj->num_welcome_lines +
-                menu_obj->getSelectionIndex() + 1, race_obj->getPlayerAttStatus()) + "\"");
-            menu_obj->addMenuItem("[continue]", blank_ch);
-            break;
-        }        
-        default:
-        {
-            break;
-        }
-    }
-}
-
-void setEntranceContactData(race *race_obj, menu *menu_obj, int new_menu_lev)
-{
-    if (new_menu_lev <= MAX_CONTACT_MENU_LEVEL)
-    {
-        menu_obj->setMenuLevel(new_menu_lev);
-        menu_obj->clearMenuItems();
-
-        loadDiscoveryContactMenuText(race_obj,menu_obj,race_obj->getEntranceContactStruct());
-        loadCurrentContactMenuText(race_obj,menu_obj,race_obj->getEntranceContactStruct());
-    }
-}
 
 void loadStationInitialContactMenu(station *station_obj, menu *menu_obj)
 {
@@ -249,41 +184,293 @@ void setEntertainmentCenterContactData(race* race_obj, EntertainmentStation * st
     menu_obj->addMenuItem("[leave]", blank_ch);
 }
 
-std::string loadConverseStringFromFile(std::string race_str, int converse_line, int atp)
+void addInitialContactScenarios(ContactTree& tree, race* controlRace, race* nativeRace)
 {
-    int line_iter = 0;
-    std::string ret_val = "";
-    std::string token = "";
-    std::ifstream string_file;
-    if (atp >= 0)
-        string_file.open("converse1.txt");
-    else
-        string_file.open("converse2.txt");
-    // first token
-    string_file >> token;
-    // first @
-    string_file >> token;
-    do
+    tree.scenarios[0] = ContactScenario
     {
-        // reset token
-        token = "";
-        ret_val = "";
-        // check for delimiter
-        while (token != "@" && token != "[EOF_STRING]")
+         .id = 0,
+         .message = "<<<<<INCOMING PRERECORDED TRANSMISSION>>>>>",
+         .menuOptions = {"[continue]"},
+         .nextScenarioIDs = {1}
+    };
+
+    tree.scenarios[1] = ContactScenario
+    {
+        .id = 1,
+        .message = "!!!ATTENTION!!!",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {2}
+    };
+
+    if (controlRace->getRaceID() == nativeRace->getRaceID())
+    {
+        tree.scenarios[2] = ContactScenario
         {
-            if (token == "<caprace>")
-                ret_val += capitalizeString(race_str);
-            else if (token == "<race>")
-                ret_val += race_str;
-            else
-                ret_val += token;
-            ret_val += " ";
-            string_file >> token;
-        }
-        line_iter++;
-    } while (line_iter < converse_line);
-    string_file.close();
-    ret_val.erase(ret_val.begin());
-    ret_val.pop_back();
-    return ret_val;
+            .id = 2,
+            .message = "YOU ARE ENTERING " + capitalizeString(controlRace->getNameString()) + " TERRITORY",
+            .menuOptions = {"[continue]"},
+            .nextScenarioIDs = {3}
+        };
+
+        tree.scenarios[3] = ContactScenario
+        {
+            .id = 3,
+            .message = "BE WARNED -- ALL ACTS OF HOSTILITY ARE PUNISHABLE BY DEATH",
+            .menuOptions = {"[continue]"},
+            .nextScenarioIDs = {4}
+        };
+    }
+    else
+    {
+        tree.scenarios[2] = ContactScenario
+        {
+            .id = 2,
+            .message = "THIS IS " + capitalizeString(controlRace->getNameString()) + " TERRITORY NOW",
+            .menuOptions = {"[continue]"},
+            .nextScenarioIDs = {3}
+        };
+        tree.scenarios[3] = ContactScenario
+        {
+            .id = 3,
+            .message = "THE " + capitalizeString(nativeRace->getNameString()) + " HAVE BEEN ENSLAVED",
+            .menuOptions = {"[continue]"},
+            .nextScenarioIDs = {4}
+        };
+    }
+
+    tree.scenarios[4] = ContactScenario
+    {
+        .id = 4,
+        .message = "<<<<<INCOMING LIVE TRANSMISSION>>>>>",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {5}
+    };
+}
+
+ContactTree createFullNonHostileContactTree(race* controlRace, race* nativeRace, bool& enterSubArea)
+{
+    ContactTree tree;
+
+    tree.startingScenarioID = nativeRace->playerIdentifiedByRace() && (controlRace->getRaceID() == nativeRace->getRaceID()) ? 5 : 0;
+
+    std::string raceNameString = controlRace->getNameString();
+
+    addInitialContactScenarios(tree, controlRace, nativeRace);
+    
+    tree.scenarios[5] = ContactScenario
+    {
+        .id = 5,
+        .message = "\"Welcome traveler...\"",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {6},
+        .endConversation = false
+    };
+
+    tree.scenarios[6] = ContactScenario
+    {
+        .id = 6,
+        .message = "What can The " + raceNameString + " do for you?",
+        .menuOptions = {
+            "Request Entry",
+            "Trade",
+            "Ask for Information",
+            "Threaten",
+            "Leave"
+        },
+        .nextScenarioIDs = {8,9,10,11,12},
+        .endConversation = false
+    };
+
+    tree.scenarios[7] = ContactScenario
+    {
+        .id = 7,
+        .message = "What else can The " + raceNameString + " do for you?",
+        .menuOptions = {
+            "Request Entry",
+            "Trade",
+            "Ask for Information",
+            "Threaten",
+            "Leave"
+        },
+        .nextScenarioIDs = {8,9,10,11,12},
+        .endConversation = false
+    };
+
+    tree.scenarios[8] = ContactScenario
+    {
+        .id = 8,
+        .message = "You may enter.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .onSelectCallback = [&enterSubArea]() {
+            enterSubArea = true;
+         },
+        .endConversation = true
+    };
+
+    tree.scenarios[9] = ContactScenario
+    {
+        .id = 9,
+        .message = "We offer modules, fuel, and repair services.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .onSelectCallback = [&enterSubArea]() {
+            enterSubArea = true;
+         },
+        .endConversation = true
+    };
+
+    tree.scenarios[10] = ContactScenario
+    {
+        .id = 10,
+        .message = "We don't have any information to give you, unfortunately.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {7},
+        .endConversation = false
+    };
+
+    tree.scenarios[11] = ContactScenario
+    {
+        .id = 11,
+        .message = "Who sent you!? Nevermind that... You won't get away alive.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .onSelectCallback = [&enterSubArea, controlRace]() {
+            controlRace->setPlayerAttStatus((int)std::min(-1,controlRace->getPlayerAttStatus() - 1));
+            enterSubArea = true;
+        },
+        .endConversation = true
+    };
+
+    tree.scenarios[12] = ContactScenario
+    {
+        .id = 12,
+        .message = "Bye.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .endConversation = true
+    };
+
+    return tree;
+}
+
+ContactTree createFullHostileContactTree(race *controlRace, race *nativeRace, bool& enterSubArea)
+{
+    ContactTree tree;
+
+    tree.startingScenarioID = nativeRace->playerIdentifiedByRace() && (controlRace->getRaceID() == nativeRace->getRaceID()) ? 5 : 0;
+
+    std::string raceNameStringNative = nativeRace->getNameString();
+    std::string raceNameStringController = controlRace->getNameString();
+
+    std::string raceDomainStringNative = race_domain_suffix_string[(int)nativeRace->getRaceDomainType()];
+
+    addInitialContactScenarios(tree, controlRace, nativeRace);
+
+    tree.scenarios[5] = ContactScenario
+    {
+        .id = 5,
+        .message = "\"Interloper...\"",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {6},
+        .endConversation = false
+    };
+
+    if (controlRace->getRaceID() == nativeRace->getRaceID())
+    {
+        tree.scenarios[6] = ContactScenario
+        {
+            .id = 6,
+            .message = "Your attempt to enter The " + raceNameStringNative + " " + raceDomainStringNative + " is objectionable.",
+            .menuOptions = {"[continue]"},
+            .nextScenarioIDs = {7},
+            .endConversation = false
+        };
+    }
+    else
+    {
+        tree.scenarios[6] = ContactScenario
+        {
+            .id = 6,
+            .message = "The " + raceNameStringController + " control The " + raceNameStringNative + " " + raceDomainStringNative + " now.",
+            .menuOptions = {"[continue]"},
+            .nextScenarioIDs = {7},
+            .endConversation = false
+        };
+    }
+
+    tree.scenarios[7] = ContactScenario
+    {
+        .id = 7,
+        .message = "Any further advancement *will* result in your ship being attacked.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {8},
+        .endConversation = false
+    };
+
+    tree.scenarios[8] = ContactScenario
+    {
+        .id = 8,
+        .message = "Back away from this area immediately.",
+        .menuOptions = {
+            "Request Entry",
+            "Trade",
+            "Ask for Information",
+            "Threaten",
+            "Leave"
+        },
+        .nextScenarioIDs = {9,10,11,12,13},
+        .endConversation = false
+    };
+
+    tree.scenarios[9] = ContactScenario
+    {
+        .id = 9,
+        .message = "Request denied.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {7},
+        .endConversation = false
+    };
+
+    tree.scenarios[10] = ContactScenario
+    {
+        .id = 10,
+        .message = "Absolutely not.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {8},
+        .endConversation = false
+    };
+
+    tree.scenarios[11] = ContactScenario
+    {
+        .id = 11,
+        .message = "We will not exchange information with you.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {8},
+        .endConversation = false
+    };
+
+    tree.scenarios[12] = ContactScenario
+    {
+        .id = 12,
+        .message = "Prepare to be destroyed.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .onSelectCallback = [&enterSubArea, controlRace]() {
+            controlRace->setPlayerAttStatus((int)std::min(-1,controlRace->getPlayerAttStatus() - 1));
+            enterSubArea = true;
+        },
+        .endConversation = true
+    };
+
+    tree.scenarios[13] = ContactScenario
+    {
+        .id = 13,
+        .message = "Do not return.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .endConversation = true
+    };
+
+    return tree;
 }

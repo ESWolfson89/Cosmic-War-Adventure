@@ -1,60 +1,98 @@
-#include "namegen.h"
+﻿#include "namegen.h"
 
-std::string genName(int num_compounds)
+std::string genAlienName(int syllableCount)
 {
-    std::string curr_name = "";
+    std::string name;
+    std::string core;
 
-    bool start_vowel = false;
+    // 50% chance to begin with single-letter consonant or exotic multi-letter prefix
+    if (roll(2)) 
+    {
+        name += startingConsonant[randInt(0, static_cast<int>(startingConsonant.size() - 1))];
+    }
+    else
+    {
+        name += exoticPrefixes[randInt(0, static_cast<int>(exoticPrefixes.size() - 1))];
+    }
 
-	for (int i = 0; i <= num_compounds; ++i)
-	{
-	    if (i == 0)
+    bool startsWithVowel = roll(3);
+
+    for (int i = 0; i < syllableCount; ++i)
+    {
+        std::string chunk;
+        if (startsWithVowel)
         {
-            if (roll(3))
+            chunk = roll(5)
+                ? vowel[randInt(0, 4)]
+                : doubleVowelCombos[randInt(0, static_cast<int>(doubleVowelCombos.size() - 1))];
+        }
+        else
+        {
+            chunk = roll(5)
+                ? middleConsonant[randInt(0, 19)]
+                : doubleConsonantCombos[randInt(0, static_cast<int>(doubleConsonantCombos.size() - 1))];
+        }
+
+        // Add optional glottal marker
+        if (!core.empty() && roll(8))
+            core += "'";
+
+        core += chunk;
+        startsWithVowel = !startsWithVowel;
+    }
+
+    name += core;
+
+    if (roll(2))
+        name += exoticSuffixes[randInt(0, static_cast<int>(exoticSuffixes.size() - 1))];
+
+    if (roll(12) && name.size() < 8)
+    {
+        std::string reversed = core;
+        std::reverse(reversed.begin(), reversed.end());
+        name += reversed.substr(0, randInt(1, 3));
+    }
+
+    if (roll(5))
+    {
+        int codeEndRandNumber = randIntZ(19);
+
+        if (codeEndRandNumber <= 17)
+        {
+            if (roll(2))
             {
-               curr_name.append(vowel[randInt(0,4)]);
-               start_vowel = true;
+                name += "-" + codeSet[randInt(0, static_cast<int>(codeSet.size() - 1))];
             }
             else
             {
-               curr_name.append(starting_consonant[randInt(0,9)]);
-               start_vowel = false;
+                name += "-" + numberSet[randInt(0, static_cast<int>(numberSet.size() - 1))];
             }
         }
         else
         {
-            if (start_vowel)
+            name += "-";
+            int numbers = randInt(2, 4);
+            for (int i = 0; i < numbers; i++)
             {
-                if (i % 2 == 0)
-                    curr_name.append(toupper(curr_name[(int)curr_name.size()-1]) == 'Q' ? "u" : vowel[randInt(0,4)]);
-                else
-                    curr_name.append(middle_consonant[randInt(0,19)]);
+                name += numberSet[randInt(0, static_cast<int>(numberSet.size() - 1))];
             }
-            else
+
+            if (roll(3))
             {
-                if (i % 2 == 0)
-                    curr_name.append(middle_consonant[randInt(0,19)]);
-                else
-                    curr_name.append(toupper(curr_name[(int)curr_name.size()-1]) == 'Q' ? "u" : vowel[randInt(0,4)]);
+                name += codeSet[randInt(0, static_cast<int>(codeSet.size() - 1))];
             }
         }
-	}
+    }
 
-    //if ((start_vowel == true && num_compounds % 2 == 0) || (start_vowel == false && num_compounds % 2 == 1))
-    //{
-    //    curr_name.append(middle_consonant[randInt(0,18)]);
-    //}
+    if (!name.empty())
+        name[0] = static_cast<char>(std::toupper(name[0]));
 
-    //curr_name.append(final_name_modifier[randInt(0,14)]);
-
-    curr_name[0] = toupper(curr_name[0]);
-
-    return curr_name;
+    return name;
 }
 
-std::string getNamePrefix(MobShip* mb)
+std::string getNamePrefix(MobShip* mob)
 {
-    if (mb->isCurrentPlayerShip())
+    if (mob->isCurrentPlayerShip())
         return "Your";
     return "The";
 }

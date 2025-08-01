@@ -31,7 +31,7 @@ damage_report damageShipMobFromBlastRadius(MobShip *target, point origin, int hu
 damage_report damageShipMob(MobShip *attacker, MobShip *target, point lof)
 {
     damage_report ret_val = {0,0,0};
-    module *weapon_mod = getCurrentMobSelectedModule(attacker);
+    Module *weapon_mod = getCurrentMobSelectedModule(attacker);
 
     int hull_damage = rollMultipleDice(weapon_mod->getWeaponStruct().hull_damage);
     int crew_damage = rollMultipleDice(weapon_mod->getWeaponStruct().crew_damage);
@@ -103,7 +103,7 @@ int rollMultipleDice(dice_roll d)
     return ret_val;
 }
 
-module *getCurrentMobSelectedModule(MobShip *mb)
+Module *getCurrentMobSelectedModule(MobShip *mb)
 {
     return mb->getModule(mb->getModuleSelectionIndex());
 }
@@ -115,7 +115,9 @@ bool checkNPCWeaponEvent(MobShip* mb)
     {
         MobShip* mob_being_attacked = getMobFromID(attack_id);
 
-        if (rollPerc(mb->getStatStruct().weapon_change_chance))
+        const int weaponChangeChance = mb->getStatStruct().weapon_change_chance;
+
+        if (rollPerc(weaponChangeChance))
             if (mb->getNumInstalledModulesOfType(MODULE_WEAPON) >= 2)
             {
                 mobChangeSelectedWeapon(mb);
@@ -162,7 +164,7 @@ void printShipmobWeaponEventMessage(MobShip* mb, std::string action_str)
 
 void mobFire(MobShip* mb, point p)
 {
-    module* weapon_mod = getCurrentMobSelectedModule(mb);
+    Module* weapon_mod = getCurrentMobSelectedModule(mb);
 
     weapon_struct current_ws = weapon_mod->getWeaponStruct();
 
@@ -181,6 +183,11 @@ void mobFire(MobShip* mb, point p)
         case(WEAPONTYPE_BLAST):
         {
             msgeAdd("*choom!*", weapon_cp);
+            break;
+        }
+        case(WEAPONTYPE_BEAM):
+        {
+            msgeAdd("*VREEEEEEEE p-chooooooom*", weapon_cp);
             break;
         }
         case(WEAPONTYPE_MISSILE):
@@ -226,6 +233,7 @@ void mobFire(MobShip* mb, point p)
         case(WEAPONTYPE_WALLOP):
         case(WEAPONTYPE_MECH):
         case(WEAPONTYPE_BLAST):
+        case(WEAPONTYPE_BEAM):
         case(WEAPONTYPE_HELL):
         {
             mobShootSingleProjectile(mb, p);
@@ -323,7 +331,7 @@ void displayEvasionReport(int acc_val, MobShip* mb)
 void endOfProjectileLoop(MobShip* mb, point lof, bool is_detectable)
 {
     if (is_detectable)
-        clearAllFireCellsInRange(getMap(), lof, 1);
+        clearAllFireCells(getMap());
 
     if (terrainBlocked(getMap()->getBackdrop(lof)))
         checkCreateDamagingExplosionRollDamage(mb, lof, getCurrentMobSelectedModule(mb)->getWeaponStruct().blast_radius);
@@ -382,7 +390,7 @@ void displayDamageReport(damage_report dr, MobShip* mb, bool exp_damage)
         if (shield_perc <= 0)
             report_str += "down!";
         else
-            report_str += "to " + int2String(shield_perc) + "\%!";
+            report_str += "to " + int2String(shield_perc) + "%!";
 
         msgeAdd(report_str, mb->getShipSymbol().color);
         return;
@@ -390,7 +398,7 @@ void displayDamageReport(damage_report dr, MobShip* mb, bool exp_damage)
 
     if (dr.hull_damage > 0)
     {
-        report_str += " Hull to " + hull_perc_str + "\%!";
+        report_str += " Hull to " + hull_perc_str + "%!";
     }
 
     if (mb->getHullStatus() > 0 && dr.crew_damage > 0 && mb->getTotalMTFillRemaining(MODULE_CREW) > 0)
@@ -417,7 +425,7 @@ void checkCreateDamagingExplosionRollDamage(MobShip* mb, point lof, int blast_ra
 
     clearAllFireCellsInRange(getMap(), lof, 1);
     damage_report dr = { 0,0,0 };
-    module* weapon_mod = getCurrentMobSelectedModule(mb);
+    Module* weapon_mod = getCurrentMobSelectedModule(mb);
     dr.hull_damage = rollMultipleDice(weapon_mod->getWeaponStruct().hull_damage);
     dr.crew_damage = rollMultipleDice(weapon_mod->getWeaponStruct().crew_damage);
     checkCreateDamagingExplosion(lof, blast_radius, 15, FIRET_DAMAGINGEXPLOSION, false, dr, true);
@@ -461,11 +469,12 @@ void checkMobExplosionRadiusDamage(point p, int mradius, damage_report dr, bool 
 
 void mobShootSingleProjectile(MobShip* mb, point dest)
 {
-    module* current_mod = getCurrentMobSelectedModule(mb);
+    Module* current_mod = getCurrentMobSelectedModule(mb);
+    const auto& weapon = current_mod->getWeaponStruct();
     point source = mb->at(), lof = point(1, 1);
     int point_iter = 0;
     int primary_iter = 0;
-    int range = current_mod->getWeaponStruct().travel_range;
+    int range = weapon.travel_range;
     bool is_detectable = (getMap()->getv(mb->at()) || isAt(dest, getPlayerShip()->at()));
     bool hitmob_condition;
 
@@ -481,7 +490,7 @@ void mobShootSingleProjectile(MobShip* mb, point dest)
         
         if (is_detectable)
         {
-          outputLOFTransition(lof, mb->at(), dest, current_mod->getWeaponStruct().ftile);
+          outputLOFTransition(lof, mb->at(), dest, weapon.ftile, weapon.extender_line_disp, weapon.delay_value);
         }
         
         hitmob_condition = checkForMobInLOF(mb, lof, true, false);
@@ -513,7 +522,7 @@ void mobShootSingleProjectile(MobShip* mb, point dest)
 // shoot spread burst sprites that are width tiles wide
 void mobShootSpread(MobShip* mb, point dest, int width)
 {
-    module* current_mod = getCurrentMobSelectedModule(mb);
+    Module* current_mod = getCurrentMobSelectedModule(mb);
     const auto& weapon = current_mod->getWeaponStruct();
     int range = weapon.travel_range;
 
@@ -566,7 +575,7 @@ void mobShootSpread(MobShip* mb, point dest, int width)
       
       if (is_detectable)
       {
-        display_obj.delayAndUpdate(15);
+        display_obj.delayAndUpdate(weapon.delay_value);
       }
       
       dist_counter++;
@@ -597,7 +606,8 @@ void mobShootSpread(MobShip* mb, point dest, int width)
 
 void mobShootPulse(MobShip* mb, point dest)
 {
-    module* current_mod = getCurrentMobSelectedModule(mb);
+    Module* current_mod = getCurrentMobSelectedModule(mb);
+    const auto& weapon = current_mod->getWeaponStruct();
 
     bool end_hit = false;
     bool hit_being = false;
@@ -608,7 +618,7 @@ void mobShootPulse(MobShip* mb, point dest)
 
     int point_iter = tracer.getLineSize() - 1;
 
-    int max_dist = current_mod->getWeaponStruct().travel_range;
+    int max_dist = weapon.travel_range;
 
     int dist_counter = 0;
 
@@ -647,7 +657,7 @@ void mobShootPulse(MobShip* mb, point dest)
         if (is_detectable)
         {
           printAndSetFireCell(getMap(), lof, current_mod->getWeaponStruct().ftile);
-          display_obj.delayAndUpdate(15);
+          display_obj.delayAndUpdate(weapon.delay_value);
         }
       }
       // it has hit something or reached end

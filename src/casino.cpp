@@ -997,8 +997,6 @@ void diamond::drawMachine()
 void diamond::drawReelLights()
 {
     uint displacement_iter = 0;
-    uint x_coord;
-    uint y_coord;
 
     for (uint i = current_reel_position; i < current_reel_position + NUM_VISIBLE_DIAMOND_SLOTS; ++i)
     {
@@ -1183,7 +1181,7 @@ void diamond::drawDiamondPayouts()
 
     std::string payout_index1_string_modifier = "x0.";
 
-    payout_index1_string_modifier += int2String(payouts[1]);
+    payout_index1_string_modifier += uint642String(payouts[1]);
 
     gfx_obj.addBitmapString("WON 0", text_color, point(MACHINEX_OFFSET + 7, 11 + MACHINEY_OFFSET));
     gfx_obj.addBitmapString(payout_index1_string_modifier, text_color, point(MACHINEX_OFFSET + 7, 10 + MACHINEY_OFFSET));
@@ -1212,7 +1210,7 @@ void diamond::drawDiamondPayouts()
             ith_payout /= 1000;
         }
 
-        payout_string += int2String(ith_payout);
+        payout_string += uint642String(ith_payout);
         payout_string += payout_string_modifier;
 
         gfx_obj.addBitmapString(payout_string, text_color, point(MACHINEX_OFFSET + 7,11 - i + MACHINEY_OFFSET));
@@ -1410,7 +1408,7 @@ void diamond::load(std::ifstream& is)
 {
     machine::load(is); // base class member function
 
-    size_t outer, inner;
+    size_t outer;
     is.read(reinterpret_cast<char*>(&outer), sizeof(size_t));
     diamond_lights.resize(outer);
     for (auto& row : diamond_lights) {

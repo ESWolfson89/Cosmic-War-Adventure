@@ -64,19 +64,19 @@ class station
         void save(std::ofstream&) const;
         void load(std::ifstream&);
         basic_station_trade_choice getBasicStationTradeChoice(int);
-        module *getModuleForTrade(int);
+        Module *getModuleForTrade(int);
         uint_64 getModuleForTradeCost(int);
         uint_64 getFuelCost();
         uint_64 getHullFixCost();
         uint_64 getHullUpgradeCost();
         uint_64 getSlotCapUpgradeCost();
         uint_64 getCrewCost();
-        uint_64 getModuleSellCost(module *);
+        uint_64 getModuleSellCost(Module *);
         uint_64 getModuleBuyCost(module_type, int, int);
         point getSubareaLoc();
     private:
         // unused: double sell_ratio;
-        std::vector<std::pair<module,uint_64>> modules_for_trade;
+        std::vector<std::pair<Module,uint_64>> modules_for_trade;
         std::vector<basic_station_trade_choice> choices_lev0;
         uint_64 fuel_cost;
         uint_64 repair_cost;

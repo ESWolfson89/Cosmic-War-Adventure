@@ -5,7 +5,7 @@
 
 static const int procgen_weapons_base_chance[NUM_TOTAL_WEAPON_TYPES] =
 {
-    0,100,50,25,50,25,12,9,5,2,10,2,3,12,4,2,1
+    0,100,50,25,50,25,12,9,5,2,8,10,2,3,12,4,2,1
 };
 
 static const int procgen_engines_base_chance[NUM_TOTAL_ENGINE_TYPES] =
@@ -92,6 +92,7 @@ struct weapon_struct
     // how much battery (fillquant) does it take per use?
     int consumption_rate;
     int regen_rate;
+    bool extender_line_disp;
     // which fire tile does it use?
     // ----------------------------
     // if true, display directional dependent straight line
@@ -103,6 +104,7 @@ struct weapon_struct
     chtype disp_chtype;
     // laser, beam, missile etc...
     std::string name_modifier;
+    int delay_value;
     int base_cost;
 };
 
@@ -136,71 +138,75 @@ static const weapon_struct allbasicweapon_stats[NUM_TOTAL_WEAPON_TYPES] =
 {
   {
       WEAPONTYPE_NONE, {0,0,0}, {0,0,0}, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 1, false, false, true, NIL_f, {cp_blackonblack,(int)'N'}, "", 0
+      0, 0, 0, 0, 0, 0, 0, 0, 1, false, false, false, true, NIL_f, {cp_blackonblack,(int)'N'}, "", 0, 0
   },
   {
       WEAPONTYPE_BLAST, {1,6,9}, {1,3,0}, 2, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 1, 5, 10, true, false, true, FIRET_REDLINE, {cp_redonblack,92}, "laser", 250
+      0, 0, 0, 0, 4, 0, 1, 5, 4, false, true, false, true, FIRET_REDLINE, {cp_redonblack,92}, "laser", 16, 250
   },
   {
       WEAPONTYPE_BLAST, {1,6,9}, {1,3,0}, 2, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 2, 5, 10, true, false, true, FIRET_REDLINE, {cp_redonblack,92}, "laser II", 1000
+      0, 0, 0, 0, 4, 0, 2, 5, 4, false, true, false, true, FIRET_REDLINE, {cp_redonblack,92}, "laser II", 16, 1000
   },
   {
       WEAPONTYPE_BLAST, {1,6,9}, {1,3,0}, 2, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 3, 5, 10, true, false, true, FIRET_REDLINE, {cp_redonblack,92}, "laser III", 5000
+      0, 0, 0, 0, 4, 0, 3, 5, 4, false, true, false, true, FIRET_REDLINE, {cp_redonblack,92}, "laser III", 16, 5000
   },
   {
       WEAPONTYPE_BLAST, {2,9,8}, {1,4,0}, 3, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 1, 7, 15, true, false, true, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt", 1000
+      0, 0, 0, 0, 4, 0, 1, 7, 6, false, true, false, true, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt", 16, 1000
   },
   {
       WEAPONTYPE_BLAST, {2,9,8}, {1,4,0}, 3, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 2, 7, 15, true, false, true, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt II", 5000
+      0, 0, 0, 0, 4, 0, 2, 7, 6, false, true, false, true, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt II", 16, 5000
   },
   {
       WEAPONTYPE_BLAST, {2,9,8}, {1,4,0}, 3, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 3, 7, 15, true, false, true, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt III", 10000
+      0, 0, 0, 0, 4, 0, 3, 7, 6, false, true, false, true, FIRET_BLUELINE, {cp_cyanonblack,92}, "ion bolt III", 16, 10000
   },
   {
       WEAPONTYPE_BLAST, {3,12,7}, {1,5,0}, 1, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 1, 9, 20, true, false, true, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster I", 12500
+      0, 0, 0, 0, 4, 0, 1, 9, 8, false, true, false, true, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster I", 16, 12500
   },
   {
       WEAPONTYPE_BLAST, {3,12,7}, {1,5,0}, 1, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 2, 9, 20, true, false, true, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster II", 75000
+      0, 0, 0, 0, 4, 0, 2, 9, 8, false, true, false, true, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster II", 16, 75000
   },
   {
       WEAPONTYPE_BLAST, {3,12,7}, {1,5,0}, 1, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 3, 9, 20, true, false, true, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster III", 300000
+      0, 0, 0, 0, 4, 0, 3, 9, 8, false, true, false, true, FIRET_PURPLELINE, {cp_purpleonblack,92}, "energy blaster III", 16, 300000
   },
   {
-      WEAPONTYPE_SPREAD, {6,7,6}, {1,4,7}, 6, 1, 0, 0,
-      0, 0, 0, 0, 4, 0, 1, 4, 12, false, false ,true, FIRET_EXPLOSION, {cp_orangeonblack,(int)247}, "flamer", 25000
+      WEAPONTYPE_BEAM, {4,12,9}, {1,3,0}, 8, 0, 0, 25,
+      0, 0, 0, 0, 10, 0, 1, 9, 8, true, true, true, true, FIRET_LIGHTREDLINE, {cp_lightredonblack,92}, "phasor", 6, 450000
+  },
+  {
+      WEAPONTYPE_SPREAD, {6,7,6}, {1,4,7}, 7, 1, 0, 0,
+      0, 0, 0, 0, 4, 0, 1, 4, 9, false, false, false, true, FIRET_EXPLOSION, {cp_orangeonblack,(int)247}, "flamer", 15, 25000
   },
   {
       WEAPONTYPE_PULSE, {4,5,4}, {1,2,3}, 5, 1, 0, 0,
-      0, 0, 0, 0, 7, 0, 1, 8, 25, false, false, true, FIRET_PURPLEPLASMA, {cp_purpleonblack,(int)'^'}, "pulse cannon", 750000
+      0, 0, 0, 0, 7, 0, 1, 8, 12, false, false, false, true, FIRET_PURPLEPLASMA, {cp_purpleonblack,(int)'^'}, "pulse cannon", 15, 700000
   },
   {
       WEAPONTYPE_WALLOP, {0,0,0}, {12,3,6}, 7, 0, 0, 0,
-      4, 2, 0, 0, 4, 0, 1, 7, 30, false, true, true, FIRET_GREENWALLOP, {cp_greenonblack,(int)'*'}, "plague cannon", 150000
+      4, 2, 0, 0, 4, 0, 1, 7, 14, false, false, true, true, FIRET_GREENWALLOP, {cp_greenonblack,(int)'*'}, "plague cannon", 16, 150000
   },
   {
       WEAPONTYPE_MISSILE, {6,19,9}, {1,6,8}, 0, 0, 0, 0,
-      5, 2, 5, 3, 5, 2, 1, 1, 15, true, true, false, FIRET_GRAYLINE, {cp_grayonblack,(int)'!'}, "missile launcher", 50000
+      5, 2, 5, 3, 5, 2, 1, 1, 15, false, true, true, false, FIRET_GRAYLINE, {cp_grayonblack,(int)'!'}, "missile launcher", 16, 50000
   },
   {
       WEAPONTYPE_MISSILE, {6,19,9}, {1,6,8}, 0, 0, 0, 0,
-      5, 2, 5, 3, 5, 2, 2, 1, 15, true, true, false, FIRET_GRAYLINE, {cp_grayonblack,(int)'!'}, "dual missile launcher", 100000
+      5, 2, 5, 3, 5, 2, 2, 1, 15, false, true, true, false, FIRET_GRAYLINE, {cp_grayonblack,(int)'!'}, "dual missile launcher", 16, 100000
   },
   {
-      WEAPONTYPE_MECH, {6,7,8}, {1,6,6}, 15, 3, 0, 100,
-      0, 0, 8, 3, 6, 0, 1, 1, 20, false, false, false, FIRET_DARKRAZOR, {cp_darkgrayonblack,15}, "giant spinning razor", 250000
+      WEAPONTYPE_MECH, {6,7,8}, {1,6,6}, 35, 3, 0, 100,
+      0, 0, 8, 3, 6, 0, 1, 1, 7, false, false, true, false, FIRET_DARKRAZOR, {cp_darkgrayonblack,15}, "giant spinning razor", 16, 750000
   },
   {
       WEAPONTYPE_HELL, {8,9,9}, {1,10,5}, 20, 0, 0, 0,
-      1, 3, 2, 2, 8, 5, 1, 10, 50, false, true, false, FIRET_DAMAGINGEXPLOSION, {cp_darkredonblack,239}, "hell cannon", 1000000
+      1, 3, 2, 2, 8, 5, 1, 10, 25, false, false, true, false, FIRET_DAMAGINGEXPLOSION, {cp_darkredonblack,239}, "hell cannon", 16, 1000000
   }
 };
 
@@ -218,11 +224,11 @@ static const shipengine_struct allbasicengine_stats[3] =
     {10,2,1,{cp_blueonblack, (int)'+'},"advanced thruster",15000}
 };
 
-class module
+class Module
 {
     public:
-        module();
-        module(module_type, int, int);
+        Module();
+        Module(module_type, int, int);
         void setModule(module_type, int, int);
         module_type getModuleType();
         void offFillQuantity(int);
@@ -252,9 +258,9 @@ class module
         std::string name_modifier;
 };
 
-int getWeaponModuleConsumptionPerTurn(module *);
+int getWeaponModuleConsumptionPerTurn(Module *);
 
-module rollOneModule(int);
+Module rollOneModule(int);
 
 void saveWeaponStruct(std::ofstream& os, const weapon_struct& w);
 

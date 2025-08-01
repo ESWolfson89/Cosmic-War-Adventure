@@ -24,10 +24,10 @@ struct ship_explosion_struct
     int iteration;
 };
 
-class game
+class Game
 {
 public:
-    game();
+    Game();
     void run();
     void primaryGameLoop(bool loaded);
     void checkForUniversalRaceEvent();
@@ -55,7 +55,8 @@ public:
     void setPlayerLoc(point);
     void setVisitedStarMapTileBackdrops(point smloc);
     void setVisitedStarMapTileBackdrop(point smloc, int increment);
-    void checkSetRegionTileToHostile();
+    void checkSetRegionTileForRaceHome();
+    void setRegionTileForRaceHome(race* dominantRace);
     void enterArea();
     void enterSubArea(bool);
     void enterStation();
@@ -82,6 +83,8 @@ public:
     void printTogglePromptMessage(input_t, bool);
     void cycleTarget();
     void setPointIfInMapRangeAndLOS(point, point&);
+    void runContactScenario(ContactTree&);
+    void executeSubareaEntranceContactScenario(race*, race*, bool&);
     void initMenus();
     void promptQuit();
     bool isTargetableNPC(int, input_t);
@@ -116,8 +119,22 @@ bool eightDirectionRestrictedWeaponSelected(MobShip*);
 
 bool inRangeStarMapBackdropGreen(backdrop_t);
 
-void saveCurrentRegion();
+bool inRangeStarMapBackdropRed(backdrop_t);
+
+bool inRangeStarMapBackdropUnhighlighted(backdrop_t starTile);
+
+bool isMainSequenceBackdropTile(backdrop_t starTile);
+
+bool isBlueStarBackdropTile(backdrop_t starTile);
+
+bool isRedStarBackdropTile(backdrop_t starTile);
+
+bool isWhiteStarBackdropTile(backdrop_t starTile);
 
 void printExitPromptMessage();
+
+star_type getStarTypeFromStarMapTile(point);
+
+std::string getRaceRegionNameAtLocation(point loc);
 
 #endif

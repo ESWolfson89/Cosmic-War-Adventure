@@ -95,7 +95,7 @@ class SubAreaRegion
         std::vector <station> station_objs;
         std::vector <EntertainmentStation> entertainmentStations;
         std::vector <cell_pile> piles;
-        std::vector <std::vector <bool> > flood_fill_flags;
+        std::vector <std::vector <uint8_t> > flood_fill_flags;
 };
 
 class StarMapRegion
@@ -168,13 +168,7 @@ int getMaxDangerLevel(point smLoc);
 
 int getStartingRaceAttitudeTowardsPlayer();
 
-int getDominantControllerRaceID(SubAreaRegion *);
-
-std::vector<int> getRaceIDsWithMaxHomeworlds(SubAreaRegion *);
-
-std::vector<int> getRaceIDsWithMaxDangerLevel(SubAreaRegion *);
-
-std::vector<int> getRaceIDsWithMaxHighestShip(SubAreaRegion *);
+int getDominantRaceIDInRegion(SubAreaRegion* region);
 
 int getMobRaceDangerLevel(MobShip*);
 

@@ -191,3 +191,8 @@ input_t input::getAction()
 {
     return action;
 }
+
+void flushKeyPresses()
+{
+
+}

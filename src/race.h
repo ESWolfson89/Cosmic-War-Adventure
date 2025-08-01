@@ -173,6 +173,7 @@ class race
         void setHomeworldMajorStatus(point, RaceMajorStatus);
         void setHomeworldControllerRace(point,int, int);
         void addHomeworld(point,int, int, int);
+        void setControllerRaceID(int);
         Planet * getHomeworld(int);
         Planet * getHomeworld(point);
         entrance_contact_struct *getEntranceContactStruct();
@@ -189,6 +190,7 @@ class race
         int getRaceID();
         int getNumHomeworlds();
         int getDangerLevel();
+        int getControllerRaceID();
         bool raceIdentifiedByPlayer();
         bool playerIdentifiedByRace();
         void setRaceIDByPlayerStatus(bool);
@@ -208,6 +210,7 @@ class race
         point subarea_size;
         int att_towards_player;
         int race_id;
+        int controller_race_id;
         int danger_level;
         bool race_identified_by_player;
         bool player_identified_by_race;

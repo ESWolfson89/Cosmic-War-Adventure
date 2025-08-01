@@ -1,8 +1,8 @@
-#include "game.h"
+#include "Game.h"
 
 int main(int argc, char* argv[])
 {
-    game game_obj;
-    game_obj.run();
+    Game gameObj;
+    gameObj.run();
     return 0;
 }

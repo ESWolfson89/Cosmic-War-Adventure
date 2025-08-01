@@ -111,7 +111,7 @@ static const shipmobstat_struct allshipmob_data[2] =
         1.0,1.0,100.0,
         1,1,1,1,0,0,
         0,0,1,0,0,1,
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0},
         {0,0,0},
         false,
@@ -125,7 +125,7 @@ static const shipmobstat_struct allshipmob_data[2] =
         10.0,10.0,100.0,
         50,10,8,1,0,0,
         0,0,3,0,0,1,
-        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0},
         {0,0,0},
         true,
@@ -164,7 +164,7 @@ class MobShip
         double getModifiedEvasion();
         void setLoc(point p);
         void offLoc(point p);
-        void addModule(module);
+        void addModule(Module);
         void removeModule(int);
         void cleanupEverything();
         void setModuleSelectionIndex(int);
@@ -178,7 +178,7 @@ class MobShip
         void setMobSubAreaAttackID(int);
         void setInitLoc(point);
         void initShipDesign();
-        module *getModule(int);
+        Module *getModule(int);
         mob_t getMobType();
         int getFuelConsumptionRate();
         int getModuleSelectionIndex();
@@ -219,7 +219,7 @@ class MobShip
         std::string getShipName();
         void setShipName(std::string);
     private:
-        std::vector < module > module_vec;
+        std::vector < Module > module_vec;
         shipmobstat_struct sms_data;
         npc_ship_type npc_ship_type_obj;
         bool player_controlled;

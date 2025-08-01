@@ -22,43 +22,58 @@ race::race(int id, int dl, race_domain_type rdt, point ls, point sml, race_type 
     ecs_obj.num_converse_choices = 4;
     ecs_obj.num_prerecorded_lines = 3;
     ecs_obj.num_welcome_lines = 2;
+    setControllerRaceID(id);
+}
+
+void race::setControllerRaceID(int id)
+{
+    controller_race_id = id;
 }
 
 void race::generateNativeShips()
 {
-    int num_native_ships = randInt(1,7);
+    const int numShips = randInt(1, 7);
 
-    shipmob_classtype smct;
-    shipmob_classtype max_class_type = CLASSTYPE_FIGHTER;
+    const shipmob_classtype maxClass = [&] {
+        if (danger_level > 15) return CLASSTYPE_JUGGERNAUT;
+        if (danger_level > 9)  return CLASSTYPE_DESTROYER;
+        if (danger_level > 4)  return CLASSTYPE_DREADNOUGHT;
+        return CLASSTYPE_FIGHTER;
+        }();
 
-    if (danger_level > 4)
-        max_class_type = CLASSTYPE_DREADNOUGHT;
-    if (danger_level > 9)
-        max_class_type = CLASSTYPE_DESTROYER;
-    if (danger_level > 15)
-        max_class_type = CLASSTYPE_JUGGERNAUT;
+    if (rtype != RACETYPE_PROCGEN)
+        return;
 
-    int ship_dl = 1;
+    const int lowClassInt = static_cast<int>(CLASSTYPE_FIGHTER);
+    const int maxClassInt = static_cast<int>(maxClass);
 
-    switch(rtype)
+    for (int i = 0; i < numShips; ++i)
     {
-        case(RACETYPE_PROCGEN):
-            for (int i = 0; i < num_native_ships; ++i)
-            {
-                smct = (shipmob_classtype)randInt(2,randInt(2,(int)max_class_type));
-                if (smct == CLASSTYPE_FIGHTER)
-                    ship_dl = randInt(1,danger_level);
-                if (smct == CLASSTYPE_DREADNOUGHT)
-                    ship_dl = randInt(5,danger_level);
-                if (smct == CLASSTYPE_DESTROYER)
-                    ship_dl = randInt(10,danger_level);
-                if (smct == CLASSTYPE_JUGGERNAUT)
-                    ship_dl = randInt(16,danger_level);
-                generateOneProcgenNativeShip(ship_dl,smct,NPCSHIPTYPE_WAR);
-            }
-            break;
-        default:
-            break;
+        // Ensure Fighter (2) is included as a possible class
+        const int classInt = randInt(lowClassInt, randInt(lowClassInt, maxClassInt));
+        const shipmob_classtype smct = static_cast<shipmob_classtype>(classInt);
+
+        // Determine danger-level spawn range per class
+        int shipDl = 1;
+        switch (smct)
+        {
+            case CLASSTYPE_FIGHTER:
+                shipDl = randInt(1, danger_level);
+                break;
+            case CLASSTYPE_DREADNOUGHT:
+                shipDl = randInt(5, danger_level);
+                break;
+            case CLASSTYPE_DESTROYER:
+                shipDl = randInt(10, danger_level);
+                break;
+            case CLASSTYPE_JUGGERNAUT:
+                shipDl = randInt(16, danger_level);
+                break;
+            default:
+                break;
+        }
+
+        generateOneProcgenNativeShip(shipDl, smct, NPCSHIPTYPE_WAR);
     }
 }
 
@@ -118,6 +133,7 @@ void race::setHomeworldControllerRace(point p, int cID, int dl)
         if (isAt(homeworlds[i].getLoc(), p))
             homeworlds[i].setControlRace(cID, dl);
     }
+    setControllerRaceID(cID);
 }
 
 void race::setHomeworldMajorStatus(point p, RaceMajorStatus rms)
@@ -159,6 +175,11 @@ Planet * race::getHomeworld(point p)
 MobShip *race::getNativeShip(int i)
 {
     return &native_ships[i];
+}
+
+int race::getControllerRaceID()
+{
+    return controller_race_id;
 }
 
 int race::getNumNativeShips()
@@ -308,6 +329,7 @@ void race::save(std::ofstream& os) const
 
     os.write(reinterpret_cast<const char*>(&att_towards_player), sizeof(int));
     os.write(reinterpret_cast<const char*>(&race_id), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&controller_race_id), sizeof(int));
     os.write(reinterpret_cast<const char*>(&danger_level), sizeof(int));
     os.write(reinterpret_cast<const char*>(&race_identified_by_player), sizeof(bool));
     os.write(reinterpret_cast<const char*>(&player_identified_by_race), sizeof(bool));
@@ -360,6 +382,7 @@ void race::load(std::ifstream& is)
 
     is.read(reinterpret_cast<char*>(&att_towards_player), sizeof(int));
     is.read(reinterpret_cast<char*>(&race_id), sizeof(int));
+    is.read(reinterpret_cast<char*>(&controller_race_id), sizeof(int));
     is.read(reinterpret_cast<char*>(&danger_level), sizeof(int));
     is.read(reinterpret_cast<char*>(&race_identified_by_player), sizeof(bool));
     is.read(reinterpret_cast<char*>(&player_identified_by_race), sizeof(bool));
@@ -409,37 +432,62 @@ void race::load(std::ifstream& is)
     }
 }
 
-void generateGuaranteedNPCShipMobModules(MobShip *sm)
+void generateGuaranteedNPCShipMobModules(MobShip* sm)
 {
-    module mod_ins;
-    int weapon_fill_val;
+    const auto& stats = sm->getStatStruct();
+    Module mod;
+
+    // Weapons
     for (int w = 0; w < NUM_TOTAL_WEAPON_TYPES; ++w)
-        for (int i = 0; i < sm->getStatStruct().num_weapons_of_type[w]; ++i)
-        {
-             weapon_fill_val = weaponFillValFormula(sm,allbasicweapon_stats[w].consumption_rate*allbasicweapon_stats[w].num_shots);
-             mod_ins = module(MODULE_WEAPON,weapon_fill_val,weapon_fill_val);
-             mod_ins.setWeaponStruct(allbasicweapon_stats[w]);
-             sm->addModule(mod_ins);
-        }
+    {
+        int count = stats.num_weapons_of_type[w];
+        const auto& wstat = allbasicweapon_stats[w];
 
+        for (int i = 0; i < count; ++i)
+        {
+            int fill = weaponFillValFormula(
+                sm,
+                wstat.consumption_rate * wstat.num_shots
+            );
+            mod = Module(MODULE_WEAPON, fill, fill);
+            mod.setWeaponStruct(wstat);
+            sm->addModule(mod);
+        }
+    }
+
+    // Engines
     for (int e = 0; e < NUM_TOTAL_ENGINE_TYPES; ++e)
-        for (int i = 0; i < sm->getStatStruct().num_engines_of_type[e]; ++i)
-        {
-             mod_ins = module(MODULE_ENGINE,sm->getDangerLevel(),sm->getDangerLevel());
-             mod_ins.setEngineStruct(allbasicengine_stats[e]);
-             sm->addModule(mod_ins);
-        }
+    {
+        int count = stats.num_engines_of_type[e];
+        const auto& estat = allbasicengine_stats[e];
 
+        for (int i = 0; i < count; ++i)
+        {
+            int fill = sm->getDangerLevel();
+            mod = Module(MODULE_ENGINE, fill, fill);
+            mod.setEngineStruct(estat);
+            sm->addModule(mod);
+        }
+    }
+
+    // Shields
     for (int s = 0; s < NUM_TOTAL_SHIELD_TYPES; ++s)
-        for (int i = 0; i < sm->getStatStruct().num_shields_of_type[s]; ++i)
-        {
-             mod_ins = module(MODULE_SHIELD,allbasicshield_stats[s].base_num_layers,allbasicshield_stats[s].base_num_layers);
-             mod_ins.setShieldStruct(allbasicshield_stats[s]);
-             sm->addModule(mod_ins);
-        }
+    {
+        int count = stats.num_shields_of_type[s];
+        const auto& sstat = allbasicshield_stats[s];
 
-    sm->addModule(module(MODULE_FUEL,sm->getStatStruct().num_fuel,sm->getStatStruct().num_fuel));
-    sm->addModule(module(MODULE_CREW,sm->getStatStruct().num_crew,sm->getStatStruct().num_crew));
+        for (int i = 0; i < count; ++i)
+        {
+            int fill = sstat.base_num_layers;
+            mod = Module(MODULE_SHIELD, fill, fill);
+            mod.setShieldStruct(sstat);
+            sm->addModule(mod);
+        }
+    }
+
+    // Fuel & Crew—exactly one each
+    sm->addModule(Module(MODULE_FUEL, stats.num_fuel, stats.num_fuel));
+    sm->addModule(Module(MODULE_CREW, stats.num_crew, stats.num_crew));
 }
 
 // standard for now
