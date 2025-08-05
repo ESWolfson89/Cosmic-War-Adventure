@@ -220,7 +220,7 @@ void display::initNPCShipPixels(MobShip *s)
     for (int i = 0; i < NPCSHIP_PIXEL_MAXHEIGHT; ++i)
     for (int j = 0; j < NPCSHIP_PIXEL_MAXWIDTH; ++j)
     {
-        if (j > NPCSHIP_PIXEL_MAXWIDTH - s->getDesignStruct().x_extension)
+        if (j > NPCSHIP_PIXEL_MAXWIDTH - s->getDesignStruct().xExtension)
         {
             npc_ship_pixels[i][j] = 1;
             npc_ship_pixels_temp[i][j] = 1;
@@ -230,6 +230,7 @@ void display::initNPCShipPixels(MobShip *s)
             npc_ship_pixels[i][j] = 0;
             npc_ship_pixels_temp[i][j] = 0;
         }
+        npc_ship_chars[i][j] = blank_ch;
     }
 }
 
@@ -237,10 +238,10 @@ void display::runShipDesignCADisplayRule(MobShip *s)
 {
     int num_adj = 0;
     point adj;
-    for (int n = 0; n < s->getDesignStruct().ca_ship_gens; ++n)
+    for (int n = 0; n < s->getDesignStruct().CAShipGenerations; ++n)
     {
         for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
-        for (int j = NPCSHIP_PIXEL_MAXWIDTH - s->getDesignStruct().x_extension + 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
+        for (int j = NPCSHIP_PIXEL_MAXWIDTH - s->getDesignStruct().xExtension + 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
         {
             num_adj = 0;
             for (int dy = -1; dy <= 1; ++dy)
@@ -279,18 +280,30 @@ void display::setNPCShipYCenterPixels(MobShip *s)
     for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
     for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
     {
-        if (i == 7 && j >= NPCSHIP_PIXEL_MAXWIDTH - s->getDesignStruct().x_extension + 1)
+        if (i == 7 && j >= NPCSHIP_PIXEL_MAXWIDTH - s->getDesignStruct().xExtension + 1)
            npc_ship_pixels[i][j] = 1;
     }
 }
 
 void display::drawNPCShipDesign(MobShip *s)
 {
-    chtype primary_design_ch, secondary_design_ch, front_tile_ch;
+    chtype primary_design_ch;
+    chtype secondary_design_ch;
+    chtype third_design_ch;
+    chtype fourth_design_ch;
+    chtype front_tile_ch;
 
-    secondary_design_ch.ascii = s->getDesignStruct().ca_start_val;
-    secondary_design_ch.color.fg = s->getDesignStruct().ca_secondary_color;
+    secondary_design_ch.ascii = s->getDesignStruct().CASecondValue;
+    secondary_design_ch.color.fg = s->getDesignStruct().ctSecondColor;
     secondary_design_ch.color.bg = getDimmedColor(s->getShipSymbol().color.fg,3,0);
+
+    third_design_ch.ascii = s->getDesignStruct().CAThirdValue;
+    third_design_ch.color.fg = s->getDesignStruct().ctThirdColor;
+    third_design_ch.color.bg = getDimmedColor(secondary_design_ch.color.fg,3,0);
+
+    fourth_design_ch.ascii = s->getDesignStruct().CAFourthValue;
+    fourth_design_ch.color.fg = s->getDesignStruct().ctFourthColor;
+    fourth_design_ch.color.bg = getDimmedColor(third_design_ch.color.fg, 3, 0);
 
     primary_design_ch.ascii = 219;
     primary_design_ch.color = s->getShipSymbol().color;
@@ -304,32 +317,28 @@ void display::drawNPCShipDesign(MobShip *s)
     for (int i = 0; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
     for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH; ++j)
     {
-        loc.set(SHOWWID+2+j,4+i);
-
         if (i == 0 || j == 0 || i == NPCSHIP_PIXEL_MAXHEIGHT - 1 || j == NPCSHIP_PIXEL_MAXWIDTH - 1)
-            addChar(blank_ch,loc);
+            npc_ship_chars[i][j] = blank_ch;
         else if (npc_ship_pixels[i][j] == 1 || npc_ship_pixels[i][j] == 2)
-            addChar(primary_design_ch,loc);
+            npc_ship_chars[i][j] = primary_design_ch;
         else if (npc_ship_pixels[i][j] == 3)
-            addChar(secondary_design_ch,loc);
-        else if (npc_ship_pixels[i][j-1] > 0 && npc_ship_pixels[i][j+1] > 0 && npc_ship_pixels[i][j] == 0 && j > 1 && j < NPCSHIP_PIXEL_MAXWIDTH - 2)
-            addChar(gray_horizontal_pipe,loc);
-        else if (npc_ship_pixels[i-1][j] > 0 && npc_ship_pixels[i+1][j] > 0 && npc_ship_pixels[i][j] == 0 && i > 1 && i < NPCSHIP_PIXEL_MAXHEIGHT - 2)
-            addChar(gray_vertical_pipe,loc);
-        else if (i > 1 && j > 1 && i < NPCSHIP_PIXEL_MAXHEIGHT - 2 && j < NPCSHIP_PIXEL_MAXWIDTH - 2 && numShipPixelsAdj(i,j,0) < 8 && npc_ship_pixels[i][j] == 0)
-            addChar(secondary_design_ch,loc);
+            npc_ship_chars[i][j] = secondary_design_ch;
+        else if (npc_ship_pixels[i][j - 1] > 0 && npc_ship_pixels[i][j + 1] > 0 && npc_ship_pixels[i][j] == 0 && j > 1 && j < NPCSHIP_PIXEL_MAXWIDTH - 2)
+            npc_ship_chars[i][j] = gray_horizontal_pipe;
+        else if (npc_ship_pixels[i - 1][j] > 0 && npc_ship_pixels[i + 1][j] > 0 && npc_ship_pixels[i][j] == 0 && i > 1 && i < NPCSHIP_PIXEL_MAXHEIGHT - 2)
+            npc_ship_chars[i][j] = gray_vertical_pipe;
+        else if (i > 1 && j > 1 && i < NPCSHIP_PIXEL_MAXHEIGHT - 2 && j < NPCSHIP_PIXEL_MAXWIDTH - 2 && numShipPixelsAdj(i, j, 0) < 8 && npc_ship_pixels[i][j] == 0)
+            npc_ship_chars[i][j] = secondary_design_ch;
     }
 
     // ...add exhausts, flame trails
     for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
     for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH - 5; ++j)
     {
-        loc.set(SHOWWID+2+j,4+i);
-
         if (npc_ship_pixels[i][j+2] > 0)
         {
-            addChar(gray_horizontal_pipe,addPoints(loc,point(1,0)));
-            addChar(lightblue_flame,loc);
+            npc_ship_chars[i][j+1] = gray_horizontal_pipe;
+            npc_ship_chars[i][j] = s->isActivated() ? s->getDesignStruct().shipFlameCh : blank_ch;
             break;
         }
     }
@@ -338,14 +347,55 @@ void display::drawNPCShipDesign(MobShip *s)
     for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
     for (int j = NPCSHIP_PIXEL_MAXWIDTH - 1; j >= 2; --j)
     {
-        loc.set(SHOWWID+2+j,4+i);
-
         if (npc_ship_pixels[i][j-1] > 0)
         {
-            addChar(front_tile_ch,loc);
+            npc_ship_chars[i][j] = front_tile_ch;
             break;
         }
     }
+
+    for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
+    for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
+    {
+        loc.set(SHOWWID + 3 + j, 4 + i); 
+        addChar(npc_ship_chars[i][j], loc);
+    }
+
+    for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
+    for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
+    {
+        loc.set(SHOWWID + 3 + j, 4 + i);
+
+        if (allSurroundingNPCShipPixelsMatch(i, j, { primary_design_ch }))
+        {
+            addChar(third_design_ch, loc);
+        }
+
+        if (allSurroundingNPCShipPixelsMatch(i, j, { secondary_design_ch }))
+        {
+            addChar(fourth_design_ch, loc);
+        }
+    }
+}
+
+bool display::allSurroundingNPCShipPixelsMatch(int i, int j, const std::vector<chtype>& matchValues)
+{
+    auto matches = [&](int y, int x) -> bool {
+        const chtype& ch = npc_ship_chars[y][x];
+        return std::any_of(matchValues.begin(), matchValues.end(), [&](const chtype& target) {
+            return chtypeMatches(ch, target);
+            });
+        };
+
+    return matches(i, j) &&
+        matches(i + 1, j) &&
+        matches(i - 1, j) &&
+        matches(i + 1, j + 1) &&
+        matches(i - 1, j + 1) &&
+        matches(i + 1, j - 1) &&
+        matches(i - 1, j - 1) &&
+        matches(i, j + 1) &&
+        matches(i, j - 1);
 }
 
 int display::numShipPixelsAdj(int i, int j, int val)
@@ -475,13 +525,13 @@ void display::addPlayerShipGraphicDetails(int ship_body_size)
     for (int i = 0; i < 9; ++i)
         addChar(gray_horizontal_pipe,point(SHOWWID+35-ship_body_size,SHOWHGT/2+9+i));
     for (int i = 0; i < 9; ++i)
-        addChar(lightblue_flame,point(SHOWWID+34-ship_body_size,SHOWHGT/2+9+i));
+        addChar(player_ship.isActivated() ? shipFlames[0] : blank_ch, point(SHOWWID + 34 - ship_body_size, SHOWHGT / 2 + 9 + i));
     for (int i = 0; i < 7; ++i)
-        addChar(lightblue_flame,point(SHOWWID+33-ship_body_size,SHOWHGT/2+10+i));
+        addChar(player_ship.isActivated() ? shipFlames[0] : blank_ch,point(SHOWWID+33-ship_body_size,SHOWHGT/2+10+i));
     for (int i = 0; i < 5; ++i)
-        addChar(lightblue_flame,point(SHOWWID+32-ship_body_size,SHOWHGT/2+11+i));
+        addChar(player_ship.isActivated() ? shipFlames[0] : blank_ch,point(SHOWWID+32-ship_body_size,SHOWHGT/2+11+i));
     for (int i = 0; i < 3; ++i)
-        addChar(lightblue_flame,point(SHOWWID+31-ship_body_size,SHOWHGT/2+12+i));
+        addChar(player_ship.isActivated() ? shipFlames[0] : blank_ch,point(SHOWWID+31-ship_body_size,SHOWHGT/2+12+i));
     addChar(gray_rightarrow,point(SHOWWID+41,SHOWHGT/2+12));
     addChar(gray_rightarrow,point(SHOWWID+41,SHOWHGT/2+13));
     addChar(gray_rightarrow,point(SHOWWID+41,SHOWHGT/2+14));
@@ -489,8 +539,8 @@ void display::addPlayerShipGraphicDetails(int ship_body_size)
 
 // print module graphic bar
 void display::addModuleGraphic(MobShip *s, int i, int ship_body_size,int y_global_offset)
-{
-    point arrow_loc;
+{ 
+   point arrow_loc;
 
     switch(s->getModule(i)->getModuleType())
     {
@@ -537,87 +587,168 @@ void display::addModuleGraphic(MobShip *s, int i, int ship_body_size,int y_globa
     }
 }
 
-// print fill meter of module
-void display::printMeter(Module *m, int ship_body_size, int i, int fill_width, module_type mt, color_type fill_color, int y_global_offset)
+// draw the exhaustion/fill bar for a module over the ship
+void display::printMeter(Module* m,
+    int shipBodySize,
+    int idx,
+    int fillWidth,
+    module_type type,
+    color_type fillColor,
+    int yOffset)
 {
-    int quantity = m->getFillQuantity();
-    int max_quantity = m->getMaxFillQuantity();
-    int max_qmq_print_ratio = 6*TILEHGT;
-    int qmq_print_ratio = (int)(quantity*max_qmq_print_ratio/max_quantity);
-    point p = point(SHOWWID+36-ship_body_size+i+1,y_global_offset+10);
-    if (fill_width > 1)
-        gfx_obj.drawRectangle(fill_color,point(p.x()*TILEWID,(p.y()+1)*TILEHGT+max_qmq_print_ratio-qmq_print_ratio),point(fill_width,qmq_print_ratio),true);
+    const int qty = m->getFillQuantity();
+    const int maxQty = m->getMaxFillQuantity();
+    const int fullBarH = 6 * TILEHGT;
+    const int filledHeight = qty * fullBarH / maxQty;
+
+    const point barPos(
+        SHOWWID + 36 - shipBodySize + idx + 1,
+        yOffset + 10
+    );
+
+    const int tileX = barPos.x() * TILEWID;
+    const int tileY = (barPos.y() + 1) * TILEHGT + (fullBarH - filledHeight);
+
+    if (fillWidth > 1)
+    {
+        gfx_obj.drawRectangle(fillColor,
+            point(tileX, tileY), point(fillWidth, filledHeight), true);
+    }
     else
-        gfx_obj.drawRectangle(fill_color,point((p.x()+1)*TILEWID-1,(p.y()+1)*TILEHGT+max_qmq_print_ratio-qmq_print_ratio),point(fill_width,qmq_print_ratio),true);
+    {
+        gfx_obj.drawRectangle(fillColor,
+            point(tileX + TILEWID - 1, tileY), point(fillWidth, filledHeight), true);
+    }
 }
 
-// * * * *
-//
-// * * * *
-void display::printCrewMeter(Module *m, int ship_body_size, int i, int y_global_offset)
+void display::printCrewMeter(Module* m,
+    int shipBodySize,
+    int idx,
+    int yOffset)
 {
-    int quantity = m->getFillQuantity();
-    int max_qmq_print_ratio = 6*TILEHGT;
-    int dot_offset_width_factor = (TILEWID % 2 == 1) ? TILEWID - 1 : TILEWID;
-    point dot_offset;
-    point p = point(SHOWWID+36-ship_body_size+i+1,y_global_offset+10);
-    gfx_obj.addBitmapVerticalString("c      ",cp_lightgrayonblack,p);
+    // How many crew dots to draw
+    const int quantity = m->getFillQuantity();
+    const int fullBarH = 6 * TILEHGT;
+    // How wide before wrapping to next row
+    const int dotRowWidth = (TILEWID % 2 == 0 ? TILEWID : TILEWID - 1);
+
+    // Base grid cell for this meter
+    const point origin(
+        SHOWWID + 36 - shipBodySize + idx + 1,
+        yOffset + 10
+    );
+
+    // Draw the little label vertically
+    gfx_obj.addBitmapVerticalString(
+        "c      ",
+        cp_lightgrayonblack,
+        origin
+    );
+
+    // Draw green ticks for each crew member
     for (int n = 0; n < quantity; ++n)
     {
-        dot_offset.set((2*n)%dot_offset_width_factor,max_qmq_print_ratio-((n/(dot_offset_width_factor/2))*2)-1);
-        gfx_obj.drawRectangle(color_green,point(p.x()*TILEWID+dot_offset.x(),(p.y()+1)*TILEHGT+dot_offset.y()),point(1,1),true);
+        int dx = (2 * n) % dotRowWidth;
+        int row = n / (dotRowWidth / 2);
+        int dy = fullBarH - (row * 2) - 1;
+
+        gfx_obj.drawRectangle(
+            color_green,
+            point(origin.x() * TILEWID + dx,
+                (origin.y() + 1) * TILEHGT + dy),
+            point(1, 1),
+            true
+        );
     }
 
-    for (int i = 5; i >= 1; --i)
+    // Draw up to five crew pod symbols based on the modules capacity
+    const int maxCrew = m->getMaxFillQuantity();
+    for (int slot = 5; slot >= 1; --slot)
     {
-        if (m->getMaxFillQuantity() <= i*16)
-            gfx_obj.addBitmapCharacter(crewpod_display_symbol,point(p.x(),p.y()+6-i));
+        if (maxCrew <= slot * 16)
+        {
+            gfx_obj.addBitmapCharacter(
+                crewpod_display_symbol,
+                point(origin.x(), origin.y() + 6 - slot)
+            );
+        }
         else
-            return;
+        {
+            break;
+        }
     }
 }
 
-void display::printWeaponShieldEngineGraphic(Module *m, int ship_body_size, int i, int y_global_offset)
+// draw the vertical graphic for weapons, shields, or engines
+void display::printWeaponShieldEngineGraphic(Module* m,
+    int shipBodySize,
+    int idx,
+    int yOffset)
 {
-    point p = point(SHOWWID+36-ship_body_size+i+1,y_global_offset+10);
-    chtype ct;
-    chtype first_letter;
+    const point basePos(
+        SHOWWID + 36 - shipBodySize + idx + 1,
+        yOffset + 10
+    );
 
-    switch(m->getModuleType())
+    chtype ct = {};
+    chtype firstChar = {};
+
+    switch (m->getModuleType())
     {
-        case(MODULE_WEAPON):
-            ct = first_letter = m->getWeaponStruct().disp_chtype;
-            first_letter.ascii = (int)std::toupper(m->getWeaponStruct().name_modifier[0]);
-            break;
-        case(MODULE_SHIELD):
-            ct = first_letter = m->getShieldStruct().disp_chtype;
-            first_letter.ascii = (int)std::toupper(m->getShieldStruct().name_modifier[0]);
-            break;
-        case(MODULE_ENGINE):
-            ct = first_letter = m->getEngineStruct().disp_chtype;
-            first_letter.ascii = (int)std::toupper(m->getEngineStruct().name_modifier[0]);
-            break;
-        default:
-            break;
+    case MODULE_WEAPON:
+        ct = firstChar = m->getWeaponStruct().disp_chtype;
+        firstChar.ascii = std::toupper(m->getWeaponStruct().name_modifier[0]);
+        break;
+
+    case MODULE_SHIELD:
+        ct = firstChar = m->getShieldStruct().disp_chtype;
+        firstChar.ascii = std::toupper(m->getShieldStruct().name_modifier[0]);
+        break;
+
+    case MODULE_ENGINE:
+        ct = firstChar = m->getEngineStruct().disp_chtype;
+        firstChar.ascii = std::toupper(m->getEngineStruct().name_modifier[0]);
+        break;
+
+    default:
+        // no graphic on unknown module
+        return;
     }
 
-    for (int i = 0; i < 6; ++i)
-         addChar(ct,point(p.x(),p.y()+1+i));
+    // draw 6 vertical background characters
+    for (int row = 0; row < 6; ++row)
+    {
+        addChar(ct, point(basePos.x(), basePos.y() + 1 + row));
+    }
 
-    addChar(first_letter,p);
+    // draw the module letter at the top
+    addChar(firstChar, basePos);
 
-    if (m->getModuleType() == MODULE_WEAPON)
-    if (m->getWeaponStruct().num_shots > 1)
-        gfx_obj.addBitmapVerticalString(int2String(m->getWeaponStruct().num_shots),cp_whiteonblack,point(p.x(),p.y()+6));
-
-    if (m->getModuleType() == MODULE_SHIELD)
-        gfx_obj.addBitmapVerticalString(int2String(m->getMaxFillQuantity()),cp_whiteonblack,point(p.x(),p.y()+1));
+    // additional indicators based on module specifics
+    if (m->getModuleType() == MODULE_WEAPON &&
+        m->getWeaponStruct().num_shots > 1)
+    {
+        gfx_obj.addBitmapVerticalString(
+            int2String(m->getWeaponStruct().num_shots),
+            cp_whiteonblack,
+            point(basePos.x(), basePos.y() + 6)
+        );
+    }
+    else if (m->getModuleType() == MODULE_SHIELD)
+    {
+        gfx_obj.addBitmapVerticalString(
+            int2String(m->getMaxFillQuantity()),
+            cp_whiteonblack,
+            point(basePos.x(), basePos.y() + 1)
+        );
+    }
 }
 
 void display::delayAndUpdate(int ms)
 {
     gfx_obj.updateScreen();
     SDL_Delay(ms);
+    event_handler.flushInput();
 }
 
 void display::save(std::ofstream & os) const
@@ -704,9 +835,9 @@ int msgbuffer::getMessageSize()
     return message_string.size();
 }
 
-int msgbuffer::getStringCharacter(int i)
+unsigned char msgbuffer::getStringCharacter(int i)
 {
-    return (int)message_string[i];
+    return (unsigned char)message_string[i];
 }
 
 color_pair msgbuffer::getMessageColorData(int i)
@@ -742,22 +873,22 @@ void msgeAdd(std::string msg, color_pair col_p)
     }
 }
 
-void reDisplay(bool calc_los)
+void reDisplay(bool calculateLOS)
 {
     // print map
     if (wait_counter == 0)
     {
-        reDisplayWithoutUpdate(calc_los);
+        reDisplayWithoutUpdate(calculateLOS);
     }
 
     gfx_obj.updateScreen();
 }
 
-void reDisplayWithoutUpdate(bool calc_los)
+void reDisplayWithoutUpdate(bool calculateLOS)
 {
     gfx_obj.clearScreen();
 
-    if (calc_los)
+    if (calculateLOS)
     {
         calculatePlayerLOS();
     }
@@ -772,22 +903,23 @@ void reDisplayWithoutUpdate(bool calc_los)
 
 void printWindowBorders()
 {
-    std::string current_map_name = "STAR MAP";
+    std::string mapName = "STAR MAP";
 
     if (current_maptype == MAPTYPE_LOCALEMAP)
     {
-        if (universe.getSubAreaMapType() == SMT_PERSISTENT && CSYS->isRaceAffiliated())
+        SubAreaRegion * region = currentRegion();
+        if (universe.getSubAreaMapType() == SMT_PERSISTENT && region->isRaceAffiliated())
         {
-            current_map_name = CSYS->getSubAreaName() + " " +
-                race_domain_suffix_string[(int)universe.getRace(CSYS->getNativeRaceID())->getRaceDomainType()];
+            race* nativeRace = universe.getRace(region->getNativeRaceID());
+            mapName = region->getSubAreaName() + " " + race_domain_suffix_string[(int)nativeRace->getRaceDomainType()];
         }
         else
         {
-            current_map_name = CSYS->getSubAreaName();
+            mapName = region->getSubAreaName();
         }
     }
 
-    display_obj.printWindowBorders(current_map_name, getPlayerShip()->getShipName(), current_tab);
+    display_obj.printWindowBorders(mapName, getPlayerShip()->getShipName(), current_tab);
 }
 
 void printMobCells()
@@ -795,58 +927,69 @@ void printMobCells()
     if (current_maptype != MAPTYPE_LOCALEMAP)
         return;
 
-    point m_loc;
-    chtype ct;
-
-    for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
+    for (int i = 0; i < currentRegion()->getNumShipNPCs(); ++i)
     {
-        m_loc = CSYS->getNPCShip(i)->at();
+        MobShip* ship = currentRegion()->getNPCShip(i);
+        point mobLoc = ship->at();
 
-        if (getMap()->getv(m_loc) && getMap()->getFire(m_loc) == NIL_f && getMap()->getMob(m_loc) != NIL_m)
+        if (!getMap()->getv(mobLoc) || getMap()->getFire(mobLoc) != NIL_f || getMap()->getMob(mobLoc) == NIL_m)
+            continue;
+
+        chtype symbol = ship->getShipSymbol();
+
+        if (!ship->isActivated())
         {
-            ct = CSYS->getNPCShip(i)->getShipSymbol();
-            if (!CSYS->getNPCShip(i)->isActivated())
+            symbol.color.bg = symbol.color.fg;
+            symbol.color.fg = color_black;
+        }
+
+        display_obj.printCell(getMap(), mobLoc, symbol);
+    }
+}
+
+void outputLOFTransition(point lof, point source, point dest, fire_t fireType, bool displayFullLine, int delayValue)
+{
+    if (!displayFullLine)
+        clearAllFireCellsInRange(getMap(), lof, 1);
+
+    fire_t selectedFire = selectFireCell(source, dest, fireType);
+    printAndSetFireCell(getMap(), lof, selectedFire);
+
+    display_obj.delayAndUpdate(delayValue);
+}
+
+void clearAllFireCellsInRange(map* m, point center, int radius)
+{
+    const point mapSize = m->getSize();
+
+    for (int y = center.y() - radius; y <= center.y() + radius; ++y)
+    {
+        for (int x = center.x() - radius; x <= center.x() + radius; ++x)
+        {
+            point target(x, y);
+            if (inMapRange(target, mapSize))
             {
-                ct.color.bg = CSYS->getNPCShip(i)->getShipSymbol().color.fg;
-                ct.color.fg = color_black;
+                printAndSetFireCell(m, target, NIL_f);
             }
-            display_obj.printCell(getMap(), m_loc, ct);
         }
     }
 }
 
-void outputLOFTransition(point lof, point source, point dest, fire_t ft, bool disp_full_line, int delay_value)
-{
-    if (!disp_full_line)
-        clearAllFireCellsInRange(getMap(), lof, 1);
-    printAndSetFireCell(getMap(), lof, selectFireCell(source, dest, ft));
-    display_obj.delayAndUpdate(delay_value);
-}
-
-void clearAllFireCellsInRange(map* m, point lof, int r)
-{
-    point dxy;
-    for (int x = lof.x() - r; x <= lof.x() + r; ++x)
-        for (int y = lof.y() - r; y <= lof.y() + r; ++y)
-        {
-            dxy.set(x, y);
-            printAndSetFireCell(m, dxy, NIL_f);
-        }
-}
-
 void clearAllFireCells(map* m)
 {
-    point p;
-    for (int x = 0; x < m->getSize().x(); ++x)
-        for (int y = 0; y < m->getSize().y(); ++y)
+    const point size = m->getSize();
+
+    for (int y = 0; y < size.y(); ++y)
+    {
+        for (int x = 0; x < size.x(); ++x)
         {
-            p.set(x, y);
-            m->setFire(p, NIL_f);
+            m->setFire(point(x, y), NIL_f);
         }
+    }
+
     display_obj.printMap(m);
     printMobCells();
 }
-
 
 void printAndSetFireCell(map* m, point p, fire_t f)
 {
@@ -859,69 +1002,73 @@ void printAndSetFireCell(map* m, point p, fire_t f)
     }
 }
 
-void addHitSprite(map* m, point p)
+void addHitSprite(map* m, point p, bool fullLineShot)
 {
     printAndSetFireCell(m, p, FIRET_EXPLOSION);
     display_obj.delayAndUpdate(15);
-    clearAllFireCellsInRange(m, p, 1);
+    if (!fullLineShot)
+       clearAllFireCellsInRange(m, p, 1);
 }
 
-void createDamagingExplosionAnimation(point p, int radius, int ms_update, fire_t exp_sprite, bool print_msge)
+void createDamagingExplosionAnimation(point p, int radius, int msUpdate, fire_t expSprite, bool printMessage)
 {
-    if (print_msge)
-        msgeAdd("KABOOOOOOOOOOOOM!!!", fire_symbol[(int)exp_sprite].color);
+    if (printMessage)
+        msgeAdd("KABOOOOOOOOOOOOM!!!", fire_symbol[(int)expSprite].color);
 
     if (!getMap()->getv(p))
         return;
 
-    printFireCircle(p, radius, exp_sprite);
+    printFireCircle(p, radius, expSprite);
 
-    display_obj.delayAndUpdate(ms_update);
+    display_obj.delayAndUpdate(msUpdate);
 
     clearAllFireCells(getMap());
 }
 
-void printFireCircle(point p, int r, fire_t ft)
+void printFireCircle(point center, int radius, fire_t fireType)
 {
-    int x_range;
-
-    for (int y = -r; y <= r; ++y)
+    for (int dy = -radius; dy <= radius; ++dy)
     {
-        x_range = (int)std::sqrt(((double)((r * r) - (y * y))));
-        for (int x = -x_range; x <= x_range; ++x)
-            if (inMapRange(addPoints(p, point(x, y)), getMapSize()))
-                printAndSetFireCell(getMap(), addPoints(p, point(x, y)), ft);
+        int dxRange = static_cast<int>(std::sqrt(radius * radius - dy * dy));
+
+        for (int dx = -dxRange; dx <= dxRange; ++dx)
+        {
+            point target = addPoints(center, point(dx, dy));
+
+            if (inMapRange(target, getMapSize()))
+            {
+                printAndSetFireCell(getMap(), target, fireType);
+            }
+        }
     }
 }
 
 void calculatePlayerLOS()
 {
-    point p;
-
-    int detect_radius = (current_maptype == MAPTYPE_LOCALEMAP ? player_ship.getDetectRadius() : (player_ship.getDetectRadius() / 2));
-
-    int x_range;
+    const point origin = getPlayerShip()->at();
+    const int detectRadius = (current_maptype == MAPTYPE_LOCALEMAP)
+                             ? player_ship.getDetectRadius()
+                             : player_ship.getDetectRadius() / 2;
 
     getMap()->setAllCellsUnvisible();
 
-    for (int y = -detect_radius; y <= detect_radius; ++y)
+    for (int dy = -detectRadius; dy <= detectRadius; ++dy)
     {
-        x_range = (int)std::sqrt(((double)((detect_radius * detect_radius) - (y * y))));
+        const int xRange = static_cast<int>(std::sqrt(detectRadius * detectRadius - dy * dy));
 
-        for (int x = -x_range; x <= x_range; ++x)
+        for (int dx = -xRange; dx <= xRange; ++dx)
         {
-            p = addPoints(point(x, y), getPlayerShip()->at());
+            const point target = addPoints(origin, point(dx, dy));
 
-            if (inMapRange(p, getMapSize()))
+            if (!inMapRange(target, getMapSize()))
+                continue;
+
+            if (!tracer.isBlocking(getMap(), origin, target, false, false))
             {
-                if (!tracer.isBlocking(getMap(), getPlayerShip()->at(), p, false, false))
-                {
-                    cell * cellP = getMap()->getCellP(p);
-
-                    getMap()->setv(p, true);
-                    getMap()->setm(p, true);
-                    updateAllLastSymbols(cellP);
-                }
+                cell* cellPtr = getMap()->getCellP(target);
+                getMap()->setv(target, true);
+                getMap()->setm(target, true);
+                updateAllLastSymbols(cellPtr);
             }
         }
     }

@@ -35,29 +35,33 @@ void MobShip::setShipMob(bool pc, shipmobstat_struct sms_param, npc_ship_type ns
 
 void MobShip::initShipDesign()
 {
-    design_obj.ca_ship_gens = randInt(5,125);
-    design_obj.ca_start_val = ship_design_pattern_ch[randInt(0,NUM_POSSIBLE_SHIPDESIGN_SYMBOLS-1)];
-    design_obj.ca_secondary_color = procgen_ship_colors[randInt(0,NUM_POSSIBLE_SHIP_COLORS-1)].fg;
-
+    design_obj.CAShipGenerations = randInt(5, roll(2) == 0 ? 125 : 325);
+    design_obj.CASecondValue = ship_design_pattern_ch[randInt(0,NUM_POSSIBLE_SHIPDESIGN_SYMBOLS-1)];
+    design_obj.CAThirdValue = ship_design_pattern_ch[randInt(0, NUM_POSSIBLE_SHIPDESIGN_SYMBOLS-1)];
+    design_obj.CAFourthValue = ship_design_pattern_ch[randInt(0, NUM_POSSIBLE_SHIPDESIGN_SYMBOLS-1)];
+    design_obj.ctSecondColor = procgen_ship_colors[randInt(0,NUM_POSSIBLE_SHIP_COLORS-1)].fg;
+    design_obj.ctThirdColor = procgen_ship_colors[randInt(0, NUM_POSSIBLE_SHIP_COLORS-1)].fg;
+    design_obj.ctFourthColor = procgen_ship_colors[randInt(0, NUM_POSSIBLE_SHIP_COLORS-1)].fg;
+    design_obj.shipFlameCh = shipFlames[randInt(0, static_cast<int>(shipFlames.size()) - 1)];
     switch(sms_data.sctype)
     {
         case(CLASSTYPE_FIGHTER):
             if (danger_level <= 13)
-                design_obj.x_extension = randInt(16,18);
+                design_obj.xExtension = randInt(16,18);
             else
-                design_obj.x_extension = randInt(19,21);
+                design_obj.xExtension = randInt(19,21);
             break;
         case(CLASSTYPE_DREADNOUGHT):
-            design_obj.x_extension = randInt(24,26);
+            design_obj.xExtension = randInt(24,26);
             break;
         case(CLASSTYPE_DESTROYER):
-            design_obj.x_extension = randInt(30,32);
+            design_obj.xExtension = randInt(30,32);
             break;
         case(CLASSTYPE_JUGGERNAUT):
-            design_obj.x_extension = 40;
+            design_obj.xExtension = 40;
             break;
         default:
-            design_obj.x_extension = 15;
+            design_obj.xExtension = 15;
             break;
     }
 }
@@ -656,4 +660,19 @@ void loadShipMobStatStruct(std::ifstream& is, shipmobstat_struct& s)
 MobShip* getPlayerShip()
 {
     return &player_ship;
+}
+
+bool hasWeaponOfType(MobShip* ship, weapon_t t)
+{
+    const int numModules = ship->getNumInstalledModules();
+    for (int i = 0; i < numModules; ++i)
+    {
+        Module* mod = ship->getModule(i);
+        if (mod->getModuleType() == MODULE_WEAPON &&
+            mod->getWeaponStruct().wt == t)
+        {
+            return true;
+        }
+    }
+    return false;
 }

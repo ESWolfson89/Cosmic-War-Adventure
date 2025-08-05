@@ -44,8 +44,6 @@
 #define LOCALEREGIONDEFAULTWID (SHOWWID)
 #define LOCALEREGIONDEFAULTHGT (SHOWHGT)
 
-#define CSYS (universe.getSubAreaMapType() == SMT_PERSISTENT ? universe.getSubArea(current_subarea_id) : universe.getNPSubArea())
-
 #define uint unsigned int
 #define uint_64 unsigned long long int
 
@@ -66,7 +64,7 @@
 
 #define NUM_POSSIBLE_SHIP_COLORS 24
 
-#define NUM_POSSIBLE_SHIPDESIGN_SYMBOLS 25
+#define NUM_POSSIBLE_SHIPDESIGN_SYMBOLS 32
 
 #define NUM_STAR_TYPES 4
 
@@ -237,7 +235,10 @@ static const color_type color_lightgray = {192,192,192};
 static const color_type color_blue = {0,0,255};
 static const color_type color_purple = {255,0,255};
 static const color_type color_darkpurple = {128,0,128};
-static const color_type color_mainseq = {255,255,128};
+static const color_type color_lightgreen = { 128,255,128 };
+static const color_type color_lightorange = { 50,200,255 };
+static const color_type color_lightpurple = { 255,128,255 };
+static const color_type color_lightyellow = {255,255,128};
 static const color_type color_planetblue = {0,128,255};
 
 static const color_pair cp_blackonwhite = {color_black,color_white};
@@ -245,7 +246,10 @@ static const color_pair cp_blackongray = {color_black,color_gray};
 static const color_pair cp_grayonblack = {color_gray,color_black};
 static const color_pair cp_darkgrayonblack = {color_darkgray,color_black};
 static const color_pair cp_blackonblack = {color_black,color_black};
-static const color_pair cp_mainseqonblack= {color_mainseq,color_black};
+static const color_pair cp_lightyellowonblack= {color_lightyellow,color_black};
+static const color_pair cp_lightgreenonblack = { color_lightgreen,color_black };
+static const color_pair cp_lightorangeonblack = { color_lightorange,color_black };
+static const color_pair cp_lightpurpleonblack = { color_lightpurple,color_black };
 static const color_pair cp_redondarkgray = {color_red,color_darkgray};
 static const color_pair cp_redonblack = {color_red,color_black};
 static const color_pair cp_whiteonblack = {color_white,color_black};
@@ -280,7 +284,6 @@ static const chtype blank_grid_ch = {cp_spaceonblack,254};
 static const chtype blanktile_ch = {cp_spaceonblack,219};
 static const chtype gray_rect = {cp_grayonblack,219};
 static const chtype white_rect = {cp_whiteonblack,219};
-static const chtype lightblue_flame = {cp_lightblueonblack,247};
 static const chtype gray_horizontal_pipe = {cp_grayonblack,205};
 static const chtype gray_vertical_pipe = {cp_grayonblack,186};
 static const chtype gray_rightarrow = {cp_grayonblack,16};
@@ -296,6 +299,12 @@ static const chtype fueltank_symbol = {cp_orangeonblack,159};
 static const chtype module_sell_symbol = {cp_redonblack,(int)'$'};
 static const chtype crewpod_display_symbol = {cp_lightgrayonblack,186};
 
+static const std::vector<chtype> shipFlames = { {cp_lightblueonblack, 247 },
+                                                {cp_lightredonblack, 247 }, 
+                                                {cp_lightgreenonblack, 247 },
+                                                {cp_lightorangeonblack, 247 }, 
+                                                {cp_lightpurpleonblack, 247} };
+
 static const int ship_design_pattern_ch[NUM_POSSIBLE_SHIPDESIGN_SYMBOLS] =
 {
     (int)'0',
@@ -303,25 +312,32 @@ static const int ship_design_pattern_ch[NUM_POSSIBLE_SHIPDESIGN_SYMBOLS] =
     (int)'5',
     (int)'8',
     (int)'o',
-    (int)'0',
+    (int)'O',
     (int)'=',
     (int)'&',
     (int)'X',
-    (int)'@',
     (int)'>',
-    (int)')',
-    (int)']',
+    (int)'<',
+    (int)'#',
+    (int)'+',
+    (int)'*',
+    (int)'!',
+    (int)':',
+    (int)'-',
+    10,
     21,
+    155,
+    174,
     175,
-    195,
+    177,
     196,
-    197,
-    206,
-    216,
-    219,
+    224,
+    228,
+    232,
     233,
     239,
     240,
+    246,
     249
 };
 
@@ -408,23 +424,23 @@ static const chtype backdrop_symbol[33] =
 {
     blank_ch,
     {cp_verydarkgrayonblack,(int)'~'},
-    {cp_mainseqonblack,(int)'*'},
+    {cp_lightyellowonblack,(int)'*'},
     {cp_lightredonblack,(int)'*'},
     {cp_lightblueonblack,(int)'*'},
     {cp_whiteonblack,(int)'*'},
-    {{color_mainseq, color_darkgreen},(int)'*'},
+    {{color_lightyellow, color_darkgreen},(int)'*'},
     {{color_lightred, color_darkgreen},(int)'*'},
     {{color_lightblue, color_darkgreen},(int)'*'},
     {{color_white, color_darkgreen},(int)'*'},
-    {{color_mainseq, color_darkred},(int)'*'},
+    {{color_lightyellow, color_darkred},(int)'*'},
     {{color_lightred, color_darkred},(int)'*'},
     {{color_lightblue, color_darkred},(int)'*'},
     {{color_white, color_darkred},(int)'*'},
-    {{color_mainseq, color_darkpurple},(int)'*'},
+    {{color_lightyellow, color_darkpurple},(int)'*'},
     {{color_lightred, color_darkpurple},(int)'*'},
     {{color_lightblue, color_darkpurple},(int)'*'},
     {{color_white, color_darkpurple},(int)'*'},
-    {{color_mainseq, color_gray},(int)'*'},
+    {{color_lightyellow, color_gray},(int)'*'},
     {{color_lightred, color_gray},(int)'*'},
     {{color_lightblue, color_gray},(int)'*'},
     {{color_white, color_gray},(int)'*'},
@@ -435,7 +451,7 @@ static const chtype backdrop_symbol[33] =
     {cp_grayonblack,(int)'#'},
     {cp_darkgrayonblack,250},
     {cp_lightgrayonblack,250},
-    {cp_mainseqonblack,219},
+    {cp_lightyellowonblack,219},
     {cp_lightredonblack,219},
     {cp_lightblueonblack,219},
     {cp_whiteonblack,219}

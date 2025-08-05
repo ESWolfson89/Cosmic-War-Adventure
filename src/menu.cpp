@@ -116,6 +116,12 @@ point menu::getArea()
     return area;
 }
 
+void menu::setView(point l, point a)
+{
+    loc = l;
+    area = a;
+}
+
 void menu::save(std::ofstream & os) const
 {
     loc.save(os);
@@ -160,4 +166,14 @@ void menu::load(std::ifstream& is)
         stringLoad(is, menu_items[i].description);
         chtypeLoad(is, menu_items[i].menu_symbol);
     }
+}
+
+point getSmallStationMenuSize()
+{
+    return point(GRIDWID - 4, SHOWHGT / 2 - 2);
+}
+
+point getLargeStationMenuSize()
+{
+    return point(GRIDWID - 4, SHOWHGT - 2);
 }

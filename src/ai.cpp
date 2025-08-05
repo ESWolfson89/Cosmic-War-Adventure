@@ -8,11 +8,11 @@ void activateAllNPCAI()
     gmti = 0;
 
     const double playerSpeed = getPlayerShip()->getSpeed();
-    const int initialNPCCount = CSYS->getNumShipNPCs();
+    const int initialNPCCount = currentRegion()->getNumShipNPCs();
 
-    while (gmti < CSYS->getNumShipNPCs())
+    while (gmti < currentRegion()->getNumShipNPCs())
     {
-        MobShip* npc = CSYS->getNPCShip(gmti);
+        MobShip* npc = currentRegion()->getNPCShip(gmti);
         if (!npc || !npc->isActivated())
         {
             ++gmti;
@@ -33,7 +33,7 @@ void activateAllNPCAI()
             activateOneNPC(npc);
 
             // If the number of NPCs changed (e.g. spawned/destroyed), abort loop
-            if (CSYS->getNumShipNPCs() != initialNPCCount)
+            if (currentRegion()->getNumShipNPCs() != initialNPCCount)
                 return;
         }
 
@@ -146,7 +146,7 @@ void setNPCRandFreePlanetDestination(MobShip* mob)
     if (!mob) 
         return;
 
-    const int nativeRaceID = CSYS->getNativeRaceID();
+    const int nativeRaceID = currentRegion()->getNativeRaceID();
     const point destination = universe.getRace(nativeRaceID)->getFirstFreeHomeworldLoc();
 
     mob->setDestination(destination);
@@ -163,11 +163,52 @@ void setNPCAttackPositionDestination(MobShip* mob)
 
     weapon_struct weapon = weaponMod->getWeaponStruct();
 
+    const point attackMobLoc = getMobFromID(mob->getMobSubAreaAttackID())->at();
+
     const point target = weapon.eightDirectionRestricted
         ? getClosestNPCTargetInRangeLine(mob, weapon.travel_range)
-        : getMobFromID(mob->getMobSubAreaAttackID())->at();
+        : attackMobLoc;
 
-    mob->setDestination(target);
+    if (moveNPCCondition(mob, target))
+        mob->setDestination(target);
+    else if (notOnMapBorder(attackMobLoc, getMapSize()))
+        mob->setDestination(pathfinder.dijkstra(getMap(), mob->at(), attackMobLoc));
+    else
+        mob->setDestination(getPointNextToMapBorder(target));
+}
+
+point getPointNextToMapBorder(point p)
+{
+    if (p.x() == 0 && p.y() == 0)
+    {
+        return p + point(1, 1);
+    }
+    else if (p.x() == 0 && p.y() == getMapSize().y() - 1)
+    {
+        return p + point(1, -1);
+    }
+    else if (p.x() == getMapSize().x() - 1 && p.y() == 0)
+    {
+        return p + point(-1, 1);
+    }
+    else if (p.x() == getMapSize().x() - 1 && p.y() == getMapSize().y() - 1)
+    {
+        return p + point(-1, -1);
+    }
+    else if (p.x() == getMapSize().x() - 1)
+    {
+        return p + point(-1, 0);
+    }
+    else if (p.y() == getMapSize().y() - 1)
+    {
+        return p + point(0, -1);
+    }
+    else if (p.x() == 0)
+    {
+        return p + point(1, 0);
+    }
+    
+    return p + point(0, 1);
 }
 
 point getClosestNPCTargetInRangeLine(MobShip* mob, int travelRange)
@@ -237,9 +278,9 @@ void checkNPCMoveEvent(MobShip* mob)
 
 void checkNPCPlanetMoveEvent(MobShip* mb)
 {
-    if (universe.getSubAreaMapType() == SMT_PERSISTENT && CSYS->isRaceAffiliated())
+    if (universe.getSubAreaMapType() == SMT_PERSISTENT && currentRegion()->isRaceAffiliated())
     {
-        const int victim_race_id = CSYS->getNativeRaceID();
+        const int victim_race_id = currentRegion()->getNativeRaceID();
         const int offending_race_id = mb->getMobSubAreaGroupID();
         
         if (offending_race_id == victim_race_id)
@@ -259,7 +300,7 @@ void checkNPCPlanetEnslaveEvent(MobShip* mob)
 
     const point& loc = mob->at();
     const int mobRaceID = mob->getMobSubAreaGroupID();
-    const int nativeRaceID = CSYS->getNativeRaceID();
+    const int nativeRaceID = currentRegion()->getNativeRaceID();
     auto* nativeRace = universe.getRace(nativeRaceID);
 
     nativeRace->setHomeworldMajorStatus(loc, RMS_ENSLAVED);
@@ -271,9 +312,9 @@ void checkNPCPlanetEnslaveEvent(MobShip* mob)
         msgeAdd("The " + mob->getShipName() + " deploys a slave shield over the homeworld!", cp_purpleonblack);
     }
 
-    for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
+    for (int i = 0; i < currentRegion()->getNumShipNPCs(); ++i)
     {
-        MobShip* npc = CSYS->getNPCShip(i);
+        MobShip* npc = currentRegion()->getNPCShip(i);
         if (!npc)
             continue;
 
@@ -285,7 +326,7 @@ void checkNPCPlanetEnslaveEvent(MobShip* mob)
         }
     }
 
-    int newControllerID = getDominantRaceIDInRegion(CSYS);
+    int newControllerID = getDominantRaceIDInRegion(currentRegion());
 
     nativeRace->setControllerRaceID(newControllerID);
 }
@@ -309,9 +350,9 @@ void checkNPCAggroEvent(MobShip* mob)
     }
 
     // Check nearby hostile NPCs
-    for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
+    for (int i = 0; i < currentRegion()->getNumShipNPCs(); ++i)
     {
-        auto* npc = CSYS->getNPCShip(i);
+        auto* npc = currentRegion()->getNPCShip(i);
         if (!npc || mob->getMobSubAreaID() == npc->getMobSubAreaID())
             continue;
 
@@ -362,7 +403,7 @@ bool planetEnslaveEventCondition(MobShip* mob)
     auto* race = universe.getRace(mob->getMobSubAreaGroupID());
 
     return universe.getSubAreaMapType() == SMT_PERSISTENT &&
-        CSYS->isRaceAffiliated() &&
+        currentRegion()->isRaceAffiliated() &&
         race->getRaceOverallMajorStatus() != RMS_ENSLAVED &&
         mob->getAIPattern() == AIPATTERN_APPROACHPLANET &&
         getMap()->getBackdrop(mob->at()) == LBACKDROP_PLANET;
@@ -376,7 +417,7 @@ bool approachPlanetPatternSetCondition(int offendingRaceID, int victimRaceID)
     return victim->getNumHomeworlds() > 0 &&
         victim->getRaceOverallMajorStatus() != RMS_ENSLAVED &&
         offender->getRaceOverallMajorStatus() != RMS_ENSLAVED &&
-        CSYS->getNumActiveNativeShipsPresent() == 0 &&
+        currentRegion()->getNumActiveNativeShipsPresent() == 0 &&
         offender->getRaceAttStatus(victimRaceID) <= -1;
 }
 

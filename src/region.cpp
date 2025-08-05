@@ -1318,7 +1318,7 @@ map* getMap()
     {
     case(MAPTYPE_LOCALEMAP):
     {
-        return CSYS->getMap();
+        return currentRegion()->getMap();
     }
     default:
     {
@@ -1335,7 +1335,7 @@ point getMapSize()
     {
     case(MAPTYPE_LOCALEMAP):
     {
-        return CSYS->getSize();
+        return currentRegion()->getSize();
     }
     default:
     {
@@ -1350,15 +1350,15 @@ MobShip* getSubAreaShipMobAt(point p)
 {
     if (getMap()->getMob(p) == SHIP_PLAYER)
         return getPlayerShip();
-    return CSYS->getNPCShip(p);
+    return currentRegion()->getNPCShip(p);
 }
 
 MobShip* getMobFromID(int id)
 {
-    for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
+    for (int i = 0; i < currentRegion()->getNumShipNPCs(); ++i)
     {
-        if (CSYS->getNPCShip(i)->getMobSubAreaID() == id)
-            return CSYS->getNPCShip(i);
+        if (currentRegion()->getNPCShip(i)->getMobSubAreaID() == id)
+            return currentRegion()->getNPCShip(i);
     }
 
     return getPlayerShip();
@@ -1366,10 +1366,10 @@ MobShip* getMobFromID(int id)
 
 MobShip* getCurrentMobTurn()
 {
-    for (int i = 0; i < CSYS->getNumShipNPCs(); ++i)
+    for (int i = 0; i < currentRegion()->getNumShipNPCs(); ++i)
     {
-        if (CSYS->getNPCShip(i)->getMobSubAreaID() == current_mob_turn)
-            return CSYS->getNPCShip(i);
+        if (currentRegion()->getNPCShip(i)->getMobSubAreaID() == current_mob_turn)
+            return currentRegion()->getNPCShip(i);
     }
 
     return getPlayerShip();
@@ -1431,4 +1431,9 @@ int getDominantRaceIDInRegion(SubAreaRegion* region)
 int getMobRaceDangerLevel(MobShip* mob)
 {
     return universe.getRace(mob->getMobSubAreaGroupID())->getDangerLevel();
+}
+
+SubAreaRegion * currentRegion()
+{
+    return universe.getSubAreaMapType() == SMT_PERSISTENT ? universe.getSubArea(current_subarea_id) : universe.getNPSubArea();
 }

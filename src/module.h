@@ -178,7 +178,7 @@ static const weapon_struct allbasicweapon_stats[NUM_TOTAL_WEAPON_TYPES] =
   },
   {
       WEAPONTYPE_BEAM, {4,12,9}, {1,3,0}, 8, 0, 0, 25,
-      0, 0, 0, 0, 10, 0, 1, 9, 8, true, true, true, true, FIRET_LIGHTREDLINE, {cp_lightredonblack,92}, "phasor", 6, 450000
+      0, 0, 0, 0, 10, 0, 1, 9, 8, true, true, true, true, FIRET_LIGHTREDLINE, {cp_lightredonblack,92}, "plasma beam", 6, 450000
   },
   {
       WEAPONTYPE_SPREAD, {6,7,6}, {1,4,7}, 7, 1, 0, 0,

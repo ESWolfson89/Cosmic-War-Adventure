@@ -21,6 +21,8 @@ enum input_t
 	INP_DEBUG,
 	INP_WAIT,
 	INP_WAITSPECIFY,
+	INP_ESCAPE,
+	INP_BACKSPACE
 };
 
 class input
@@ -39,9 +41,9 @@ public:
 
 	bool isShiftOrCaps();
 
-	void clearInputBuffer(SDL_Event *);
-
 	void promptAction();
+
+	void flushInput();
 
 	SDL_Keycode getKeyPressed();
 
@@ -56,8 +58,6 @@ private:
 	bool shiftFlag;
 
 };
-
-void flushKeyPresses();
 
 extern input event_handler;
 

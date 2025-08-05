@@ -119,7 +119,7 @@ void gfx_engine::addBitmapVerticalString(std::string string_val, color_pair colp
 
     for (int i = 0; i < (int)string_val.size(); ++i)
     {
-        ct.ascii = (int)string_val[i];
+        ct.ascii = static_cast<unsigned char>(string_val[i]);
         ct.color = colp;
         addBitmapCharacter(ct,point(p.x(),p.y()+i));
     }
@@ -227,6 +227,6 @@ color_pair getInvertedColorpair(color_pair col_p)
 
 bool isColor(color_type c1, color_type c2)
 {
-    return(c1.r == c2.r && c1.g == c2.g && c1.b == c2.b);
+    return (c1.r == c2.r && c1.g == c2.g && c1.b == c2.b);
 }
 

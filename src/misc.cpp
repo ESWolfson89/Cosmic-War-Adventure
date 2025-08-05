@@ -102,3 +102,13 @@ std::string capitalizeString(std::string s)
     return ret_val;
 }
 
+bool chtypeMatches(chtype a, chtype b)
+{
+    return a.ascii = b.ascii &&
+        a.color.fg.r == b.color.fg.r &&
+        a.color.fg.g == b.color.fg.g &&
+        a.color.fg.b == b.color.fg.b &&
+        a.color.bg.r == b.color.bg.r &&
+        a.color.bg.g == b.color.bg.g &&
+        a.color.bg.b == b.color.bg.b;
+}

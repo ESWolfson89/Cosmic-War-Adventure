@@ -44,7 +44,7 @@ void endOfProjectileLoop(MobShip*, point, bool);
 
 void checkIfRaceAggroEvent(MobShip*, MobShip*);
 
-void displayDamageReport(damage_report, MobShip*, bool);
+void displayDamageReport(damage_report, MobShip *, MobShip *, bool);
 
 void checkCreateDamagingExplosionRollDamage(MobShip*, point, int);
 

@@ -3,6 +3,7 @@
 
 #include "globals.h"
 #include "point.h"
+#include "input.h"
 
 class gfx_engine
 {

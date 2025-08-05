@@ -26,10 +26,15 @@ static const std::string classtype_name_strings[6] =
 
 struct ship_design_struct
 {
-    int ca_ship_gens;
-    int ca_start_val;
-    int x_extension;
-    color_type ca_secondary_color;
+    int CAShipGenerations;
+    int CASecondValue;
+    int CAThirdValue;
+    int CAFourthValue;
+    int xExtension;
+    color_type ctSecondColor;
+    color_type ctThirdColor;
+    color_type ctFourthColor;
+    chtype shipFlameCh;
 };
 
 enum shipmob_classtype
@@ -250,6 +255,8 @@ MobShip* getCurrentMobTurn();
 void saveShipMobStatStruct(std::ofstream& os, const shipmobstat_struct& s);
 
 void loadShipMobStatStruct(std::ifstream& is, shipmobstat_struct& s);
+
+bool hasWeaponOfType(MobShip* ship, weapon_t t);
 
 extern MobShip player_ship;
 

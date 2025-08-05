@@ -26,6 +26,7 @@ bool planetEnslaveEventCondition(MobShip* mob);
 bool approachPlanetPatternSetCondition(int offendingRaceID, int victimRaceID);
 bool moveNPCCondition(MobShip* mob, point newLoc);
 
+point getPointNextToMapBorder(point p);
 point getClosestNPCTargetInRangeLine(MobShip* mb, int travelRange);
 
 #endif

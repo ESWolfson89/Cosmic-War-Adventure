@@ -31,6 +31,7 @@ class menu
         void setMenuLevel(int);
         void save(std::ofstream&) const;
         void load(std::ifstream&);
+        void setView(point, point);
         int getNumMenuMainTextStrings();
         int getSelectionIndex();
         int getMenuLevel();
@@ -45,5 +46,10 @@ class menu
         std::vector<std::string> menu_main_text;
         std::vector<menu_item> menu_items;
 };
+
+point getSmallStationMenuSize();
+
+point getLargeStationMenuSize();
+
 
 #endif

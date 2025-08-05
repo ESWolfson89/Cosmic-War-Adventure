@@ -12,6 +12,7 @@ input::input()
 
 void input::promptAction()
 {
+    //flushInput(); // <-- Add this
     action = INP_NONE;
 
     do
@@ -109,6 +110,12 @@ void input::setAction()
         case(SDLK_n):
             action = INP_NO;
             break;
+        case(SDLK_ESCAPE):
+            action = INP_ESCAPE;
+            break;
+        case(SDLK_BACKSPACE):
+            action = INP_BACKSPACE;
+            break;
         default:
             break;
     }
@@ -166,6 +173,7 @@ bool input::checkForKey(char c)
 
 SDL_Keycode input::getKeyPressed()
 {
+    //flushInput(); // <-- Add this
     bool hit_key = false;
 
     while( hit_key == false )
@@ -192,7 +200,10 @@ input_t input::getAction()
     return action;
 }
 
-void flushKeyPresses()
+void input::flushInput()
 {
-
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        // discard all pending events
+    }
 }

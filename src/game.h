@@ -85,6 +85,7 @@ public:
     void setPointIfInMapRangeAndLOS(point, point&);
     void runContactScenario(ContactTree&);
     void executeSubareaEntranceContactScenario(race*, race*, bool&);
+    void updateFinalMiscEndGameDisplayTiles();
     void initMenus();
     void promptQuit();
     bool isTargetableNPC(int, input_t);
@@ -98,6 +99,7 @@ public:
     void save();
     void load();
     void setupLoadedGame();
+    const int maxPirateDangerLevelFromTurnTimer();
     // template functions
     template <typename M> void useMachinePlayer(M*);
     template <typename M> void featurePlayerToggle(M*);
@@ -136,5 +138,7 @@ void printExitPromptMessage();
 star_type getStarTypeFromStarMapTile(point);
 
 std::string getRaceRegionNameAtLocation(point loc);
+
+std::string getUserInputPrompt(std::string& promptText, point& loc, int maxLength);
 
 #endif

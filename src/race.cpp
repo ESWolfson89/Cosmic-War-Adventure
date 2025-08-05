@@ -94,11 +94,32 @@ void race::setupRelationshipVectors()
 void race::generateOneProcgenNativeShip(int dl, shipmob_classtype smct, npc_ship_type nst)
 {
     shipmobstat_struct procgen_struct = getProcgenShipStatStruct(dl, smct);
-    procgen_struct.ship_name = race_name_str + " " + classtype_name_strings[(int)smct];
+    procgen_struct.ship_name = race_name_str;
     procgen_struct.ship_symbol = getRandShipSymbol(smct,dl,(int)procgen_struct.ship_name[0]);
     native_ships.push_back(MobShip(false,procgen_struct,nst,procgen_struct.max_hull,point(0,0)));
     // for now there are no modified weapons
-    generateGuaranteedNPCShipMobModules(&native_ships[(int)native_ships.size()-1]);
+    MobShip* newShip = &native_ships[(int)native_ships.size() - 1];
+    generateGuaranteedNPCShipMobModules(newShip);
+    newShip->setShipName(fullShipName(newShip, race_name_str, smct, false));
+}
+
+std::string fullShipName(MobShip* ship, const std::string& raceName, shipmob_classtype smct, bool isPirate)
+{
+    const bool hasMissile = hasWeaponOfType(ship, WEAPONTYPE_MISSILE);
+
+    if (isPirate)
+    {
+        return hasMissile
+            ? raceName + " pirate bomber"
+            : raceName + " pirate";
+    }
+
+    if (hasMissile && smct == CLASSTYPE_FIGHTER)
+    {
+        return raceName + " bomber";
+    }
+
+    return raceName + " " + classtype_name_strings[static_cast<int>(smct)];
 }
 
 void race::cleanupEverything()

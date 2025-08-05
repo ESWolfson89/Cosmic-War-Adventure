@@ -187,7 +187,7 @@ void mobFire(MobShip* mb, point p)
         }
         case(WEAPONTYPE_BEAM):
         {
-            msgeAdd("*VREEEEEEEE p-chooooooom*", weapon_cp);
+            msgeAdd("*ZZZAAAPPP*", weapon_cp);
             break;
         }
         case(WEAPONTYPE_MISSILE):
@@ -275,14 +275,14 @@ bool checkForMobInLOF(MobShip* mb, point lof, bool add_hitsprite, bool guarantee
     {
         if (add_hitsprite && getMap()->getv(lof))
         {
-            addHitSprite(getMap(), lof);
+            addHitSprite(getMap(), lof, getCurrentMobSelectedModule(mb)->getWeaponStruct().extender_line_disp);
         }
 
         damage_report dr = damageShipMob(mb, mob_in_lof, lof);
 
         if (mb->getMobType() == SHIP_PLAYER || mob_in_lof->getMobType() == SHIP_PLAYER)
         {
-            displayDamageReport(dr, mob_in_lof, false);
+            displayDamageReport(dr, mb, mob_in_lof, false);
         }
 
         blast_radius = getCurrentMobSelectedModule(mb)->getWeaponStruct().blast_radius;
@@ -293,7 +293,7 @@ bool checkForMobInLOF(MobShip* mb, point lof, bool add_hitsprite, bool guarantee
     }
     else
     {
-        if (mb->getMobType() == SHIP_PLAYER || mob_in_lof->getMobType() == SHIP_PLAYER)
+        if ((mb->getMobType() == SHIP_PLAYER || mob_in_lof->getMobType() == SHIP_PLAYER) && mob_in_lof->isActivated())
         {
             displayEvasionReport(accuracy_val, mob_in_lof);
         }
@@ -325,7 +325,7 @@ void displayEvasionReport(int acc_val, MobShip* mb)
     else
         evasion_str = "just barely dodges.";
 
-    msgeAdd(getNamePrefix(mb) + " " + mb->getShipName() + " " + evasion_str, mb->getShipSymbol().color);
+    msgeAdd(getNamePrefix(mb) + " " + mb->getShipName() + " " + evasion_str, cp_grayonblack);
 }
 
 void endOfProjectileLoop(MobShip* mb, point lof, bool is_detectable)
@@ -343,7 +343,7 @@ void checkIfRaceAggroEvent(MobShip* attacker, MobShip* target)
     int agid = attacker->getMobSubAreaGroupID();
 
     if (universe.getSubAreaMapType() == SMT_PERSISTENT)
-        //if (CSYS->isRaceAffiliated())
+        //if (currentRegion()->isRaceAffiliated())
         if (!target->isCurrentPlayerShip())
         {
             // player attack ship outside of home region and home region WILL
@@ -353,60 +353,122 @@ void checkIfRaceAggroEvent(MobShip* attacker, MobShip* target)
                 if (target->isActivated())
                     universe.getRace(tgid)->incPlayerAttStatus(-1);
             }
-            else if (agid != tgid && agid != CSYS->getNativeRaceID())
+            else if (agid != tgid && agid != currentRegion()->getNativeRaceID())
             {
                 universe.getRace(tgid)->incRaceAttStatus(agid, -1);
             }
         }
 }
 
-void displayDamageReport(damage_report dr, MobShip* mb, bool exp_damage)
+void displayDamageReport(damage_report dr, MobShip* attacker, MobShip* target, bool explosiveDamage)
 {
-    if (!getMap()->getv(mb->at()))
+    if (!getMap()->getv(target->at()) || target->getHullStatus() + dr.hull_damage <= 0)
         return;
 
-    if (mb->getHullStatus() + dr.hull_damage <= 0)
-        return;
+    const int shieldPerc = target->getTotalFillPercentageOfType(MODULE_SHIELD);
+    const std::string& targetName = target->getShipName();
+    const weapon_struct& weapon = getCurrentMobSelectedModule(attacker)->getWeaponStruct();
 
-    std::string report_str = mb->getShipName();
+    std::string reportStr;
+    color_pair colorMsg = weapon.disp_chtype.color;
+    bool shieldDamage = false;
 
-    std::string hull_perc_str = "";
+    auto emitShieldDown = [&](const std::string& msg) {
+        msgeAdd(msg, cp_grayonblack);
+        msgeAdd("Shields down!", cp_blueonblack);
+        };
 
-    if (!exp_damage)
-        report_str += " hit!";
-    else
-        report_str += " within blast radius!";
-
-    int shield_perc = mb->getTotalFillPercentageOfType(MODULE_SHIELD);
-
-    if (mb->getHullStatus() > 0)
-        hull_perc_str = int2String((int)(((double)mb->getHullStatus() / (double)mb->getMaxHull()) * 100.0));
-    else
-        hull_perc_str = int2String(0);
-
-    if (dr.shield_damage > 0)
+    if (!explosiveDamage)
     {
-        report_str += " Shields ";
-        if (shield_perc <= 0)
-            report_str += "down!";
-        else
-            report_str += "to " + int2String(shield_perc) + "%!";
+        switch (weapon.wt)
+        {
+        case WEAPONTYPE_BLAST:
+            if (shieldPerc <= 0 && dr.shield_damage == 0)
+                reportStr = "The " + targetName + "'s hull is damaged from the blast!";
+            else
+            {
+                reportStr = targetName + " is hit.";
+                shieldDamage = true;
+                if (shieldPerc <= 0)
+                    return emitShieldDown(reportStr);
+            }
+            break;
 
-        msgeAdd(report_str, mb->getShipSymbol().color);
+        case WEAPONTYPE_MECH:
+            reportStr = "The razor tears through the hull of the " + targetName + "!";
+            break;
+
+        case WEAPONTYPE_BEAM:
+            reportStr = "The beam cuts through the " + targetName + "'s hull!";
+            break;
+
+        case WEAPONTYPE_SPREAD:
+            if (shieldPerc <= 0 && dr.shield_damage == 0)
+                reportStr = "The " + targetName + " is burned!";
+            else
+            {
+                reportStr = "The " + targetName + "'s shields are burned.";
+                shieldDamage = true;
+                if (shieldPerc <= 0)
+                    return emitShieldDown(reportStr);
+            }
+            break;
+
+        case WEAPONTYPE_HELL:
+            reportStr = "The " + targetName + " is shredded by the thunderous blast!";
+            break;
+
+        case WEAPONTYPE_PULSE:
+            if (shieldPerc <= 0 && dr.shield_damage == 0)
+                reportStr = "The " + targetName + " is blasted!";
+            else
+            {
+                reportStr = "The " + targetName + " is hit.";
+                shieldDamage = true;
+                if (shieldPerc <= 0)
+                    return emitShieldDown(reportStr);
+            }
+            break;
+
+        case WEAPONTYPE_WALLOP:
+            reportStr = "The " + targetName + " is engulfed by the toxic fumes!";
+            break;
+
+        case WEAPONTYPE_MISSILE:
+            reportStr = "The " + targetName + " is hit by the missile!";
+            break;
+
+        default:
+            break;
+        }
+    }
+    else
+    {
+        reportStr = "The " + targetName + " is within blast radius!";
+        colorMsg = cp_orangeonblack;
+    }
+
+    msgeAdd(reportStr, shieldDamage ? cp_grayonblack : colorMsg);
+
+    if (shieldDamage)
+    {
+        msgeAdd("Shields to " + int2String(shieldPerc) + "%!", cp_lightblueonblack);
         return;
     }
 
     if (dr.hull_damage > 0)
     {
-        report_str += " Hull to " + hull_perc_str + "%!";
+        const int hullPerc = target->getHullStatus() > 0
+            ? static_cast<int>((target->getHullStatus() / static_cast<double>(target->getMaxHull())) * 100.0)
+            : 0;
+
+        msgeAdd("Hull to " + int2String(hullPerc) + "%!", cp_grayonblack);
     }
 
-    if (mb->getHullStatus() > 0 && dr.crew_damage > 0 && mb->getTotalMTFillRemaining(MODULE_CREW) > 0)
+    if (target->getHullStatus() > 0 && dr.crew_damage > 0 && target->getTotalMTFillRemaining(MODULE_CREW) > 0)
     {
-        report_str += " " + int2String(dr.crew_damage) + " crew perished!";
+        msgeAdd(int2String(dr.crew_damage) + " crew perished!", cp_greenonblack);
     }
-
-    msgeAdd(report_str, mb->getShipSymbol().color);
 }
 
 void checkCreateDamagingExplosion(point lof, int blast_radius, int ms_delay, fire_t ft, bool print_msge, damage_report dr, bool caused_by_ship)
@@ -431,37 +493,34 @@ void checkCreateDamagingExplosionRollDamage(MobShip* mb, point lof, int blast_ra
     checkCreateDamagingExplosion(lof, blast_radius, 15, FIRET_DAMAGINGEXPLOSION, false, dr, true);
 }
 
-// details to follow regarding mechanic here...
-// mradius must be 2 or more
-void checkMobExplosionRadiusDamage(point p, int mradius, damage_report dr, bool causedByShip)
+void checkMobExplosionRadiusDamage(point center, int radius, damage_report baseDamage, bool causedByShip)
 {
-
-    point loc;
-    damage_report dr_mod;
-
-    if (mradius < 2)
-    {
+    if (radius < 2)
         return;
-    }
 
-    for (int i = -(mradius - 1); i <= (mradius - 1); ++i)
+    const int range = radius - 1;
+
+    for (int dy = -range; dy <= range; ++dy)
     {
-        for (int j = -(mradius - 1); j <= (mradius - 1); ++j)
+        for (int dx = -range; dx <= range; ++dx)
         {
-            loc.set(i + p.x(), j + p.y());
-            if (inMapRange(loc, getMapSize()))
+            // Skip the explosion center
+            if (dx == 0 && dy == 0)
+                continue;
+
+            point target = addPoints(center, point(dx, dy));
+
+            if (!inMapRange(target, getMapSize()))
+                continue;
+
+            MobShip* targetMob = getSubAreaShipMobAt(target);
+
+            if (getMap()->getMob(target) != NIL_m && targetMob != nullptr)
             {
-                if (!(i == 0 && j == 0))
-                {
-                    if (getMap()->getMob(loc) != NIL_m)
-                    {
-                        if (causedByShip)
-                        {
-                            checkIfRaceAggroEvent(getCurrentMobTurn(), getSubAreaShipMobAt(loc));
-                        }
-                        dr_mod = damageShipMobFromBlastRadius(getSubAreaShipMobAt(loc), p, dr.hull_damage, dr.crew_damage);
-                    }
-                }
+                if (causedByShip)
+                    checkIfRaceAggroEvent(getCurrentMobTurn(), targetMob);
+
+                damageShipMobFromBlastRadius(targetMob, center, baseDamage.hull_damage, baseDamage.crew_damage);
             }
         }
     }

@@ -1,145 +1,175 @@
 #include "contact.h"
 
-
-void loadStationInitialContactMenu(station *station_obj, menu *menu_obj)
+void loadStationInitialContactMenu(station* stationObj, menu* menuObj)
 {
-    for (int i = 0; i < station_obj->getNumBasicStationTradeChoices(); ++i)
+    const int numChoices = stationObj->getNumBasicStationTradeChoices();
+
+    for (int i = 0; i < numChoices; ++i)
     {
-        switch(station_obj->getBasicStationTradeChoice(i))
+        const basic_station_trade_choice choice = stationObj->getBasicStationTradeChoice(i);
+        std::string label;
+        chtype symbol = blank_ch;
+
+        switch (choice)
         {
-            case(STATIONCHOICE_FUEL):
-            {
-                menu_obj->addMenuItem("Buy Fuel: " + uint642String(station_obj->getFuelCost()) + " CRED", fuelupgrade_symbol);
-                break;
-            }
-            case(STATIONCHOICE_HULLREPAIR):
-            {
-                menu_obj->addMenuItem("Repair Hull: " + uint642String(station_obj->getHullFixCost()) + " CRED",hull_repair_symbol);
-                break;
-            }
-            case(STATIONCHOICE_HULLUPGRADE):
-            {
-                menu_obj->addMenuItem("Upgrade Hull: " + uint642String(station_obj->getHullUpgradeCost()) + " CRED",hull_upgrade_symbol);
-                break;
-            }
-            case(STATIONCHOICE_INCNUMMODULECAPACITY):
-            {
-                menu_obj->addMenuItem("Upgrade Slot Capacity: " + uint642String(station_obj->getSlotCapUpgradeCost()) + " CRED",slot_upgrade_symbol);
-                break;
-            }
-            case(STATIONCHOICE_HIRECREW):
-                menu_obj->addMenuItem("Hire Crew: " + uint642String(station_obj->getCrewCost()) + " CRED",crew_upgrade_symbol);
-                break;
-            case(STATIONCHOICE_BUYMODULE):
-                menu_obj->addMenuItem("Buy modules",module_buy_symbol);
-                break;
-            case(STATIONCHOICE_SELLMODULE):
-                menu_obj->addMenuItem("Sell modules",module_sell_symbol);
-                break;
-            default:
-                break;
+        case STATIONCHOICE_FUEL:
+            label = "Buy Fuel: " + uint642String(stationObj->getFuelCost()) + " CRED";
+            symbol = fuelupgrade_symbol;
+            break;
+
+        case STATIONCHOICE_HULLREPAIR:
+            label = "Repair Hull: " + uint642String(stationObj->getHullFixCost()) + " CRED";
+            symbol = hull_repair_symbol;
+            break;
+
+        case STATIONCHOICE_HULLUPGRADE:
+            label = "Upgrade Hull: " + uint642String(stationObj->getHullUpgradeCost()) + " CRED";
+            symbol = hull_upgrade_symbol;
+            break;
+
+        case STATIONCHOICE_INCNUMMODULECAPACITY:
+            label = "Upgrade Slot Capacity: " + uint642String(stationObj->getSlotCapUpgradeCost()) + " CRED";
+            symbol = slot_upgrade_symbol;
+            break;
+
+        case STATIONCHOICE_HIRECREW:
+            label = "Hire Crew: " + uint642String(stationObj->getCrewCost()) + " CRED";
+            symbol = crew_upgrade_symbol;
+            break;
+
+        case STATIONCHOICE_BUYMODULE:
+            label = "Buy modules";
+            symbol = module_buy_symbol;
+            break;
+
+        case STATIONCHOICE_SELLMODULE:
+            label = "Sell modules";
+            symbol = module_sell_symbol;
+            break;
+
+        default:
+            continue;
         }
+
+        menuObj->addMenuItem(label, symbol);
     }
 }
 
-void loadEntertainmentCenterInitialContactMenu(EntertainmentStation * station_obj, menu * menu_obj)
+void loadEntertainmentCenterInitialContactMenu(EntertainmentStation* stationObj, menu* menuObj)
 {
-    chtype slotSymbol;
-    chtype diamondSymbol;
-
-    for (int i = 0; i < station_obj->getNumSlotMachines(); ++i)
+    for (int i = 0; i < stationObj->getNumSlotMachines(); ++i)
     {
-        slotSymbol = { station_obj->getSlotMachine(i)->getMachineColor() , '$'};
-        menu_obj->addMenuItem("SLOTS ", slotSymbol);
+        chtype slotSymbol = { stationObj->getSlotMachine(i)->getMachineColor(), '$' };
+        menuObj->addMenuItem("SLOTS", slotSymbol);
     }
 
-    for (int i = 0; i < station_obj->getNumDiamondMachines(); ++i)
+    for (int i = 0; i < stationObj->getNumDiamondMachines(); ++i)
     {
-        diamondSymbol = { station_obj->getDiamondsMachine(i)->getMachineColor() , 4 };
-        menu_obj->addMenuItem("DIAMONDS ", diamondSymbol);
+        chtype diamondSymbol = { stationObj->getDiamondsMachine(i)->getMachineColor(), 4 };
+        menuObj->addMenuItem("DIAMONDS", diamondSymbol);
     }
 }
 
-void loadStationBuyModulesMenu(station *station_obj, menu *menu_obj)
+void loadStationBuyModulesMenu(station* stationObj, menu* menuObj)
 {
-    std::string added_module_string = "";
-    chtype added_module_chtype = blank_ch;
+    const int numModules = stationObj->getNumModulesForTrade();
 
-    for (int i = 0; i < station_obj->getNumModulesForTrade(); ++i)
+    for (int i = 0; i < numModules; ++i)
     {
-        added_module_string = "";
-        switch(station_obj->getModuleForTrade(i)->getModuleType())
+        Module* mod = stationObj->getModuleForTrade(i);
+        std::string label;
+        chtype sym = blank_ch;
+
+        switch (mod->getModuleType())
         {
-            case(MODULE_WEAPON):
-                added_module_string += "<WEAPON> " + station_obj->getModuleForTrade(i)->getWeaponStruct().name_modifier + " (POWER " +
-                                                     int2String((int)(station_obj->getModuleForTrade(i)->getFillQuantity()/getWeaponModuleConsumptionPerTurn(station_obj->getModuleForTrade(i)))) + ")";
-                added_module_chtype = station_obj->getModuleForTrade(i)->getWeaponStruct().disp_chtype;
-                break;
-            case(MODULE_ENGINE):
-                added_module_string += "<ENGINE> " + station_obj->getModuleForTrade(i)->getEngineStruct().name_modifier;
-                added_module_chtype = station_obj->getModuleForTrade(i)->getEngineStruct().disp_chtype;
-                break;
-            case(MODULE_SHIELD):
-                added_module_string += "<SHIELD> " + station_obj->getModuleForTrade(i)->getShieldStruct().name_modifier;
-                added_module_chtype = station_obj->getModuleForTrade(i)->getShieldStruct().disp_chtype;
-                break;
-            case(MODULE_CREW):
-                added_module_string += "Crew Pod (MAX " + int2String((int)(station_obj->getModuleForTrade(i)->getMaxFillQuantity())) + ")";
-                added_module_chtype = crewpod_symbol;
-                break;
-            case(MODULE_FUEL):
-                added_module_string += "Fuel Tank (MAX " + int2String((int)(station_obj->getModuleForTrade(i)->getMaxFillQuantity())) + ")";
-                added_module_chtype = fueltank_symbol;
-                break;
-            default:
-                break;
+        case MODULE_WEAPON:
+            label = mod->getWeaponStruct().name_modifier +
+                " (POWER " + int2String(mod->getFillQuantity() /
+                    getWeaponModuleConsumptionPerTurn(mod)) + ")";
+            sym = mod->getWeaponStruct().disp_chtype;
+            break;
+
+        case MODULE_ENGINE:
+            label = mod->getEngineStruct().name_modifier;
+            sym = mod->getEngineStruct().disp_chtype;
+            break;
+
+        case MODULE_SHIELD:
+            label = mod->getShieldStruct().name_modifier;
+            sym = mod->getShieldStruct().disp_chtype;
+            break;
+
+        case MODULE_CREW:
+            label = "Crew Pod (MAX " + int2String(mod->getMaxFillQuantity()) + ")";
+            sym = crewpod_symbol;
+            break;
+
+        case MODULE_FUEL:
+            label = "Fuel Tank (MAX " + int2String(mod->getMaxFillQuantity()) + ")";
+            sym = fueltank_symbol;
+            break;
+
+        default:
+            continue;
         }
-        added_module_string += ": " + uint642String(station_obj->getModuleForTradeCost(i)) + " CRED";
-        menu_obj->addMenuItem(added_module_string,added_module_chtype);
+
+        label += ": " + uint642String(stationObj->getModuleForTradeCost(i)) + " CRED";
+        menuObj->addMenuItem(label, sym);
     }
-    menu_obj->addMenuItem("[back]",blank_ch);
+
+    menuObj->addMenuItem("[back]", blank_ch);
 }
 
-void loadStationSellModulesMenu(station *station_obj, menu *menu_obj, MobShip *player_ship)
+void loadStationSellModulesMenu(station* stationObj, menu* menuObj, MobShip* playerShip)
 {
-    std::string added_module_string = "";
-    chtype added_module_chtype = blank_ch;
+    const int numMods = playerShip->getNumInstalledModules();
 
-    for (int i = 0; i < player_ship->getNumInstalledModules(); ++i)
+    for (int i = 0; i < numMods; ++i)
     {
-        added_module_string = "";
-        switch(player_ship->getModule(i)->getModuleType())
+        Module* mod = playerShip->getModule(i);
+        std::string label;
+        chtype sym = blank_ch;
+
+        switch (mod->getModuleType())
         {
-            case(MODULE_WEAPON):
-                added_module_string += "<WEAPON> " + player_ship->getModule(i)->getWeaponStruct().name_modifier + " (POWER " +
-                                                     int2String((int)(player_ship->getModule(i)->getFillQuantity()/getWeaponModuleConsumptionPerTurn(player_ship->getModule(i)))) + ")";
-                added_module_chtype = player_ship->getModule(i)->getWeaponStruct().disp_chtype;
-                break;
-            case(MODULE_ENGINE):
-                added_module_string += "<ENGINE> " + player_ship->getModule(i)->getEngineStruct().name_modifier;
-                added_module_chtype = player_ship->getModule(i)->getEngineStruct().disp_chtype;
-                break;
-            case(MODULE_SHIELD):
-                added_module_string += "<SHIELD> " + player_ship->getModule(i)->getShieldStruct().name_modifier;
-                added_module_chtype = player_ship->getModule(i)->getShieldStruct().disp_chtype;
-                break;
-            case(MODULE_CREW):
-                added_module_string += "Crew Pod (" + int2String((int)(player_ship->getModule(i)->getFillQuantity())) +
-                                       "/" + int2String((int)(player_ship->getModule(i)->getMaxFillQuantity())) + ")";
-                added_module_chtype = crewpod_symbol;
-                break;
-            case(MODULE_FUEL):
-                added_module_string += "Fuel Tank (" + int2String((int)(player_ship->getModule(i)->getFillQuantity())) +
-                                       "/" + int2String((int)(player_ship->getModule(i)->getMaxFillQuantity())) + ")";
-                added_module_chtype = fueltank_symbol;
-                break;
-            default:
-                break;
+        case MODULE_WEAPON:
+            label = mod->getWeaponStruct().name_modifier +
+                " (POWER " + int2String(mod->getFillQuantity() /
+                    getWeaponModuleConsumptionPerTurn(mod)) + ")";
+            sym = mod->getWeaponStruct().disp_chtype;
+            break;
+
+        case MODULE_ENGINE:
+            label = mod->getEngineStruct().name_modifier;
+            sym = mod->getEngineStruct().disp_chtype;
+            break;
+
+        case MODULE_SHIELD:
+            label = mod->getShieldStruct().name_modifier;
+            sym = mod->getShieldStruct().disp_chtype;
+            break;
+
+        case MODULE_CREW:
+            label = "Crew Pod (" + int2String(mod->getFillQuantity()) + "/" +
+                int2String(mod->getMaxFillQuantity()) + ")";
+            sym = crewpod_symbol;
+            break;
+
+        case MODULE_FUEL:
+            label = "Fuel Tank (" + int2String(mod->getFillQuantity()) + "/" +
+                int2String(mod->getMaxFillQuantity()) + ")";
+            sym = fueltank_symbol;
+            break;
+
+        default:
+            continue;
         }
-        added_module_string += ": " + uint642String(station_obj->getModuleSellCost(player_ship->getModule(i))) + " CRED";
-        menu_obj->addMenuItem(added_module_string,added_module_chtype);
+
+        label += ": " + uint642String(stationObj->getModuleSellCost(mod)) + " CRED";
+        menuObj->addMenuItem(label, sym);
     }
-    menu_obj->addMenuItem("[back]",blank_ch);
+
+    menuObj->addMenuItem("[back]", blank_ch);
 }
 
 void setStationContactData(race *race_obj, station *station_obj, menu *menu_obj, MobShip *player_ship, int menu_lev)
@@ -158,6 +188,7 @@ void setStationContactData(race *race_obj, station *station_obj, menu *menu_obj,
             loadStationBuyModulesMenu(station_obj,menu_obj);
             break;
         case(2):
+            menu_obj->setView(menu_obj->getLoc(), getLargeStationMenuSize());
             loadStationSellModulesMenu(station_obj,menu_obj,player_ship);
             break;
         default:

@@ -238,4 +238,6 @@ double getProcgenBaseSpeed(shipmob_classtype, int);
 
 MobShip* getHighestDangerLevelShipForRace(race* r);
 
+std::string fullShipName(MobShip* ship, const std::string & raceName, shipmob_classtype smct, bool pirate);
+
 #endif

@@ -45,7 +45,7 @@ class msgbuffer
         void printMessages();
         void deleteAllMessages();
         int getMessageSize();
-        int getStringCharacter(int);
+        unsigned char getStringCharacter(int);
         color_pair getMessageColorData(int);
     private:
         std::string message_string;
@@ -89,6 +89,7 @@ class display
         void displayMachineBox();
         int numShipPixelsAdj(int,int,int);
         bool addMessage(std::string,color_pair);
+        bool allSurroundingNPCShipPixelsMatch(int i, int j, const std::vector<chtype>& matchValues);
         chtype getSymbol(map *,point);
         void save(std::ofstream &) const;
         void load(std::ifstream &);
@@ -97,6 +98,7 @@ class display
         msgbuffer mbuffer;
         int npc_ship_pixels[NPCSHIP_PIXEL_MAXHEIGHT][NPCSHIP_PIXEL_MAXWIDTH];
         int npc_ship_pixels_temp[NPCSHIP_PIXEL_MAXHEIGHT][NPCSHIP_PIXEL_MAXWIDTH];
+        chtype npc_ship_chars[NPCSHIP_PIXEL_MAXHEIGHT][NPCSHIP_PIXEL_MAXWIDTH];
 };
 
 color_type getFuelMeterColor(Module *m);
@@ -121,7 +123,7 @@ void clearAllFireCells(map*);
 
 void printAndSetFireCell(map*, point, fire_t);
 
-void addHitSprite(map*, point);
+void addHitSprite(map*, point, bool);
 
 void createDamagingExplosionAnimation(point, int, int, fire_t, bool);
 

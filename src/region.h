@@ -172,6 +172,8 @@ int getDominantRaceIDInRegion(SubAreaRegion* region);
 
 int getMobRaceDangerLevel(MobShip*);
 
+SubAreaRegion* currentRegion();
+
 
 extern StarMapRegion universe;
 extern MapType current_maptype;

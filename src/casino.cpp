@@ -28,6 +28,7 @@ void machine::delayFunc(Uint32 t)
 {
     gfx_obj.updateScreen();
     SDL_Delay(t);
+    event_handler.flushInput();
 }
 
 void machine::updateFunc()
@@ -179,7 +180,7 @@ void slot::drawMachine()
 
 void slot::drawSlotStateIndicator(std::string txt, machine_state s)
 {
-    color_pair select_color = {text_color.fg,color_verydarkgray};
+    color_pair select_color = {text_color.fg,color_darkgray};
 
     point loc = point(2+(((int)((int)s/4))*11)+MACHINEX_OFFSET,16+(int)(s % 4) + MACHINEY_OFFSET);
 
@@ -1066,7 +1067,7 @@ void diamond::drawDiamondText()
 
 void diamond::drawDiamondStateIndicator(std::string txt, machine_state s)
 {
-    color_pair select_color = {text_color.fg,color_verydarkgray};
+    color_pair select_color = {text_color.fg,color_darkgray};
 
     point loc = point(2+(((int)((int)(s-8)/3))*11)+MACHINEX_OFFSET,17+(int)((s-8)%3)+MACHINEY_OFFSET);
 

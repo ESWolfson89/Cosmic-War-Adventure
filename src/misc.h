@@ -38,4 +38,6 @@ std::string uint642String(uint_64);
 
 std::string capitalizeString(std::string);
 
+bool chtypeMatches(chtype a, chtype b);
+
 #endif
