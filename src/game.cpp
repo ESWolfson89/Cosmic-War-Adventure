@@ -347,9 +347,10 @@ void Game::checkForUniversalRaceEvent()
 
     checkForUnEnslavementRaceEvent();
     checkForRaceWarEvent();
+    checkForRaceBattleEvent();
 }
 
-void Game::checkForRaceWarEvent()
+void Game::checkForRaceBattleEvent()
 {
     const int numRaces = universe.getNumRaces();
 
@@ -387,6 +388,8 @@ void Game::raceInvasionEvent(race* offender, race* defender)
     const point offenderLoc = offender->getStarmapLoc();
     const int subareaIndex = universe.getSubAreaIndex(defenderLoc);
 
+    std::string domainStr = race_domain_suffix_string[(int)defender->getRaceDomainType()];
+
     if (subareaIndex < 0)
         return;
 
@@ -394,7 +397,10 @@ void Game::raceInvasionEvent(race* offender, race* defender)
     map* subMap = region->getMap();
 
     if (region->getNumShipNPCs() >= 100)
+    {
+        msgeAddPromptSpace("You detect a fleet of ships failing to enter the " + defender->getNameString() + " " + domainStr + ".", cp_whiteonblack);
         return;
+    }
 
     const int numShips = randInt(1, RACE_EVENT_BATTLE_SHIPS_MAX_SPAWN);
     const point mapLimit = addPoints(subMap->getSize(), point(-1, -1));
@@ -420,7 +426,6 @@ void Game::raceInvasionEvent(race* offender, race* defender)
     std::string locationStr = "(" + int2String(defenderLoc.x() + 1) + "," +
         int2String(STARMAPHGT - defenderLoc.y()) + ")";
 
-    std::string domainStr = race_domain_suffix_string[(int)defender->getRaceDomainType()];
     std::string message;
 
     if (numShips == 1)
@@ -448,15 +453,15 @@ void Game::checkForSubAreaRaceEvent()
         return;
     }
 
-    const int totalNPCs = currentRegion()->getNumShipNPCs();
+    const int totalActiveNPCs = currentRegion()->getNumActiveShipsPresent();
     const int activeNatives = currentRegion()->getNumActiveNativeShipsPresent();
 
-    if (totalNPCs > 0 && totalNPCs == activeNatives)
+    if (totalActiveNPCs > 0 && totalActiveNPCs == activeNatives)
         return;
 
     const point mapSize = getMapSize();
     const int maxAllowedNPCs = std::min(75, std::min(mapSize.x(), mapSize.y()) * 2);
-    if (totalNPCs >= maxAllowedNPCs)
+    if (totalActiveNPCs >= maxAllowedNPCs)
         return;
 
     const int homeworldRaceID = currentRegion()->getNativeRaceID();
@@ -605,7 +610,7 @@ void Game::checkForRaceSurrenderToPlayerEvent()
 
 void Game::runRaceSurrenderToPlayerScript(race *r)
 {
-    display_obj.printMonitorWindow();
+    display_obj.printMonitorWindow(color_white);
 
     msgeAddPromptSpace("Incoming Transmission...", cp_whiteonblack);
 
@@ -793,7 +798,7 @@ void Game::checkForUnEnslavementRaceEvent()
 
 void Game::checkPlayerRecapturingRaceEvent(race *oldController, race *original)
 {
-    display_obj.printMonitorWindow();
+    display_obj.printMonitorWindow(color_white);
 
     msgeAddPromptSpace("Incoming Transmission...", cp_whiteonblack);
 
@@ -822,6 +827,48 @@ void Game::executeMiscNPCTurnBasedData()
     {
         createShipDestructionAnimations();
     }
+}
+
+void Game::checkForRaceWarEvent()
+{
+    for (auto i = 0; i < universe.getNumRaces(); i++)
+    {
+        race* attackingRace = universe.getRace(i);
+        int attackerRaceID = attackingRace->getRaceID();
+        int attackedRaceID = attackingRace->getRaceIDCommandedToAttack();
+
+        if (attackedRaceID == -1)
+            continue;
+
+        race* attackedRace = universe.getRace(attackedRaceID);
+        std::string raceAttackerName = attackingRace->getNameString();
+        std::string raceAttackedRegionName = attackedRace->getNameString() + + " " + race_domain_suffix_string[(int)attackedRace->getRaceDomainType()];
+       
+        int numAttacksFromAttackerRace = numAttacksFromRace(attackingRace);
+        int numAttacksFromAttackedRace = numAttacksFromRace(attackedRace);
+
+        for (auto i = 0; i < numAttacksFromAttackerRace; i++)
+        {
+            raceInvasionEvent(attackingRace, attackedRace);
+        }
+
+        attackingRace->setRaceIDCommandedToAttack(-1);
+
+        if (attackedRace->getRaceOverallMajorStatus() == RMS_FREE)
+        {
+            msgeAddPromptSpace("The " + raceAttackedRegionName + " retaliates on the arrival of the " + raceAttackerName + " ships!", cp_whiteonblack);
+
+            for (auto i = 0; i < numAttacksFromAttackedRace; i++)
+            {
+                raceInvasionEvent(attackedRace, attackingRace);
+            }
+        }
+    }
+}
+
+int numAttacksFromRace(race* attacker)
+{
+    return 1;
 }
 
 void Game::checkMobRegenerateEvent(MobShip* s, module_type mt)
@@ -1171,7 +1218,7 @@ void Game::addEncounterShips()
         race* candidateRace = universe.getRace(candidateID);
         MobShip* nativeShip = candidateRace->getNativeShip(0);
 
-        if (!nativeShip)
+        if (!nativeShip || candidateRace->getPlayerAttStatus() >= 0)
             continue;
 
         dangerLevel = candidateRace->getDangerLevel();
@@ -1277,6 +1324,7 @@ void Game::useSpaceStation(point p)
                 if (selection >= s->getNumBasicStationTradeChoices())
                 {
                     exitMenu = true;
+                    station_menu_obj.setSelectionIndex(0);
                     break;
                 }
 
@@ -1666,14 +1714,34 @@ bool Game::converseViaContactMenu(race* nativeRace)
         gfx_obj.updateScreen();
         SDL_Keycode enter_action = event_handler.getKeyPressed();
         display_obj.clearAndDeleteAllMessages();
+
+        bool nativeAreaSeiged = false;
+
+        const int controllerNativeRegionIndex = universe.getSubAreaIndex(controllerRace->getStarmapLoc());
+
+        const int totalActiveNPCs = universe.getSubArea(controllerNativeRegionIndex)->getNumActiveShipsPresent();
+        const int activeNatives = universe.getSubArea(controllerNativeRegionIndex)->getNumActiveNativeShipsPresent();
+
+        if (totalActiveNPCs > activeNatives || controllerRace->getRaceOverallMajorStatus() == RMS_ENSLAVED)
+        {
+            nativeAreaSeiged = true;
+        }
+
         switch(enter_action)
         {
             case(SDLK_e):
-                if (controllerRace->getPlayerAttStatus() >= 0)
+                if (controllerRace->getPlayerAttStatus() >= 0 || nativeAreaSeiged)
                     return true;
                 break;
             case(SDLK_c):
+            {
+                if (nativeAreaSeiged)
+                {
+                    msgeAddPromptSpace("Due to the seige at The " + controllerRace->getNameString() + " " + race_domain_suffix_string[(int)controllerRace->getRaceDomainType()] + ", are unwilling to make contact.", cp_whiteonblack);
+                    return false;
+                }
                 break;
+            }
             default:
                 return false;
         }
@@ -1683,6 +1751,7 @@ bool Game::converseViaContactMenu(race* nativeRace)
     msgeAddPromptSpace("Incoming Transmission...", cp_whiteonblack);
     executeSubareaEntranceContactScenario(controllerRace, nativeRace, enterSubArea);
     nativeRace->setPlayerIDByRaceStatus(true);
+    raceIDNameMapDiscovered[nativeRace->getRaceID()] = nativeRace->getNameString();
     return enterSubArea;
 }
 
@@ -1966,7 +2035,9 @@ point Game::getNextTargetedNPC(input_t inp)
 
 bool Game::isTargetableNPC(int n, input_t inp)
 {
-    const point& targetPos = currentRegion()->getNPCShip(n)->at();
+    MobShip* nShip = currentRegion()->getNPCShip(n);
+
+    const point& targetPos = nShip->at();
 
     // If the tile is visible
     if (getMap()->getv(targetPos))
@@ -1974,6 +2045,9 @@ bool Game::isTargetableNPC(int n, input_t inp)
         // Examining doesn't require range or line-of-fire checks
         if (inp == INP_EXAMINE)
             return true;
+
+        if (!nShip->isActivated())
+            return false;
     }
     else
     {
@@ -1988,7 +2062,7 @@ bool Game::isTargetableNPC(int n, input_t inp)
         return false;
 
     // Check if weapon can target through line-of-sight
-    if (!checkCanTargetBasedOnStraightLine(currentRegion()->getNPCShip(n), inp))
+    if (!checkCanTargetBasedOnStraightLine(nShip, inp))
         return false;
 
     return true;
@@ -2195,7 +2269,7 @@ void Game::initGameObjects()
     display_obj.updateUpperLeft(getPlayerShip()->at(), getMap()->getSize());
     changeMobTile(point(0, 0), getPlayerShip()->at(), getPlayerShip()->getMobType());
 
-    //getPlayerShip()->setNumMaxModules(26);
+    getPlayerShip()->setNumMaxModules(26);
 
     Module cm1 = Module(MODULE_CREW, 24, 32);
     getPlayerShip()->addModule(cm1);
@@ -2215,7 +2289,7 @@ void Game::initGameObjects()
     wm1.setWeaponStruct(allbasicweapon_stats[1]);
     getPlayerShip()->addModule(wm1);
 
-    /*
+    
         for (int i = 1; i <= 17; i++)
         {
             Module wm = Module(MODULE_WEAPON, 100, 100);
@@ -2234,7 +2308,7 @@ void Game::initGameObjects()
 
         Module cm5 = Module(MODULE_CREW, 96, 96);
         getPlayerShip()->addModule(cm5);
-        */
+        
     getPlayerShip()->setModuleSelectionIndex(4);
     last_smloc = getPlayerShip()->at();
 }
@@ -2256,6 +2330,15 @@ void Game::save()
     os.write(reinterpret_cast<const char*>(&current_maptype), sizeof(MapType));
     os.write(reinterpret_cast<const char*>(&current_subarea_id), sizeof(int)); // DONE
     os.write(reinterpret_cast<const char*>(&current_tab), sizeof(tab_type));
+
+    // Save raceIDNameMapDiscovered
+    uint32_t discoveredCount = static_cast<uint32_t>(raceIDNameMapDiscovered.size());
+    os.write(reinterpret_cast<const char*>(&discoveredCount), sizeof(discoveredCount));
+    for (const auto& [id, name] : raceIDNameMapDiscovered)
+    {
+        os.write(reinterpret_cast<const char*>(&id), sizeof(int));
+        stringSave(os, name);
+    }
 }
 
 void Game::load()
@@ -2274,6 +2357,20 @@ void Game::load()
     is.read(reinterpret_cast<char*>(&current_maptype), sizeof(MapType));
     is.read(reinterpret_cast<char*>(&current_subarea_id), sizeof(int));
     is.read(reinterpret_cast<char*>(&current_tab), sizeof(tab_type));
+
+    // Load raceIDNameMapDiscovered
+    uint32_t discoveredCount = 0;
+    is.read(reinterpret_cast<char*>(&discoveredCount), sizeof(discoveredCount));
+    for (uint32_t i = 0; i < discoveredCount; ++i)
+    {
+        int id;
+        std::string name;
+
+        is.read(reinterpret_cast<char*>(&id), sizeof(int));
+        stringLoad(is, name);
+
+        raceIDNameMapDiscovered[id] = std::move(name);
+    }
 }
 
 
@@ -2346,6 +2443,7 @@ void printExitPromptMessage()
 void Game::runContactScenario(ContactTree& contactTree)
 {
     int scenario_id = contactTree.startingScenarioID;
+    int previousSelectionIndex = -1;
 
     while (true)
     {
@@ -2372,10 +2470,12 @@ void Game::runContactScenario(ContactTree& contactTree)
             int sel = contact_menu_obj.getSelectionIndex();
 
             if (scenario.onSelectCallback)
-                scenario.onSelectCallback();
+                scenario.onSelectCallback(previousSelectionIndex);
 
             if (scenario.endConversation || scenario.nextScenarioIDs.empty() || scenario.nextScenarioIDs[sel] == -1)
                 break;
+
+            previousSelectionIndex = sel;  // store for next callback
 
             scenario_id = scenario.nextScenarioIDs[sel];
             contact_menu_obj.setSelectionIndex(0);
@@ -2391,7 +2491,7 @@ void Game::executeSubareaEntranceContactScenario(race *controlRace, race *native
 {
     ContactTree tree = controlRace->getPlayerAttStatus() <= -1 
         ? createFullHostileContactTree(controlRace, nativeRace, enterSubArea)
-        : createFullNonHostileContactTree(controlRace, nativeRace, enterSubArea);
+        : createFullNonHostileContactTree(controlRace, nativeRace, enterSubArea, raceIDNameMapDiscovered);
 
     runContactScenario(tree);
 }

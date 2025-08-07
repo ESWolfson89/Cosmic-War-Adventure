@@ -507,6 +507,15 @@ int SubAreaRegion::getNumActiveNativeShipsPresent()
     return retVal;
 }
 
+int SubAreaRegion::getNumActiveShipsPresent()
+{
+    int retVal = std::count_if(NPCShips.begin(), NPCShips.end(),
+        [](const auto& ship) {
+            return ship.isActivated();
+        });
+    return retVal;
+}
+
 int SubAreaRegion::getNumShipNPCs()
 {
     return static_cast<int>(NPCShips.size());

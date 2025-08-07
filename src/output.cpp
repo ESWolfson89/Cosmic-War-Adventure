@@ -413,87 +413,132 @@ int display::numShipPixelsAdj(int i, int j, int val)
     return num_adj;
 }
 
-/*
-SHIP DESIGN GRAPHIC CODE ENDS HERE
-*/
-
-void display::displayNPCShipInfo(MobShip *s)
+color_type shipDisplayBoxColor(MobShip* s)
 {
-    gfx_obj.drawRectangle(color_darkgray,point((SHOWWID+2)*TILEWID,0),point(SCREENWID-((SHOWWID+2)*TILEWID)-TILEWID+1,TILEHGT + (SHOWHGT*TILEHGT)/2),true);
-    printMonitorWindow();
+    race* shipRace = universe.getRace(s->getMobSubAreaGroupID());
+    int playerAtt = shipRace->getPlayerAttStatus();
 
-    std::string ship_total_name = s->getShipName();
-    std::string hull_string = "Hull: " + int2String(s->getHullStatus()) + "/" + int2String(s->getMaxHull());
-    std::string crew_string = "Crew: ";
-    std::string evasion_string = "Evasion: " + double2String(s->getEvasion());
-    std::string accuracy_string = "Accuracy: " + double2String(s->getAccuracy());
-    std::string speed_string = "Speed: " + double2String(s->getSpeed());
-    std::string shields_string = "Shields: " + int2String(s->getTotalMTFillRemaining(MODULE_SHIELD)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_SHIELD));
+    if (playerAtt > 0)
+        return color_green;
+    if (playerAtt == 0)
+        return color_white;
+    
+    return color_red;
+}
 
-    if (s->crewOperable())
-        crew_string += int2String(s->getTotalMTFillRemaining(MODULE_CREW)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_CREW));
-    else
-        crew_string += "AUTOMATED";
+void display::displayNPCShipInfo(MobShip* s)
+{
+    const color_type shipBorderColor = shipDisplayBoxColor(s);
 
-    addString(ship_total_name,cp_whiteonblack,point(SHOWWID+(GRIDWID-SHOWWID)/2 - ship_total_name.size()/2,0));
-    gfx_obj.drawRectangle(color_white,point((SHOWWID+2)*TILEWID,TILEHGT-1),point(SCREENWID-((SHOWWID+2)*TILEWID)-TILEWID+1,(SHOWHGT*TILEHGT)/2),false);
-    addString(hull_string+"                      ",cp_grayonblack,point(SHOWWID+3,1));
-    addString(crew_string+"                      ",cp_lightgrayonblack,point(SHOWWID+3,2));
-    addString(shields_string+"                      ",cp_lightblueonblack,point(SHOWWID+3,3));
-    addString(speed_string+"       ",cp_purpleonblack,point(SHOWWID+23,1));
-    addString(accuracy_string+"       ",cp_redonblack,point(SHOWWID+23,2));
-    addString(evasion_string+"       ",cp_darkredonblack,point(SHOWWID+23,3));
+    const point topLeft((SHOWWID + 2) * TILEWID, 0);
+    const point boxSize(SCREENWID - ((SHOWWID + 2) * TILEWID) - TILEWID + 1,
+        TILEHGT + (SHOWHGT * TILEHGT) / 2);
+
+    gfx_obj.drawRectangle(color_darkblue, topLeft, boxSize, true);
+    printMonitorWindow(shipBorderColor);
+
+    const std::string name = s->getShipName();
+    const std::string hull = "Hull: " + int2String(s->getHullStatus()) + "/" + int2String(s->getMaxHull());
+    std::string crew = "Crew: ";
+    const std::string evasion = "Evasion: " + double2String(s->getEvasion());
+    const std::string accuracy = "Accuracy: " + double2String(s->getAccuracy());
+    const std::string speed = "Speed: " + double2String(s->getSpeed());
+    const std::string shields = "Shields: " + int2String(s->getTotalMTFillRemaining(MODULE_SHIELD)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_SHIELD));
+
+    crew += s->crewOperable()
+        ? int2String(s->getTotalMTFillRemaining(MODULE_CREW)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_CREW))
+        : "AUTOMATED";
+
+    const int nameX = SHOWWID + (GRIDWID - SHOWWID) / 2 - static_cast<int>(name.size()) / 2;
+    addString(name, cp_whiteonblack, point(nameX, 0));
+
+    const point innerBoxTL((SHOWWID + 2) * TILEWID, TILEHGT - 1);
+    const point innerBoxBR(SCREENWID - ((SHOWWID + 2) * TILEWID) - TILEWID + 1, (SHOWHGT * TILEHGT) / 2);
+    gfx_obj.drawRectangle(shipBorderColor, innerBoxTL, innerBoxBR, false);
+
+    addString(hull + "                      ", cp_grayonblack, point(SHOWWID + 3, 1));
+    addString(crew + "                      ", cp_lightgrayonblack, point(SHOWWID + 3, 2));
+    addString(shields + "                      ", cp_lightblueonblack, point(SHOWWID + 3, 3));
+    addString(speed + "       ", cp_purpleonblack, point(SHOWWID + 23, 1));
+    addString(accuracy + "       ", cp_redonblack, point(SHOWWID + 23, 2));
+    addString(evasion + "       ", cp_darkredonblack, point(SHOWWID + 23, 3));
 
     displayNPCShipGraphic(s);
 
-    addString("CAG:    ", cp_whiteonblack, point(SHOWWID + 3, 4));
-    addString(int2String(s->getDesignStruct().CAShipGenerations), cp_whiteonblack, point(SHOWWID + 7, 4));
-    //printShipGraphic(s, -2);
+    // CAG generation
+    //const point cagLabelPos(SHOWWID + 3, 4);
+    //const point cagValuePos(SHOWWID + 7, 4);
+    //addString("CAG:    ", cp_whiteonblack, cagLabelPos);
+    //addString(int2String(s->getDesignStruct().CAShipGenerations), cp_whiteonblack, cagValuePos);
 }
 
 void display::printShipStatsSection(MobShip* s)
 {
-    std::string hull_string = "Hull: " + int2String((int)std::max(0, s->getHullStatus())) + "/" + int2String(s->getMaxHull());
-    std::string crew_string = "Crew: " + int2String(s->getTotalMTFillRemaining(MODULE_CREW)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_CREW));
-    std::string fuel_string = "Fuel: " + int2String(s->getTotalMTFillRemaining(MODULE_FUEL)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_FUEL));
-    std::string credit_string = "Credits: " + uint642String(s->getNumCredits());
-    std::string spd_string = "Speed: " + double2String(s->getSpeed());
-    std::string acc_string = "Accuracy: " + double2String(s->getAccuracy());
-    std::string eva_string = "Evasion: " + double2String(s->getEvasion());
-    std::string shields_string = "Shields: " + int2String(s->getTotalMTFillRemaining(MODULE_SHIELD)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_SHIELD));
-    addString(hull_string + "                      ", cp_grayonblack, point(SHOWWID + 3, SHOWHGT / 2 + 2));
-    addString(crew_string + "                      ", cp_lightgrayonblack, point(SHOWWID + 3, SHOWHGT / 2 + 3));
-    addString(credit_string + "                  ", cp_whiteonblack, point(SHOWWID + 3, SHOWHGT / 2 + 5));
-    addString(shields_string + "                      ", cp_lightblueonblack, point(SHOWWID + 3, SHOWHGT / 2 + 4));
-    addString(spd_string + "       ", cp_purpleonblack, point(SHOWWID + 23, SHOWHGT / 2 + 2));
-    addString(acc_string + "       ", cp_redonblack, point(SHOWWID + 23, SHOWHGT / 2 + 3));
-    addString(eva_string + "       ", cp_darkredonblack, point(SHOWWID + 23, SHOWHGT / 2 + 4));
-    addString(fuel_string + "       ", cp_brownonblack, point(SHOWWID + 23, SHOWHGT / 2 + 5));
+    const std::string hull = "Hull: " + int2String(std::max(0, s->getHullStatus())) + "/" + int2String(s->getMaxHull());
+    const std::string crew = "Crew: " + int2String(s->getTotalMTFillRemaining(MODULE_CREW)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_CREW));
+    const std::string fuel = "Fuel: " + int2String(s->getTotalMTFillRemaining(MODULE_FUEL)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_FUEL));
+    const std::string credits = "Credits: " + uint642String(s->getNumCredits());
+    const std::string speed = "Speed: " + double2String(s->getSpeed());
+    const std::string acc = "Accuracy: " + double2String(s->getAccuracy());
+    const std::string evasion = "Evasion: " + double2String(s->getEvasion());
+    const std::string shields = "Shields: " + int2String(s->getTotalMTFillRemaining(MODULE_SHIELD)) + "/" + int2String(s->getTotalMTFillCapacity(MODULE_SHIELD));
+
+    const int baseY = SHOWHGT / 2 + 2;
+    addString(hull + "                      ", cp_grayonblack, point(SHOWWID + 3, baseY));
+    addString(crew + "                      ", cp_lightgrayonblack, point(SHOWWID + 3, baseY + 1));
+    addString(shields + "                      ", cp_lightblueonblack, point(SHOWWID + 3, baseY + 2));
+    addString(credits + "                  ", cp_whiteonblack, point(SHOWWID + 3, baseY + 3));
+
+    addString(speed + "       ", cp_purpleonblack, point(SHOWWID + 23, baseY));
+    addString(acc + "       ", cp_redonblack, point(SHOWWID + 23, baseY + 1));
+    addString(evasion + "       ", cp_darkredonblack, point(SHOWWID + 23, baseY + 2));
+    addString(fuel + "       ", cp_brownonblack, point(SHOWWID + 23, baseY + 3));
 
     addPlayerShipGraphicDetails(s->getMaxNumModules());
     printShipGraphic(s, SHOWHGT / 2);
 }
 
-void display::printWindowBorders(std::string current_map_name, std::string player_ship_name, tab_type tt)
+void display::printWindowBorders(std::string mapName, std::string shipName, tab_type tt)
 {
-    gfx_obj.drawRectangle(color_darkgray,point(0,0),point(SCREENWID,(SHOWHGT+2)*TILEHGT-1),true);
-    // display starmap window
-    gfx_obj.addBitmapString(current_map_name,(tt == TABTYPE_PLAYAREA ? cp_blackonwhite : cp_whiteonblack),point(SHOWWID/2-(int)current_map_name.size()/2,0));
-    gfx_obj.drawRectangle(color_black,point(TILEWID,TILEHGT),point(SHOWWID*TILEWID,SHOWHGT*TILEHGT),true);
-    gfx_obj.drawRectangle(color_white,point(TILEWID-1,TILEHGT-1),point(SHOWWID*TILEWID+2,SHOWHGT*TILEHGT+2),false);
-    // display animation/misc window
-    printMonitorWindow();
-    // display ship window/ verious stats/ inventory etc...
-    gfx_obj.addBitmapString(player_ship_name,(tt == TABTYPE_PLAYERSHIP ? cp_blackonwhite : cp_whiteonblack),point(SHOWWID+(GRIDWID-SHOWWID-10)/2+2,SHOWHGT/2+1));
-    gfx_obj.drawRectangle(color_black,point((SHOWWID+2)*TILEWID+1,(SHOWHGT*TILEHGT)/2+TILEHGT*2),point(SCREENWID-((SHOWWID+2)*TILEWID)-TILEWID-1,(SHOWHGT*TILEHGT)/2-TILEHGT),true);
-    gfx_obj.drawRectangle(color_white,point((SHOWWID+2)*TILEWID,(SHOWHGT*TILEHGT)/2+(TILEHGT*2)-1),point(SCREENWID-((SHOWWID+2)*TILEWID)-TILEWID+1,(SHOWHGT*TILEHGT)/2-TILEHGT+2),false);
+    // Full background
+    gfx_obj.drawRectangle(color_darkblue, point(0, 0), point(SCREENWID, (SHOWHGT + 2) * TILEHGT - 1), true);
+
+    // Starmap window
+    const point starmapLabelPos(SHOWWID / 2 - static_cast<int>(mapName.size()) / 2, 0);
+    const color_pair mapColor = (tt == TABTYPE_PLAYAREA ? cp_blackonwhite : cp_whiteonblack);
+    addString(mapName, mapColor, starmapLabelPos);
+    gfx_obj.drawRectangle(color_black, point(TILEWID, TILEHGT), point(SHOWWID * TILEWID, SHOWHGT * TILEHGT), true);
+    gfx_obj.drawRectangle(color_white, point(TILEWID - 1, TILEHGT - 1), point(SHOWWID * TILEWID + 2, SHOWHGT * TILEHGT + 2), false);
+
+    // Monitor window
+    printMonitorWindow(color_white);
+    addString("<<<OFFLINE>>>", cp_greenonblack, point(SHOWWID + (GRIDWID - SHOWWID - 10) / 2, SHOWHGT / 2 - 9));
+
+    // Ship stats window
+    const color_pair shipColor = (tt == TABTYPE_PLAYERSHIP ? cp_blackonwhite : cp_whiteonblack);
+    addString(shipName, shipColor, point(SHOWWID + (GRIDWID - SHOWWID - 10) / 2 + 1, SHOWHGT / 2 + 1));
+
+    const point innerTL((SHOWWID + 2) * TILEWID + 1, (SHOWHGT * TILEHGT) / 2 + TILEHGT * 2);
+    const point innerBR(SCREENWID - ((SHOWWID + 2) * TILEWID) - TILEWID - 1, (SHOWHGT * TILEHGT) / 2 - TILEHGT);
+    gfx_obj.drawRectangle(color_black, innerTL, innerBR, true);
+
+    const point borderTL((SHOWWID + 2) * TILEWID, (SHOWHGT * TILEHGT) / 2 + TILEHGT * 2 - 1);
+    const point borderBR(SCREENWID - ((SHOWWID + 2) * TILEWID) - TILEWID + 1, (SHOWHGT * TILEHGT) / 2 - TILEHGT + 2);
+    gfx_obj.drawRectangle(color_white, borderTL, borderBR, false);
 }
 
-void display::printMonitorWindow()
+void display::printMonitorWindow(color_type col)
 {
-    gfx_obj.addBitmapString("TARGET",cp_whiteonblack,point(SHOWWID+(GRIDWID-SHOWWID-3)/2,0));
-    gfx_obj.drawRectangle(color_black,point((SHOWWID+2)*TILEWID+1,TILEHGT),point(SCREENWID-((SHOWWID+2)*TILEWID)-TILEWID-1,(SHOWHGT*TILEHGT)/2-2),true);
-    gfx_obj.drawRectangle(color_white,point((SHOWWID+2)*TILEWID,TILEHGT-1),point(SCREENWID-((SHOWWID+2)*TILEWID)-TILEWID+1,(SHOWHGT*TILEHGT)/2),false);
+    const point labelPos(SHOWWID + (GRIDWID - SHOWWID - 3) / 2, 0);
+    addString("TARGET", cp_whiteonblack, labelPos);
+
+    const point innerTL((SHOWWID + 2) * TILEWID + 1, TILEHGT);
+    const point innerBR(SCREENWID - ((SHOWWID + 2) * TILEWID) - TILEWID - 1, (SHOWHGT * TILEHGT) / 2 - 2);
+    gfx_obj.drawRectangle(color_black, innerTL, innerBR, true);
+
+    const point borderTL((SHOWWID + 2) * TILEWID, TILEHGT - 1);
+    const point borderBR(SCREENWID - ((SHOWWID + 2) * TILEWID) - TILEWID + 1, (SHOWHGT * TILEHGT) / 2);
+    gfx_obj.drawRectangle(col, borderTL, borderBR, false);
 }
 
 // print ship window inside
@@ -549,7 +594,8 @@ void display::addModuleGraphic(MobShip *s, int i, int ship_body_size,int y_globa
     {
         case(MODULE_FUEL):
         {
-            gfx_obj.addBitmapVerticalString("f      ",cp_lightgrayonblack,point(SHOWWID+36-ship_body_size+i+1,y_global_offset+10));
+            gfx_obj.addBitmapVerticalString("       ",cp_lightgrayonblack,point(SHOWWID+36-ship_body_size+i+1,y_global_offset+10));
+            gfx_obj.addBitmapCharacter(fueltank_symbol, point(SHOWWID + 36 - ship_body_size + i + 1, y_global_offset + 10));
             printMeter(s->getModule(i),ship_body_size,i,TILEWID,MODULE_FUEL,getFuelMeterColor(s->getModule(i)),y_global_offset);
             break;
         }

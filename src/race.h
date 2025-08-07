@@ -162,7 +162,6 @@ class race
         race(int,int,race_domain_type,point, point, race_type, race_personality_type, std::string, int);
         void cleanupEverything();
         void addNativeShip(MobShip *);
-        void setRaceRelStatus(int, rel_status);
         void setRaceAttStatus(int, int);
         void incRaceAttStatus(int, int);
         void setPlayerAttStatus(int);
@@ -177,6 +176,7 @@ class race
         void setNumStartingShipsAtRegion(int numShips);
         void setSurrenderedToPlayer(bool surrendered);
         void setNumShipsDestroyedByPlayerAtRegion(int numDestroyed);
+        void setRaceIDCommandedToAttack(int);
         Planet * getHomeworld(int);
         Planet * getHomeworld(point);
         entrance_contact_struct *getEntranceContactStruct();
@@ -184,7 +184,6 @@ class race
         point getStarmapLoc() const;
         point getSubAreaSize();
         point getFirstFreeHomeworldLoc();
-        rel_status getRaceRelStatus(int);
         RaceMajorStatus getRaceOverallMajorStatus();
         race_domain_type getRaceDomainType();
         int getPlayerAttStatus();
@@ -196,6 +195,7 @@ class race
         int getControllerRaceID();
         int getNumShipsDestroyedByPlayerAtRegion();
         int getNumStartingShipsAtRegion();
+        int getRaceIDCommandedToAttack();
         bool raceIdentifiedByPlayer();
         bool playerIdentifiedByRace();
         bool isSurrenderedToPlayer();
@@ -222,6 +222,7 @@ class race
         int danger_level;
         int shipsDestroyedByPlayerAtRegion;
         int numStartingShipsAtRegion;
+        int raceIDCommandedToAttack;
         bool surrenderedToPlayer;
         bool canSurrenderToPlayer;
         bool race_identified_by_player;

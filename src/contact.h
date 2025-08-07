@@ -13,7 +13,7 @@ struct ContactScenario
     std::string message;
     std::vector<std::string> menuOptions;
     std::vector<int> nextScenarioIDs;
-    std::function<void()> onSelectCallback = nullptr;
+    std::function<void(int)> onSelectCallback = nullptr;
     bool endConversation = false;
 };
 
@@ -29,7 +29,7 @@ public:
     }
 };
 
-ContactTree createFullNonHostileContactTree(race*, race*, bool&);
+ContactTree createFullNonHostileContactTree(race* controlRace, race* nativeRace, bool& enterSubArea, std::map<int, std::string>& raceIDNameMapDiscovered);
 
 ContactTree createFullHostileContactTree(race*, race*, bool&);
 

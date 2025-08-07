@@ -278,7 +278,7 @@ void addInitialContactScenarios(ContactTree& tree, race* controlRace, race* nati
     };
 }
 
-ContactTree createFullNonHostileContactTree(race* controlRace, race* nativeRace, bool& enterSubArea)
+ContactTree createFullNonHostileContactTree(race* controlRace, race* nativeRace, bool& enterSubArea, std::map<int, std::string>& raceIDNameMapDiscovered)
 {
     ContactTree tree;
 
@@ -287,13 +287,15 @@ ContactTree createFullNonHostileContactTree(race* controlRace, race* nativeRace,
     std::string raceNameString = controlRace->getNameString();
 
     addInitialContactScenarios(tree, controlRace, nativeRace);
-    
+
+    bool surrendered = controlRace->isSurrenderedToPlayer();
+
     tree.scenarios[5] = ContactScenario
     {
         .id = 5,
-        .message = (controlRace->isSurrenderedToPlayer() ? "Greetings master." : "Greetings traveler."),
+        .message = (surrendered ? "Greetings master." : "Greetings traveler."),
         .menuOptions = {"[continue]"},
-        .nextScenarioIDs = {6},
+        .nextScenarioIDs = {surrendered ? 8 : 6},
         .endConversation = false
     };
 
@@ -308,7 +310,7 @@ ContactTree createFullNonHostileContactTree(race* controlRace, race* nativeRace,
             "Threaten",
             "Leave"
         },
-        .nextScenarioIDs = {8,9,10,11,12},
+        .nextScenarioIDs = {11, 12, 13, 14, 15},
         .endConversation = false
     };
 
@@ -323,51 +325,78 @@ ContactTree createFullNonHostileContactTree(race* controlRace, race* nativeRace,
             "Threaten",
             "Leave"
         },
-        .nextScenarioIDs = {8,9,10,11,12},
+        .nextScenarioIDs = {11, 12, 13, 14, 15},
         .endConversation = false
     };
 
-    tree.scenarios[8] = ContactScenario
+    if (surrendered)
     {
-        .id = 8,
-        .message = "You may enter.",
-        .menuOptions = {"[continue]"},
-        .nextScenarioIDs = {-1},
-        .onSelectCallback = [&enterSubArea]() {
-            enterSubArea = true;
-         },
-        .endConversation = true
-    };
+        tree.scenarios[8] = ContactScenario{
+            .id = 8,
+            .message = "What can The " + raceNameString + " do for you?",
+            .menuOptions = {
+                "Request Entry",
+                "Trade",
+                "Command To Attack Region",
+                "Leave"
+            },
+            .nextScenarioIDs = {11, 12, 9, 15},
+            .endConversation = false
+        };
 
-    tree.scenarios[9] = ContactScenario
-    {
-        .id = 9,
-        .message = "We offer modules, fuel, and repair services.",
-        .menuOptions = {"[continue]"},
-        .nextScenarioIDs = {-1},
-        .onSelectCallback = [&enterSubArea]() {
-            enterSubArea = true;
-         },
-        .endConversation = true
-    };
+        // Vector to preserve menu order of attackable race IDs
+        std::vector<int> filteredAttackableRaceIDs;
 
-    tree.scenarios[10] = ContactScenario
-    {
-        .id = 10,
-        .message = "We don't have any information to give you, unfortunately.",
-        .menuOptions = {"[continue]"},
-        .nextScenarioIDs = {7},
-        .endConversation = false
-    };
+        ContactScenario scenario9;
+        scenario9.id = 9;
+        scenario9.message = "Who do you want us to attack?";
+        scenario9.endConversation = false;
+
+        for (const auto& [raceID, name] : raceIDNameMapDiscovered)
+        {
+            if (raceID != controlRace->getRaceID())
+            {
+                filteredAttackableRaceIDs.push_back(raceID);
+                scenario9.menuOptions.push_back(name);
+                scenario9.nextScenarioIDs.push_back(10);
+            }
+        }
+
+        // Add "Nevermind" option
+        scenario9.menuOptions.push_back("[Nevermind - go back].");
+        scenario9.nextScenarioIDs.push_back(8);
+
+        tree.scenarios[9] = std::move(scenario9);
+
+        tree.scenarios[10] = ContactScenario{
+            .id = 10,
+            .message = "As you wish.",
+            .menuOptions = {"[continue]"},
+            .nextScenarioIDs = {11},
+            .onSelectCallback = [controlRace, filteredAttackableRaceIDs](int selectedIndex)
+             {         
+                if (selectedIndex < static_cast<int>(filteredAttackableRaceIDs.size()))
+                {
+                    int targetRaceID = filteredAttackableRaceIDs[selectedIndex];
+                    controlRace->setRaceIDCommandedToAttack(targetRaceID);
+                    controlRace->setRaceAttStatus(targetRaceID, std::min(-15, controlRace->getRaceAttStatus(targetRaceID) - 15));
+                }
+                else
+                {
+                    controlRace->setRaceIDCommandedToAttack(-1);
+                }
+             },
+            .endConversation = true
+        };
+    }
 
     tree.scenarios[11] = ContactScenario
     {
         .id = 11,
-        .message = "Who sent you!? Nevermind that... You won't get away alive.",
+        .message = "You may enter.",
         .menuOptions = {"[continue]"},
         .nextScenarioIDs = {-1},
-        .onSelectCallback = [&enterSubArea, controlRace]() {
-            controlRace->setPlayerAttStatus((int)std::min(-1,controlRace->getPlayerAttStatus() - 1));
+        .onSelectCallback = [&enterSubArea](int) {
             enterSubArea = true;
         },
         .endConversation = true
@@ -376,6 +405,40 @@ ContactTree createFullNonHostileContactTree(race* controlRace, race* nativeRace,
     tree.scenarios[12] = ContactScenario
     {
         .id = 12,
+        .message = "We offer modules, fuel, and repair services.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .onSelectCallback = [&enterSubArea](int) {
+            enterSubArea = true;
+        },
+        .endConversation = true
+    };
+
+    tree.scenarios[13] = ContactScenario
+    {
+        .id = 13,
+        .message = "We don't have any information to give you, unfortunately.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {7},
+        .endConversation = false
+    };
+
+    tree.scenarios[14] = ContactScenario
+    {
+        .id = 14,
+        .message = "Who sent you!? Nevermind that... You won't get away alive.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .onSelectCallback = [&enterSubArea, controlRace](int) {
+            controlRace->setPlayerAttStatus(std::min(-1, controlRace->getPlayerAttStatus() - 1));
+            enterSubArea = true;
+        },
+        .endConversation = true
+    };
+
+    tree.scenarios[15] = ContactScenario
+    {
+        .id = 15,
         .message = "Bye.",
         .menuOptions = {"[continue]"},
         .nextScenarioIDs = {-1},
@@ -487,7 +550,7 @@ ContactTree createFullHostileContactTree(race *controlRace, race *nativeRace, bo
         .message = "Prepare to be destroyed.",
         .menuOptions = {"[continue]"},
         .nextScenarioIDs = {-1},
-        .onSelectCallback = [&enterSubArea, controlRace]() {
+        .onSelectCallback = [&enterSubArea, controlRace](int) {
             controlRace->setPlayerAttStatus((int)std::min(-1,controlRace->getPlayerAttStatus() - 1));
             enterSubArea = true;
         },
@@ -550,7 +613,7 @@ ContactTree createSurrenderToPlayerContactTree(race* nativeRace)
         .message = "FINE. YOUR WISH IS OUR COMMAND.",
         .menuOptions = {"[continue]"},
         .nextScenarioIDs = {-1},
-        .onSelectCallback = [nativeRace]() {
+        .onSelectCallback = [nativeRace](int) {
             nativeRace->setSurrenderedToPlayer(true);
          },
         .endConversation = true
@@ -616,4 +679,3 @@ ContactTree createCapturedRaceByPlayerFreeContactTree(race * controllerRace, rac
 
     return tree;
 }
-

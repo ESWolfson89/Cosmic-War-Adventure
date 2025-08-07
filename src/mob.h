@@ -128,7 +128,7 @@ static const shipmobstat_struct allshipmob_data[2] =
     {
         SHIP_PLAYER, 1,
         10.0,10.0,100.0,
-        50,10,8,1,0,0,
+        5000,10,8,1,0,0,
         0,0,3,0,0,1,
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0},
@@ -137,7 +137,7 @@ static const shipmobstat_struct allshipmob_data[2] =
         CLASSTYPE_NONE,
         RACETYPE_NONE,
         mob_symbol[(int)SHIP_PLAYER],
-        "USS Player"
+        "USS Solar I"
     }
 };
 

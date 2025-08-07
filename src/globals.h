@@ -241,6 +241,7 @@ static const color_type color_lightorange = { 50,200,255 };
 static const color_type color_lightpurple = { 255,128,255 };
 static const color_type color_lightyellow = {255,255,128};
 static const color_type color_planetblue = {0,128,255};
+static const color_type color_darkblue = { 0,0,100 };
 
 static const color_pair cp_blackonwhite = {color_black,color_white};
 static const color_pair cp_blackongray = {color_black,color_gray};

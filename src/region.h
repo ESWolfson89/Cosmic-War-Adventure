@@ -37,6 +37,7 @@ class SubAreaRegion
         map *getMap();
         point getSize();
         int getNumShipNPCs();
+        int getNumActiveShipsPresent();
         int getNumActiveNativeShipsPresent();
         int getNumStations();
         void destroyNPC(int);

@@ -66,7 +66,7 @@ class display
         void printMessages();
         void clearAndDeleteAllMessages();
         void clearMessages();
-        void printMonitorWindow();
+        void printMonitorWindow(color_type);
         void printWindowBorders(std::string, std::string, tab_type);
         void printShipStatsSection(MobShip *);
         void printShipGraphic(MobShip *, int);
@@ -140,6 +140,8 @@ void setMobTileToNIL(map*, point);
 void setMobTile(map*, point, mob_t);
 
 bool chtypeEqual(chtype, chtype);
+
+color_type shipDisplayBoxColor(MobShip* s);
 
 extern display display_obj;
 extern tab_type current_tab;

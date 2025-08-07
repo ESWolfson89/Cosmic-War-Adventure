@@ -33,7 +33,6 @@ public:
     void checkForUniversalRaceEvent();
     void checkForSubAreaRaceEvent();
     void checkForUnEnslavementRaceEvent();
-    void checkForRaceWarEvent();
     void checkForPlayerEncounterEvent();
     void spacePirateEncounter();
     void addEncounterShips();
@@ -92,6 +91,8 @@ public:
     void promptQuit();
     void runRaceSurrenderToPlayerScript(race*);
     void checkPlayerRecapturingRaceEvent(race*, race*);
+    void checkForRaceBattleEvent();
+    void checkForRaceWarEvent();
     bool isTargetableNPC(int, input_t);
     bool converseViaContactMenu(race *);
     bool checkCanTargetBasedOnModule(input_t);
@@ -118,6 +119,7 @@ private:
     menu station_menu_obj;
     menu entertainmentStationMenu;
     std::vector<ship_explosion_struct> explosion_data;
+    std::map<int, std::string> raceIDNameMapDiscovered;
 };
 
 bool eightDirectionRestrictedWeaponSelected(MobShip*);
@@ -149,5 +151,7 @@ int getMinNumShipsDestroyedForSurrenderToPlayer(race* r);
 double getMinNumShipDestroyedPercentageForSurrenderToPlayer(race* r);
 
 void resetSurrenderedShips();
+
+int numAttacksFromRace(race *);
 
 #endif

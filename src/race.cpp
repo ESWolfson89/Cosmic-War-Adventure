@@ -21,12 +21,23 @@ race::race(int id, int dl, race_domain_type rdt, point ls, point sml, race_type 
     subarea_size = ls;
     race_name_str = name;
     rdtype = rdt;
+    raceIDCommandedToAttack = -1;
     ecs_obj.num_converse_choices = 4;
     ecs_obj.num_prerecorded_lines = 3;
     ecs_obj.num_welcome_lines = 2;
     shipsDestroyedByPlayerAtRegion = 0;
     numStartingShipsAtRegion = 0;
     setControllerRaceID(id);
+}
+
+void race::setRaceIDCommandedToAttack(int id)
+{
+    raceIDCommandedToAttack = id;
+}
+
+int race::getRaceIDCommandedToAttack()
+{
+    return raceIDCommandedToAttack;
 }
 
 void race::setSurrenderToPlayerPossibility(bool canSurrender)
@@ -273,12 +284,6 @@ int race::getRaceAttStatus(int id)
     return att_race_map[id];
 }
 
-// identifier based access (NOT index based)
-rel_status race::getRaceRelStatus(int id)
-{
-    return rel_race_map[id];
-}
-
 int race::getPlayerAttStatus()
 {
     return att_towards_player;
@@ -304,11 +309,6 @@ point race::getFirstFreeHomeworldLoc()
 
     // should never happen
     return homeworlds[0].getLoc();
-}
-
-void race::setRaceRelStatus(int rid, rel_status rs)
-{
-    rel_race_map[rid] = rs;
 }
 
 void race::setRaceAttStatus(int rid, int att)
@@ -400,6 +400,7 @@ void race::save(std::ofstream& os) const
     os.write(reinterpret_cast<const char*>(&player_identified_by_race), sizeof(bool));
     os.write(reinterpret_cast<const char*>(&shipsDestroyedByPlayerAtRegion), sizeof(int));
     os.write(reinterpret_cast<const char*>(&numStartingShipsAtRegion), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&raceIDCommandedToAttack), sizeof(int));
     os.write(reinterpret_cast<const char*>(&surrenderedToPlayer), sizeof(bool));
     os.write(reinterpret_cast<const char*>(&canSurrenderToPlayer), sizeof(bool));
 
@@ -427,14 +428,6 @@ void race::save(std::ofstream& os) const
     for (const Planet& hw : homeworlds)
         hw.save(os);
 
-    // Save rel_race_map
-    int rel_count = static_cast<int>(rel_race_map.size());
-    os.write(reinterpret_cast<const char*>(&rel_count), sizeof(int));
-    for (const auto& [k, v] : rel_race_map) {
-        os.write(reinterpret_cast<const char*>(&k), sizeof(int));
-        os.write(reinterpret_cast<const char*>(&v), sizeof(rel_status));
-    }
-
     // Save att_race_map
     int att_count = static_cast<int>(att_race_map.size());
     os.write(reinterpret_cast<const char*>(&att_count), sizeof(int));
@@ -457,6 +450,7 @@ void race::load(std::ifstream& is)
     is.read(reinterpret_cast<char*>(&player_identified_by_race), sizeof(bool));
     is.read(reinterpret_cast<char*>(&shipsDestroyedByPlayerAtRegion), sizeof(int));
     is.read(reinterpret_cast<char*>(&numStartingShipsAtRegion), sizeof(int));
+    is.read(reinterpret_cast<char*>(&raceIDCommandedToAttack), sizeof(int));
     is.read(reinterpret_cast<char*>(&surrenderedToPlayer), sizeof(bool));
     is.read(reinterpret_cast<char*>(&canSurrenderToPlayer), sizeof(bool));
 
@@ -482,17 +476,6 @@ void race::load(std::ifstream& is)
     homeworlds.resize(hw_count);
     for (int i = 0; i < hw_count; ++i)
         homeworlds[i].load(is);
-
-    int rel_count = 0;
-    is.read(reinterpret_cast<char*>(&rel_count), sizeof(int));
-    rel_race_map.clear();
-    for (int i = 0; i < rel_count; ++i) {
-        int key = 0;
-        rel_status val;
-        is.read(reinterpret_cast<char*>(&key), sizeof(int));
-        is.read(reinterpret_cast<char*>(&val), sizeof(rel_status));
-        rel_race_map[key] = val;
-    }
 
     int att_count = 0;
     is.read(reinterpret_cast<char*>(&att_count), sizeof(int));
