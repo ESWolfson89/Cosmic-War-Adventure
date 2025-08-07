@@ -445,6 +445,9 @@ void display::displayNPCShipInfo(MobShip *s)
     addString(evasion_string+"       ",cp_darkredonblack,point(SHOWWID+23,3));
 
     displayNPCShipGraphic(s);
+
+    addString("CAG:    ", cp_whiteonblack, point(SHOWWID + 3, 4));
+    addString(int2String(s->getDesignStruct().CAShipGenerations), cp_whiteonblack, point(SHOWWID + 7, 4));
     //printShipGraphic(s, -2);
 }
 

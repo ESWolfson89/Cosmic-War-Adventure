@@ -174,6 +174,9 @@ class race
         void setHomeworldControllerRace(point,int, int);
         void addHomeworld(point,int, int, int);
         void setControllerRaceID(int);
+        void setNumStartingShipsAtRegion(int numShips);
+        void setSurrenderedToPlayer(bool surrendered);
+        void setNumShipsDestroyedByPlayerAtRegion(int numDestroyed);
         Planet * getHomeworld(int);
         Planet * getHomeworld(point);
         entrance_contact_struct *getEntranceContactStruct();
@@ -191,10 +194,15 @@ class race
         int getNumHomeworlds();
         int getDangerLevel();
         int getControllerRaceID();
+        int getNumShipsDestroyedByPlayerAtRegion();
+        int getNumStartingShipsAtRegion();
         bool raceIdentifiedByPlayer();
         bool playerIdentifiedByRace();
+        bool isSurrenderedToPlayer();
+        bool surrenderToPlayerPossible();
         void setRaceIDByPlayerStatus(bool);
         void setPlayerIDByRaceStatus(bool);
+        void setSurrenderToPlayerPossibility(bool);
         void save(std::ofstream&) const;
         void load(std::ifstream&);
         star_type getStarType();
@@ -212,6 +220,10 @@ class race
         int race_id;
         int controller_race_id;
         int danger_level;
+        int shipsDestroyedByPlayerAtRegion;
+        int numStartingShipsAtRegion;
+        bool surrenderedToPlayer;
+        bool canSurrenderToPlayer;
         bool race_identified_by_player;
         bool player_identified_by_race;
         race_domain_type rdtype;

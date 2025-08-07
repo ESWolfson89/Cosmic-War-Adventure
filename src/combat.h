@@ -16,7 +16,7 @@ struct damage_report
 
 void outputLOFTransition(point, point, point, fire_t, bool, int);
 
-damage_report damageShipMobFromBlastRadius(MobShip *,point,int,int);
+damage_report damageShipMobFromBlastRadius(MobShip *, MobShip *,point,int,int);
 
 damage_report damageShipMob(MobShip *, MobShip *, point);
 
@@ -30,7 +30,7 @@ void mobChangeSelectedWeapon(MobShip*);
 
 bool checkNPCWeaponEvent(MobShip*);
 
-void printShipmobWeaponEventMessage(MobShip*, std::string);
+void printShipmobWeaponEventMessage(MobShip* mob, const std::string& action);
 
 void mobFire(MobShip*, point);
 

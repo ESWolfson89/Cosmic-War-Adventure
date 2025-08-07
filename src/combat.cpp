@@ -1,7 +1,9 @@
 #include "combat.h"
 
-damage_report damageShipMobFromBlastRadius(MobShip *target, point origin, int hull_dam, int crew_dam)
+damage_report damageShipMobFromBlastRadius(MobShip * attacker, MobShip *target, point origin, int hull_dam, int crew_dam)
 {
+    target->setMobIDLastAttackedBy(attacker->getMobSubAreaID());
+
     damage_report ret_val = {0,0,0};
     
     int dist = shortestPath(origin,target->at());
@@ -30,6 +32,8 @@ damage_report damageShipMobFromBlastRadius(MobShip *target, point origin, int hu
 // do damage to shields, hull, crew...
 damage_report damageShipMob(MobShip *attacker, MobShip *target, point lof)
 {
+    target->setMobIDLastAttackedBy(attacker->getMobSubAreaID());
+
     damage_report ret_val = {0,0,0};
     Module *weapon_mod = getCurrentMobSelectedModule(attacker);
 
@@ -108,58 +112,75 @@ Module *getCurrentMobSelectedModule(MobShip *mb)
     return mb->getModule(mb->getModuleSelectionIndex());
 }
 
-bool checkNPCWeaponEvent(MobShip* mb)
+bool checkNPCWeaponEvent(MobShip* attacker)
 {
-    int attack_id = mb->getMobSubAreaAttackID();
-    if (attack_id >= 0)
+    const int targetID = attacker->getMobSubAreaAttackID();
+    if (targetID < 0)
+        return false;
+
+    MobShip* target = getMobFromID(targetID);
+    const auto& stats = attacker->getStatStruct();
+    Module* weaponModule = getCurrentMobSelectedModule(attacker);
+    const auto& weapon = weaponModule->getWeaponStruct();
+
+    // Chance to switch weapons
+    if (rollPerc(stats.weapon_change_chance) && attacker->getNumInstalledModulesOfType(MODULE_WEAPON) >= 2)
     {
-        MobShip* mob_being_attacked = getMobFromID(attack_id);
-
-        const int weaponChangeChance = mb->getStatStruct().weapon_change_chance;
-
-        if (rollPerc(weaponChangeChance))
-            if (mb->getNumInstalledModulesOfType(MODULE_WEAPON) >= 2)
-            {
-                mobChangeSelectedWeapon(mb);
-                printShipmobWeaponEventMessage(mb, "activates");
-            }
-
-        if (isInStraightLine(mob_being_attacked->at(), mb->at()) || !getCurrentMobSelectedModule(mb)->getWeaponStruct().eightDirectionRestricted)
-            if (shortestPath(mob_being_attacked->at(), mb->at()) <= getCurrentMobSelectedModule(mb)->getWeaponStruct().travel_range)
-                if (getCurrentMobSelectedModule(mb)->getFillQuantity() >= getWeaponModuleConsumptionPerTurn(getCurrentMobSelectedModule(mb)))
-                    if (!tracer.isBlocking(getMap(), mb->at(), mob_being_attacked->at(), false, false))
-                        if (rollPerc(mb->getStatStruct().shoot_frequency))
-                        {
-                            mobFire(mb, mob_being_attacked->at());
-                            return true;
-                        }
+        mobChangeSelectedWeapon(attacker);
+        printShipmobWeaponEventMessage(attacker, "activates");
     }
+
+    // Check if weapon can be used against target
+    const bool inLineOfFire = isInStraightLine(target->at(), attacker->at()) || !weapon.eightDirectionRestricted;
+    const int distance = shortestPath(target->at(), attacker->at());
+    const bool inRange = distance <= weapon.travel_range;
+    const bool hasAmmo = weaponModule->getFillQuantity() >= getWeaponModuleConsumptionPerTurn(weaponModule);
+    const bool hasLineOfSight = !tracer.isBlocking(getMap(), attacker->at(), target->at(), false, false);
+    const bool shouldFire = rollPerc(stats.shoot_frequency);
+
+    if (inLineOfFire && inRange && hasAmmo && hasLineOfSight && shouldFire)
+    {
+        mobFire(attacker, target->at());
+        return true;
+    }
+
     return false;
 }
 
-void mobChangeSelectedWeapon(MobShip* mb)
+void mobChangeSelectedWeapon(MobShip* mob)
 {
-    int module_index;
+    const int currentIndex = mob->getModuleSelectionIndex();
+    const int moduleCount = mob->getNumInstalledModules();
 
-    do
+    std::vector<int> weaponIndices;
+
+    for (int i = 0; i < moduleCount; ++i)
     {
-        module_index = randInt(0, mb->getNumInstalledModules() - 1);
-    } while (module_index == mb->getModuleSelectionIndex() || mb->getModule(module_index)->getModuleType() != MODULE_WEAPON);
+        if (i != currentIndex && mob->getModule(i)->getModuleType() == MODULE_WEAPON)
+        {
+            weaponIndices.push_back(i);
+        }
+    }
 
-    mb->setModuleSelectionIndex(module_index);
+    if (!weaponIndices.empty())
+    {
+        const int selected = weaponIndices[randInt(0, weaponIndices.size() - 1)];
+        mob->setModuleSelectionIndex(selected);
+    }
 }
 
-void printShipmobWeaponEventMessage(MobShip* mb, std::string action_str)
+void printShipmobWeaponEventMessage(MobShip* mob, const std::string& action)
 {
-    if (!getMap()->getv(mb->at()))
-    {
+    if (!getMap()->getv(mob->at()))
         return;
-    }
-    msgeAdd(getNamePrefix(mb), cp_grayonblack);
-    msgeAdd(mb->getShipName(), mb->getShipSymbol().color);
-    msgeAdd(action_str + " its", cp_grayonblack);
-    msgeAdd(getCurrentMobSelectedModule(mb)->getWeaponStruct().name_modifier + ".",
-        getCurrentMobSelectedModule(mb)->getWeaponStruct().disp_chtype.color);
+
+    Module* currentModule = getCurrentMobSelectedModule(mob);
+    weapon_struct weapon = currentModule->getWeaponStruct();
+
+    msgeAdd(getNamePrefix(mob), cp_grayonblack);
+    msgeAdd(mob->getShipName(), mob->getShipSymbol().color);
+    msgeAdd(action + " its", cp_grayonblack);
+    msgeAdd(weapon.name_modifier + ".", weapon.disp_chtype.color);
 }
 
 void mobFire(MobShip* mb, point p)
@@ -170,13 +191,15 @@ void mobFire(MobShip* mb, point p)
 
     weapon_t selected_weapon = current_ws.wt;
 
-    printShipmobWeaponEventMessage(mb, "fires");
-
     color_pair weapon_cp = current_ws.disp_chtype.color;
 
-    weapon_mod->offFillQuantity(-1 * current_ws.consumption_rate * current_ws.num_shots);
+    int numShots = current_ws.num_shots;
 
-    for (int i = 0; i < weapon_mod->getWeaponStruct().num_shots; ++i)
+    weapon_mod->offFillQuantity(-1 * current_ws.consumption_rate * numShots);
+
+    printShipmobWeaponEventMessage(mb, "fires");
+
+    for (int i = 0; i < numShots; ++i)
     {
         switch (selected_weapon)
         {
@@ -225,7 +248,7 @@ void mobFire(MobShip* mb, point p)
         }
     }
 
-    for (int i = 0; i < weapon_mod->getWeaponStruct().num_shots; ++i)
+    for (int i = 0; i < numShots; ++i)
     {
         switch (selected_weapon)
         {
@@ -351,7 +374,15 @@ void checkIfRaceAggroEvent(MobShip* attacker, MobShip* target)
             if (attacker->isCurrentPlayerShip())
             {
                 if (target->isActivated())
-                    universe.getRace(tgid)->incPlayerAttStatus(-1);
+                {
+                    race* targetRace = universe.getRace(tgid);
+                    targetRace->incPlayerAttStatus(-1);
+                    if (targetRace->getPlayerAttStatus() < 0 &&
+                        targetRace->isSurrenderedToPlayer())
+                    {
+                        targetRace->setSurrenderedToPlayer(false);
+                    }
+                }
             }
             else if (agid != tgid && agid != currentRegion()->getNativeRaceID())
             {
@@ -498,6 +529,8 @@ void checkMobExplosionRadiusDamage(point center, int radius, damage_report baseD
     if (radius < 2)
         return;
 
+    MobShip * attacker = getCurrentMobTurn();
+
     const int range = radius - 1;
 
     for (int dy = -range; dy <= range; ++dy)
@@ -518,9 +551,9 @@ void checkMobExplosionRadiusDamage(point center, int radius, damage_report baseD
             if (getMap()->getMob(target) != NIL_m && targetMob != nullptr)
             {
                 if (causedByShip)
-                    checkIfRaceAggroEvent(getCurrentMobTurn(), targetMob);
+                    checkIfRaceAggroEvent(attacker, targetMob);
 
-                damageShipMobFromBlastRadius(targetMob, center, baseDamage.hull_damage, baseDamage.crew_damage);
+                damageShipMobFromBlastRadius(attacker, targetMob, center, baseDamage.hull_damage, baseDamage.crew_damage);
             }
         }
     }
@@ -568,7 +601,7 @@ void mobShootSingleProjectile(MobShip* mb, point dest)
       
       if (tracer.getLineSize() <= 1)
       {
-        if (is_detectable)
+        if (is_detectable || weapon.extender_line_disp)
         {
           clearAllFireCells(getMap());
         }

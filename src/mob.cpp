@@ -30,12 +30,30 @@ void MobShip::setShipMob(bool pc, shipmobstat_struct sms_param, npc_ship_type ns
     can_move = true;
     num_credits = 0ULL;
     npc_ship_type_obj = nst;
+    IDLastAttackedBy = -1;
     initShipDesign();
+}
+
+void MobShip::setMobIDLastAttackedBy(int id)
+{
+    IDLastAttackedBy = id;
+}
+
+int MobShip::getMobIDLastAttackedBy()
+{
+    return IDLastAttackedBy;
 }
 
 void MobShip::initShipDesign()
 {
-    design_obj.CAShipGenerations = randInt(5, roll(2) == 0 ? 125 : 325);
+    int val = randInt(5, 402); // Reduce upper bound to reserve space for 2 skips
+    if (val >= 331) {
+        val += 2; // Skip both 268 and 331
+    }
+    else if (val >= 268) {
+        val += 1; // Skip just 268
+    }
+    design_obj.CAShipGenerations = val;
     design_obj.CASecondValue = ship_design_pattern_ch[randInt(0,NUM_POSSIBLE_SHIPDESIGN_SYMBOLS-1)];
     design_obj.CAThirdValue = ship_design_pattern_ch[randInt(0, NUM_POSSIBLE_SHIPDESIGN_SYMBOLS-1)];
     design_obj.CAFourthValue = ship_design_pattern_ch[randInt(0, NUM_POSSIBLE_SHIPDESIGN_SYMBOLS-1)];
@@ -548,6 +566,7 @@ void MobShip::save(std::ofstream& os) const
     os.write(reinterpret_cast<const char*>(&module_selection_index), sizeof(int));
     os.write(reinterpret_cast<const char*>(&mob_subarea_group_id), sizeof(int));
     os.write(reinterpret_cast<const char*>(&mob_subarea_attack_id), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&IDLastAttackedBy), sizeof(int));
     os.write(reinterpret_cast<const char*>(&design_obj), sizeof(ship_design_struct));
 
     destination.save(os);
@@ -578,6 +597,7 @@ void MobShip::load(std::ifstream& is)
     is.read(reinterpret_cast<char*>(&module_selection_index), sizeof(int));
     is.read(reinterpret_cast<char*>(&mob_subarea_group_id), sizeof(int));
     is.read(reinterpret_cast<char*>(&mob_subarea_attack_id), sizeof(int));
+    is.read(reinterpret_cast<char*>(&IDLastAttackedBy), sizeof(int));
     is.read(reinterpret_cast<char*>(&design_obj), sizeof(ship_design_struct));
 
     destination.load(is);

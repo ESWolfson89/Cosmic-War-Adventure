@@ -33,6 +33,10 @@ ContactTree createFullNonHostileContactTree(race*, race*, bool&);
 
 ContactTree createFullHostileContactTree(race*, race*, bool&);
 
+ContactTree createSurrenderToPlayerContactTree(race* nativeRace);
+
+ContactTree createCapturedRaceByPlayerFreeContactTree(race*, race*);
+
 void addInitialContactScenarios(ContactTree& tree, race *, race *);
 
 void setStationContactData(race *, station *, menu *, MobShip *, int);

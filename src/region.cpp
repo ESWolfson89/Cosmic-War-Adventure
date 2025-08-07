@@ -15,29 +15,68 @@ StarMapRegion::StarMapRegion()
 
 void StarMapRegion::setupUniverse()
 {
-    m = map(point(STARMAPWID,STARMAPHGT));
-
-    initEmptyTiles(&m,SMBACKDROP_SPACE);
+    m = map(point(STARMAPWID, STARMAPHGT));
+    initEmptyTiles(&m, SMBACKDROP_SPACE);
     generateAllRaces();
 
-    point genLoc;
+    std::vector<point> validStarLocations = getPointsWithBackdrop(SMBACKDROP_SPACE);
+    std::shuffle(validStarLocations.begin(), validStarLocations.end(), random_number_generator);
 
-    for (int i = 0; i < NUM_STAR_SYSTEMS; ++i)
+    int numToPlace = std::min(NUM_STAR_SYSTEMS, static_cast<int>(validStarLocations.size()));
+    for (int i = 0; i < numToPlace; ++i)
     {
-        do
-        {
-            int maxX = m.getSize().x() - 1;
-            int maxY = m.getSize().y() - 1;
-            genLoc = randZeroBasedPoint(maxX, maxY);
-        } while(m.getBackdrop(genLoc) != SMBACKDROP_SPACE);
-
-        backdrop_t starType = (backdrop_t)randInt(MIN_UNDSC_STAR_INT, MAX_UNDSC_STAR_INT);
-
-        m.setBackdrop(genLoc,starType);
+        backdrop_t starType = static_cast<backdrop_t>(randInt(MIN_UNDSC_STAR_INT, MAX_UNDSC_STAR_INT));
+        m.setBackdrop(validStarLocations[i], starType);
     }
 
-    nonpersistent_subarea = SubAreaRegion(-1,false,STARTYPE_NONE);
-    nonpersistent_subarea.initMap(point(15,15));
+    nonpersistent_subarea = SubAreaRegion(-1, false, STARTYPE_NONE);
+    nonpersistent_subarea.initMap(point(15, 15));
+}
+
+void StarMapRegion::generateAllRaces()
+{
+    std::vector<point> validLocations = getPointsWithBackdrop(SMBACKDROP_SPACE);
+    if ((int)validLocations.size() < NUM_TOTAL_RACES)
+        return;
+
+    std::shuffle(validLocations.begin(), validLocations.end(), random_number_generator);
+
+    for (int i = 0; i < NUM_TOTAL_RACES; ++i)
+    {
+        point smLoc = validLocations[i];
+
+        int dangerLevel = randInt(2, getMaxDangerLevel(smLoc));
+        race_domain_type domainType = getRaceDomainTypeFromDangerLevel(dangerLevel);
+        point mapSize = getMapSizeBasedOnDomainType(domainType);
+        int attitude = getStartingRaceAttitudeTowardsPlayer();
+        std::string raceName = genAlienName(randInt(3, 7));
+
+        generateOneGuaranteedRace(i, dangerLevel, domainType, mapSize, smLoc,
+            RACETYPE_PROCGEN, PERSONALITY_FRIENDLY_GUARDED,
+            raceName, attitude);
+
+        int backdropIndex = static_cast<int>(SMBACKDROP_MAINSEQSTARSUBAREAENTRANCE)
+            + static_cast<int>(raceVector[i].getStarType()) - 1;
+        m.setBackdrop(smLoc, static_cast<backdrop_t>(backdropIndex));
+    }
+}
+
+std::vector<point> StarMapRegion::getPointsWithBackdrop(backdrop_t target)
+{
+    std::vector<point> points;
+    point size = m.getSize();
+     
+    for (int y = 0; y < size.y(); ++y)
+    {
+        for (int x = 0; x < size.x(); ++x)
+        {
+            point p(x, y);
+            if (m.getBackdrop(p) == target)
+                points.push_back(p);
+        }
+    }
+
+    return points;
 }
 
 void StarMapRegion::cleanupEverything()
@@ -59,46 +98,6 @@ void StarMapRegion::cleanupEverything()
     raceVector.shrink_to_fit();
 }
 
-void StarMapRegion::generateAllRaces()
-{
-    point smLoc;
-    point mapSize;
-    int dangerLevel;
-    int maxDangerLevel;
-    int attitudeTowardsPlayer = 0;
-    race_domain_type raceDomainType;
-    race_type raceType = RACETYPE_PROCGEN;
-    race_personality_type racePersonalityType = PERSONALITY_FRIENDLY_GUARDED;
-
-    for (int i = 0; i < NUM_TOTAL_RACES; ++i)
-    {
-        do
-        {
-            smLoc = point(randInt(0,m.getSize().x()-1),randInt(0,m.getSize().y()-1));
-        } while(m.getBackdrop(smLoc) != SMBACKDROP_SPACE);
-
-
-        maxDangerLevel = getMaxDangerLevel(smLoc);
-        dangerLevel = randInt(2, maxDangerLevel);
-        raceDomainType = getRaceDomainTypeFromDangerLevel(dangerLevel);
-        mapSize = getMapSizeBasedOnDomainType(raceDomainType);
-        attitudeTowardsPlayer = getStartingRaceAttitudeTowardsPlayer();
-        std::string raceName = genAlienName(randInt(3, 7));
-
-
-        generateOneGuaranteedRace(i,
-                                  dangerLevel,
-                                  raceDomainType,
-                                  mapSize, 
-                                  smLoc, 
-                                  raceType, 
-                                  racePersonalityType, 
-                                  raceName, 
-                                  attitudeTowardsPlayer);
-
-        m.setBackdrop(raceVector[i].getStarmapLoc(), (backdrop_t)((int)SMBACKDROP_MAINSEQSTARSUBAREAENTRANCE + (int)raceVector[i].getStarType() - 1));
-    }
-}
 
 int getStartingRaceAttitudeTowardsPlayer()
 {
@@ -204,13 +203,13 @@ int StarMapRegion::getNumRaces()
     return (int)raceVector.size();
 }
 
-void StarMapRegion::createSubArea(point p, subarea_MapType samt_param, subarea_specific_type sast_param, bool wild_encounter, bool race_affiliated, star_type st)
+void StarMapRegion::createSubArea(point p, subarea_MapType samt_param, subarea_specific_type sast_param, bool wild_encounter, star_type st)
 {
     samt = samt_param;
 
     if (samt == SMT_PERSISTENT)
     {
-        createPersistentSubArea(p,race_affiliated,st,sast_param);
+        createPersistentSubArea(p,st,sast_param);
     }
     else
     {
@@ -218,7 +217,7 @@ void StarMapRegion::createSubArea(point p, subarea_MapType samt_param, subarea_s
     }
 }
 
-void StarMapRegion::createPersistentSubArea(point loc, bool race_affiliated, star_type st, subarea_specific_type sast_param)
+void StarMapRegion::createPersistentSubArea(point loc, star_type st, subarea_specific_type sast_param)
 {
     int subarea_idx;
 
@@ -228,13 +227,15 @@ void StarMapRegion::createPersistentSubArea(point loc, bool race_affiliated, sta
 
     point msze = point(randInt(18,52),randInt(18,52));
 
-    if (race_affiliated)
+    bool raceHome = (sast_param == SST_RACEHOME);
+
+    if (raceHome)
     {
         race_id = raceVector[race_idx].getRaceID();
         msze = raceVector[race_idx].getSubAreaSize();
     }
 
-    subareaVector.push_back(SubAreaRegion(race_id,race_affiliated,st));
+    subareaVector.push_back(SubAreaRegion(race_id,raceHome,st));
 
     subarea_idx = (int)subareaVector.size() - 1;
 
@@ -244,7 +245,7 @@ void StarMapRegion::createPersistentSubArea(point loc, bool race_affiliated, sta
 
     subareaVector[subarea_idx].setSubAreaSpecificType(sast_param);
 
-    if (race_affiliated)
+    if (raceHome)
     {
         subareaVector[subarea_idx].setupProcgenTerritorialSubArea(&raceVector[race_idx]);
     }
@@ -1016,31 +1017,35 @@ bool SubAreaRegion::isRaceAffiliated()
     return race_affiliated;
 }
 
-void SubAreaRegion::addAllHomeworlds(race *race_obj)
+void SubAreaRegion::addAllHomeworlds(race* race_obj)
 {
-    // rewrite this
-    point p;
-    point smp;
-    int num_ships_before_hw_added = getNumShipNPCs();
-    int num_homeworlds = randInt(1,randInt(1,4));
-    int num_native_ship_types = race_obj->getNumNativeShips();
-    point maxp;
-    point minp;
-    point msze = getMap()->getSize();
-    for (int i = 0; i < num_homeworlds; ++i)
-    {
-        minp = point(msze.x()/2 - star_radius,msze.y()/2 - star_radius);
-        maxp = point(msze.x()/2 + star_radius,msze.y()/2 + star_radius);
-        p = getRandNPCShipOpenPoint(getMap(),minp,maxp,LBACKDROP_MAINSEQSTARBACKGROUND,LBACKDROP_WHITESTARBACKGROUND);
-        insertOneHomeworld(race_obj,p);
-        if (num_ships_before_hw_added == 0 && num_native_ship_types > 0)
-        {
-            if (p.y() >= getMap()->getSize().y()/2)
-                smp = point(p.x(),p.y()-1);
-            else
-                smp = point(p.x(),p.y()+1);
+    const int numShipsBefore = getNumShipNPCs();
+    const int numHomeworlds = randInt(1, randInt(1, 4));
+    const int numNativeTypes = race_obj->getNumNativeShips();
+    const point mapSize = getMap()->getSize();
 
-            createNPCShip(race_obj->getNativeShip(num_native_ship_types - 1),smp,nativeRaceID);
+    const point center = point(mapSize.x() / 2, mapSize.y() / 2);
+    const point minCorner = center - point(star_radius, star_radius);
+    const point maxCorner = center + point(star_radius, star_radius);
+
+    for (int i = 0; i < numHomeworlds; ++i)
+    {
+        point hwLoc = getRandNPCShipOpenPoint(
+            getMap(), minCorner, maxCorner,
+            LBACKDROP_MAINSEQSTARBACKGROUND,
+            LBACKDROP_WHITESTARBACKGROUND);
+
+        insertOneHomeworld(race_obj, hwLoc);
+
+        if (numShipsBefore == 0 && numNativeTypes > 0)
+        {
+            const bool placeAbove = hwLoc.y() >= (mapSize.y() / 2);
+            point spawnLoc = hwLoc + point(0, placeAbove ? -1 : 1);
+
+            createNPCShip(
+                race_obj->getNativeShip(numNativeTypes - 1),
+                spawnLoc,
+                nativeRaceID);
         }
     }
 }
@@ -1083,7 +1088,10 @@ void SubAreaRegion::addProcgenSubAreaNativeShips(race *race_obj, int num_types)
             for (int i = 0; i < 7; ++i)
             {
                 if (num_wall_adj_moore == npc_spawn_conditions[(int)race_obj->getRaceDomainType()][i] + condition_offset && num_types >= i + 1)
-                    createNPCShip(race_obj->getNativeShip(i),p,nativeRaceID);
+                {
+                    createNPCShip(race_obj->getNativeShip(i), p, nativeRaceID);
+                    race_obj->setNumStartingShipsAtRegion(race_obj->getNumStartingShipsAtRegion() + 1);
+                }
             }
         }
     }

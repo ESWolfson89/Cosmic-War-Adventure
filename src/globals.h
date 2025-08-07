@@ -13,6 +13,7 @@
 #include <fstream>
 #include <array>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -405,13 +406,7 @@ static const chtype mob_symbol[9] =
 {
     blank_ch,
     {cp_whiteonblack,(int)'@'},
-    {cp_darkgrayonblack,(int)'o'},
-    {cp_lightblueonblack,(int)'A'},
-    {cp_blueonblack,1},
-    {cp_purpleonblack,(int)'j'},
-    {cp_orangeonblack,2},
-    {cp_redonblack,(int)'6'},
-    {cp_grayonblack,(int)219}
+    {cp_darkgrayonblack,(int)'o'}
 };
 
 static const chtype item_symbol[2] =

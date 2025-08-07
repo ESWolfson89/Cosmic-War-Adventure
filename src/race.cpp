@@ -11,6 +11,8 @@ race::race(int id, int dl, race_domain_type rdt, point ls, point sml, race_type 
     race_id = id;
     danger_level = dl;
     sm_loc = sml;
+    surrenderedToPlayer = false;
+    canSurrenderToPlayer = true;
     player_identified_by_race = false;
     race_identified_by_player = false;
     rtype = rt;
@@ -22,7 +24,49 @@ race::race(int id, int dl, race_domain_type rdt, point ls, point sml, race_type 
     ecs_obj.num_converse_choices = 4;
     ecs_obj.num_prerecorded_lines = 3;
     ecs_obj.num_welcome_lines = 2;
+    shipsDestroyedByPlayerAtRegion = 0;
+    numStartingShipsAtRegion = 0;
     setControllerRaceID(id);
+}
+
+void race::setSurrenderToPlayerPossibility(bool canSurrender)
+{
+    canSurrenderToPlayer = canSurrender;
+}
+
+bool race::surrenderToPlayerPossible()
+{
+    return canSurrenderToPlayer;
+}
+
+void race::setNumStartingShipsAtRegion(int numShips)
+{
+    numStartingShipsAtRegion = numShips;
+}
+
+int race::getNumStartingShipsAtRegion()
+{
+    return numStartingShipsAtRegion;
+}
+
+void race::setSurrenderedToPlayer(bool surrendered)
+{
+    surrenderedToPlayer = surrendered;
+}
+
+bool race::isSurrenderedToPlayer()
+{
+    return surrenderedToPlayer;
+}
+
+void race::setNumShipsDestroyedByPlayerAtRegion(int numDestroyed)
+{
+    shipsDestroyedByPlayerAtRegion = numDestroyed;
+}
+
+int race::getNumShipsDestroyedByPlayerAtRegion()
+{
+    return shipsDestroyedByPlayerAtRegion;
 }
 
 void race::setControllerRaceID(int id)
@@ -354,6 +398,10 @@ void race::save(std::ofstream& os) const
     os.write(reinterpret_cast<const char*>(&danger_level), sizeof(int));
     os.write(reinterpret_cast<const char*>(&race_identified_by_player), sizeof(bool));
     os.write(reinterpret_cast<const char*>(&player_identified_by_race), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&shipsDestroyedByPlayerAtRegion), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&numStartingShipsAtRegion), sizeof(int));
+    os.write(reinterpret_cast<const char*>(&surrenderedToPlayer), sizeof(bool));
+    os.write(reinterpret_cast<const char*>(&canSurrenderToPlayer), sizeof(bool));
 
     os.write(reinterpret_cast<const char*>(&rdtype), sizeof(race_domain_type));
     os.write(reinterpret_cast<const char*>(&rptype), sizeof(race_personality_type));
@@ -407,6 +455,10 @@ void race::load(std::ifstream& is)
     is.read(reinterpret_cast<char*>(&danger_level), sizeof(int));
     is.read(reinterpret_cast<char*>(&race_identified_by_player), sizeof(bool));
     is.read(reinterpret_cast<char*>(&player_identified_by_race), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&shipsDestroyedByPlayerAtRegion), sizeof(int));
+    is.read(reinterpret_cast<char*>(&numStartingShipsAtRegion), sizeof(int));
+    is.read(reinterpret_cast<char*>(&surrenderedToPlayer), sizeof(bool));
+    is.read(reinterpret_cast<char*>(&canSurrenderToPlayer), sizeof(bool));
 
     is.read(reinterpret_cast<char*>(&rdtype), sizeof(race_domain_type));
     is.read(reinterpret_cast<char*>(&rptype), sizeof(race_personality_type));

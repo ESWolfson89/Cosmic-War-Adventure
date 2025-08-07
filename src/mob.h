@@ -202,6 +202,7 @@ class MobShip
         int getMobSubAreaID();
         int getMobSubAreaGroupID() const;
         int getMobSubAreaAttackID();
+        int getMobIDLastAttackedBy();
         void initMobSubAreaID(int);
         void setDestination(point);
         void useFuelEvent(int);
@@ -209,6 +210,7 @@ class MobShip
         void incTotalFillAmount(int,module_type);
         void setActivationStatus(bool);
         void eraseModule(int);
+        void setMobIDLastAttackedBy(int);
         bool hasNoFuel();
         bool isLowOnFuel();
         bool isCurrentPlayerShip();
@@ -239,6 +241,7 @@ class MobShip
         int module_selection_index;
         int mob_subarea_group_id;
         int mob_subarea_attack_id;
+        int IDLastAttackedBy;
         ship_design_struct design_obj;
         point destination;
         point loc;

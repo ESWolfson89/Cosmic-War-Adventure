@@ -118,12 +118,13 @@ class StarMapRegion
         subarea_MapType getSubAreaMapType();
         race *getRace(int);
         void setSubAreaMapType(subarea_MapType);
-        void createSubArea(point,subarea_MapType,subarea_specific_type,bool,bool,star_type);
+        void createSubArea(point,subarea_MapType,subarea_specific_type,bool,star_type);
         void createNonPersistentSubArea(point,bool,subarea_specific_type);
-        void createPersistentSubArea(point,bool,star_type,subarea_specific_type);
+        void createPersistentSubArea(point,star_type,subarea_specific_type);
         void populateWarZone(int);
         void save(std::ofstream &) const;
         void load(std::ifstream &);
+        std::vector<point> getPointsWithBackdrop(backdrop_t target);
     private:
         map m;
         std::vector <race> raceVector;

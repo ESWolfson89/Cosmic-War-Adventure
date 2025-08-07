@@ -291,7 +291,7 @@ ContactTree createFullNonHostileContactTree(race* controlRace, race* nativeRace,
     tree.scenarios[5] = ContactScenario
     {
         .id = 5,
-        .message = "\"Welcome traveler...\"",
+        .message = (controlRace->isSurrenderedToPlayer() ? "Greetings master." : "Greetings traveler."),
         .menuOptions = {"[continue]"},
         .nextScenarioIDs = {6},
         .endConversation = false
@@ -401,7 +401,7 @@ ContactTree createFullHostileContactTree(race *controlRace, race *nativeRace, bo
     tree.scenarios[5] = ContactScenario
     {
         .id = 5,
-        .message = "\"Interloper...\"",
+        .message = "Interloper...",
         .menuOptions = {"[continue]"},
         .nextScenarioIDs = {6},
         .endConversation = false
@@ -505,3 +505,115 @@ ContactTree createFullHostileContactTree(race *controlRace, race *nativeRace, bo
 
     return tree;
 }
+
+ContactTree createSurrenderToPlayerContactTree(race* nativeRace)
+{
+    ContactTree tree;
+
+    tree.startingScenarioID = 0;
+
+    std::string raceNameStringNative = nativeRace->getNameString();
+
+    tree.scenarios[0] = ContactScenario
+    {
+        .id = 0,
+        .message = "INTERLOPER. THIS IS THE " + capitalizeString(raceNameStringNative) + ".",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {1},
+        .endConversation = false
+    };
+
+    tree.scenarios[1] = ContactScenario
+    {
+        .id = 1,
+        .message = "WE SURRENDER!!!",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {2},
+        .endConversation = false
+    };
+
+    tree.scenarios[2] = ContactScenario
+    {
+        .id = 2,
+        .message = "PLEASE! WE'LL DO ANYTHING YOU WANT. STOP ATTACKING US!",
+        .menuOptions = {
+            "I am your master now. You will obey me.",
+            "No, we will not stop attacking you. Prepare to be annihilated."
+        },
+        .nextScenarioIDs = {3,4},
+        .endConversation = false
+    };
+
+    tree.scenarios[3] = ContactScenario
+    {
+        .id = 3,
+        .message = "FINE. YOUR WISH IS OUR COMMAND.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .onSelectCallback = [nativeRace]() {
+            nativeRace->setSurrenderedToPlayer(true);
+         },
+        .endConversation = true
+    };
+
+    tree.scenarios[4] = ContactScenario
+    {
+        .id = 4,
+        .message = "NO!!! YOU WILL PAY FOR THIS!",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .endConversation = true
+    };
+
+    return tree;
+}
+
+ContactTree createCapturedRaceByPlayerFreeContactTree(race * controllerRace, race* nativeRace)
+{
+    ContactTree tree;
+
+    tree.startingScenarioID = 0;
+
+    std::string raceNameStringNative = nativeRace->getNameString();
+    std::string raceNameStringController = controllerRace->getNameString();
+
+    std::string domainNameController = race_domain_suffix_string[(int)controllerRace->getRaceDomainType()];
+
+    tree.scenarios[0] = ContactScenario
+    {
+        .id = 0,
+        .message = "<<<<<INCOMING LIVE TRANSMISSION>>>>>",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {1},
+        .endConversation = false
+    };
+
+    tree.scenarios[1] = ContactScenario
+    {
+        .id = 1,
+        .message = "This is The " + raceNameStringNative + " reporting.",
+        .nextScenarioIDs = {2},
+        .endConversation = false
+    };
+
+    tree.scenarios[2] = ContactScenario
+    {
+        .id = 2,
+        .message = "Due to the situation in The " + raceNameStringController + " " + domainNameController + ", we are free once again.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {3},
+        .endConversation = true
+    };
+
+    tree.scenarios[3] = ContactScenario
+    {
+        .id = 3,
+        .message = "Your wish is our command.",
+        .menuOptions = {"[continue]"},
+        .nextScenarioIDs = {-1},
+        .endConversation = true
+    };
+
+    return tree;
+}
+

@@ -85,12 +85,15 @@ public:
     void setPointIfInMapRangeAndLOS(point, point&);
     void runContactScenario(ContactTree&);
     void executeSubareaEntranceContactScenario(race*, race*, bool&);
+    void checkNPCShipDefeatedByPlayer(MobShip *);
     void updateFinalMiscEndGameDisplayTiles();
     void initMenus();
+    void checkForRaceSurrenderToPlayerEvent();
     void promptQuit();
+    void runRaceSurrenderToPlayerScript(race*);
+    void checkPlayerRecapturingRaceEvent(race*, race*);
     bool isTargetableNPC(int, input_t);
     bool converseViaContactMenu(race *);
-    bool executeConverseEvent(race *);
     bool checkCanTargetBasedOnModule(input_t);
     bool checkCanTargetBasedOnStraightLine(MobShip *, input_t);
     bool sufficientFillQuantity(MobShip *);
@@ -140,5 +143,11 @@ star_type getStarTypeFromStarMapTile(point);
 std::string getRaceRegionNameAtLocation(point loc);
 
 std::string getUserInputPrompt(std::string& promptText, point& loc, int maxLength);
+
+int getMinNumShipsDestroyedForSurrenderToPlayer(race* r);
+
+double getMinNumShipDestroyedPercentageForSurrenderToPlayer(race* r);
+
+void resetSurrenderedShips();
 
 #endif

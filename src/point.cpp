@@ -58,6 +58,12 @@ point point::operator+(const point& other) const
 	return point(x_val + other.x_val, y_val + other.y_val);
 }
 
+point point::operator-(const point& other) const
+{
+	return point(x_val - other.x_val, y_val - other.y_val);
+}
+
+
 bool point::operator<(const point& other) const 
 {
 	return std::tie(x_val, y_val) < std::tie(other.x_val, other.y_val);
