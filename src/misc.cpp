@@ -112,3 +112,10 @@ bool chtypeMatches(chtype a, chtype b)
         a.color.bg.g == b.color.bg.g &&
         a.color.bg.b == b.color.bg.b;
 }
+
+std::string capitalizeFirstLetter(std::string s) 
+{
+    if (!s.empty())
+        s[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(s[0])));
+    return s;
+}

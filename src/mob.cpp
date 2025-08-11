@@ -696,3 +696,8 @@ bool hasWeaponOfType(MobShip* ship, weapon_t t)
     }
     return false;
 }
+
+Module* getCurrentMobSelectedModule(MobShip* mb)
+{
+    return mb->getModule(mb->getModuleSelectionIndex());
+}

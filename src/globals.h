@@ -30,8 +30,8 @@
 #define SCREENWID (TILEWID * GRIDWID)
 #define SCREENHGT (TILEHGT * GRIDHGT)
 
-#define STARMAPWID 36
-#define STARMAPHGT 36
+#define STARMAPWID 108
+#define STARMAPHGT 108
 
 #define SHOWWID 36
 #define SHOWHGT 36
@@ -56,10 +56,10 @@
 
 #define NUM_TOTAL_SHIELD_TYPES 3
 
-#define NUM_TOTAL_RACES 75
+#define NUM_TOTAL_RACES 150
 
 #define PLAYER_START_X 2
-#define PLAYER_START_Y 33
+#define PLAYER_START_Y 105
 
 #define MAX_SHIPS_PER_LOCALE 60
 
@@ -69,7 +69,7 @@
 
 #define NUM_STAR_TYPES 4
 
-#define NUM_STAR_SYSTEMS 167
+#define NUM_STAR_SYSTEMS 300
 
 #define MIN_UNDSC_STAR_INT (int)SMBACKDROP_MAINSEQSTARSUBAREAENTRANCE
 #define MAX_UNDSC_STAR_INT (int)SMBACKDROP_WHITESTARSUBAREAENTRANCE
@@ -161,6 +161,10 @@ enum backdrop_t
     SMBACKDROP_HOSTILERACE_REDSTARSUBAREAENTRANCE,
     SMBACKDROP_HOSTILERACE_BLUESTARSUBAREAENTRANCE,
     SMBACKDROP_HOSTILERACE_WHITESTARSUBAREAENTRANCE,
+    SMBACKDROP_ALLYRACE_MAINSEQSTARSUBAREAENTRANCE,
+    SMBACKDROP_ALLYRACE_REDSTARSUBAREAENTRANCE,
+    SMBACKDROP_ALLYRACE_BLUESTARSUBAREAENTRANCE,
+    SMBACKDROP_ALLYRACE_WHITESTARSUBAREAENTRANCE,
     SMBACKDROP_WARZONE_MAINSEQSTARSUBAREAENTRANCE,
     SMBACKDROP_WARZONE_REDSTARSUBAREAENTRANCE,
     SMBACKDROP_WARZONE_BLUESTARSUBAREAENTRANCE,
@@ -242,6 +246,7 @@ static const color_type color_lightpurple = { 255,128,255 };
 static const color_type color_lightyellow = {255,255,128};
 static const color_type color_planetblue = {0,128,255};
 static const color_type color_darkblue = { 0,0,100 };
+static const color_type color_darkorange = { 196, 92, 0};
 
 static const color_pair cp_blackonwhite = {color_black,color_white};
 static const color_pair cp_blackongray = {color_black,color_gray};
@@ -416,7 +421,7 @@ static const chtype item_symbol[2] =
     {cp_grayonblack,37}
 };
 
-static const chtype backdrop_symbol[33] =
+static const chtype backdrop_symbol[37] =
 {
     blank_ch,
     {cp_verydarkgrayonblack,(int)'~'},
@@ -424,14 +429,18 @@ static const chtype backdrop_symbol[33] =
     {cp_lightredonblack,(int)'*'},
     {cp_lightblueonblack,(int)'*'},
     {cp_whiteonblack,(int)'*'},
-    {{color_lightyellow, color_darkgreen},(int)'*'},
-    {{color_lightred, color_darkgreen},(int)'*'},
-    {{color_lightblue, color_darkgreen},(int)'*'},
-    {{color_white, color_darkgreen},(int)'*'},
+    {{color_lightyellow, color_darkorange},(int)'*'},
+    {{color_lightred, color_darkorange},(int)'*'},
+    {{color_lightblue, color_darkorange},(int)'*'},
+    {{color_white, color_darkorange},(int)'*'},
     {{color_lightyellow, color_darkred},(int)'*'},
     {{color_lightred, color_darkred},(int)'*'},
     {{color_lightblue, color_darkred},(int)'*'},
     {{color_white, color_darkred},(int)'*'},
+    {{color_lightyellow, color_darkgreen },(int)'*' },
+    {{color_lightred, color_darkgreen},(int)'*'},
+    {{color_lightblue, color_darkgreen},(int)'*'},
+    {{color_white, color_darkgreen},(int)'*'},
     {{color_lightyellow, color_darkpurple},(int)'*'},
     {{color_lightred, color_darkpurple},(int)'*'},
     {{color_lightblue, color_darkpurple},(int)'*'},

@@ -111,7 +111,20 @@ int getStartingRaceAttitudeTowardsPlayer()
 
 int getMaxDangerLevel(point smLoc)
 {
-    return std::min(25, 50 - (int)sqrt(distanceSquared(point(smLoc.x(), STARMAPHGT - smLoc.y() - 1), point(STARMAPWID - 1, STARMAPHGT - 1))) + 4);
+    int maxRoll = 0;
+
+    const int distance = (int)sqrt(distanceSquared(point(smLoc.x(), STARMAPHGT - smLoc.y() - 1), point(STARMAPWID - 1, STARMAPHGT - 1)));
+    
+    if (distance > 140 || distance < 10)
+        maxRoll = 15;
+    else if (distance > 125 || distance < 25)
+        maxRoll = 20;
+    else if (distance > 110 || distance < 40)
+        maxRoll = 23;
+    
+    maxRoll = 25;
+        
+    return maxRoll;
 }
 
 race_domain_type getRaceDomainTypeFromDangerLevel(int dangerLevel)
@@ -251,14 +264,42 @@ void StarMapRegion::createPersistentSubArea(point loc, star_type st, subarea_spe
     }
     else
     {
-        subareaVector[subarea_idx].setupProcgenNonTerritorialSubArea(loc);
-        if (roll(3))
+        if (roll(4))
         {
+            subareaVector[subarea_idx].setupProcgenWarzoneSubArea(loc);
             subareaVector[subarea_idx].setSubAreaSpecificType(SST_WARZONE);
             populateWarZone(subarea_idx);
         }
+        else
+        {
+            subareaVector[subarea_idx].setupProcgenEmptySubArea(loc);
+            subareaVector[subarea_idx].setSubAreaSpecificType(SST_EMPTYSYSTEM);
+        }
     }
 }
+
+void SubAreaRegion::setupProcgenEmptySubArea(point loc)
+{
+    point map_size = getMap()->getSize();
+    int sze = randInt(4, 5);
+    generateStarBackdrop(getMap(), divPoint(map_size, 2, 2), sze, s_type);
+    subarea_name = "Sector (" + int2String(loc.x() + 1) + "," + int2String(STARMAPHGT - loc.y()) + ")";
+}
+
+void SubAreaRegion::setupProcgenWarzoneSubArea(point loc)
+{
+    point map_size = getMap()->getSize();
+
+    int sze = randInt(1, 3);
+
+    carveSpaceWall(divPoint(getMap()->getSize(), 2, 2), sze);
+
+    evolveSpaceWallCA();
+
+    smoothenSpaceWallStructure();
+    subarea_name = "Sector (" + int2String(loc.x() + 1) + "," + int2String(STARMAPHGT - loc.y()) + ")";
+}
+
 
 void StarMapRegion::populateWarZone(int subareaIdx)
 {
@@ -382,10 +423,10 @@ void StarMapRegion::load(std::ifstream& is)
     subareaVector.resize(subarea_count);
     for (int i = 0; i < subarea_count; ++i)
     {      
-        gfx_obj.addBitmapString("loading star systems", cp_whiteonblack, point(GRIDWID / 2 - 16, 25));
+        gfx_obj.addBitmapString("loading star systems", cp_whiteonblack, point(GRIDWID / 2 - 16, 28));
         gfx_obj.updateScreen();
         subareaVector[i].load(is);
-        gfx_obj.addBitmapCharacter(m.getCellP(subareaVector[i].getSubAreaLoc())->getCurrentBackdropSymbol(), point(GRIDWID / 2 - 16 + (i % 33), 26 + i / 33));
+        gfx_obj.addBitmapCharacter(m.getCellP(subareaVector[i].getSubAreaLoc())->getCurrentBackdropSymbol(), point(GRIDWID / 2 - 16 + (i % 33), 29 + i / 33));
         gfx_obj.updateScreen();
     }
 
@@ -463,6 +504,7 @@ void SubAreaRegion::cleanupEverything()
     }
     std::vector<MobShip>().swap(NPCShips);
     std::vector<station>().swap(station_objs);
+    std::vector<EntertainmentStation>().swap(entertainmentStations);
     std::vector<std::vector<uint8_t>>().swap(flood_fill_flags);
     deleteAllPiles();
 }
@@ -737,14 +779,6 @@ void SubAreaRegion::load(std::ifstream& is)
     }
 }
 
-void SubAreaRegion::setupProcgenNonTerritorialSubArea(point loc)
-{
-    point map_size = getMap()->getSize();
-    int sze = randInt(4,5);
-    generateStarBackdrop(getMap(),divPoint(map_size,2,2),sze,s_type);
-    subarea_name = "Sector (" + int2String(loc.x()+1) + "," + int2String(STARMAPHGT-loc.y()) + ")";
-}
-
 void SubAreaRegion::setupProcgenTerritorialSubArea(race *race_obj)
 {
     placeInitialSpaceWallConfiguration(race_obj->getRaceDomainType());
@@ -805,27 +839,32 @@ void SubAreaRegion::placeInitialSpaceWallConfiguration(race_domain_type rdt)
 
     point div_point = divPoint(getMap()->getSize(),2,2);
 
+    carveSpaceWall(div_point, sze);
+
+}
+
+void SubAreaRegion::carveSpaceWall(point div_point, int sze)
+{
     if (roll(2))
     {
-        checkAddGiantSpaceWallCircle(getMap(),div_point,sze);
+        checkAddGiantSpaceWallCircle(getMap(), div_point, sze);
         if (getMap()->getSize().x() % 2 == 0)
-            checkAddGiantSpaceWallCircle(getMap(),addPoints(div_point,point(-1,0)),sze);
+            checkAddGiantSpaceWallCircle(getMap(), addPoints(div_point, point(-1, 0)), sze);
         if (getMap()->getSize().y() % 2 == 0)
-            checkAddGiantSpaceWallCircle(getMap(),addPoints(div_point,point(0,-1)),sze);
+            checkAddGiantSpaceWallCircle(getMap(), addPoints(div_point, point(0, -1)), sze);
         if (getMap()->getSize().x() % 2 == 0 && getMap()->getSize().y() % 2 == 0)
-            checkAddGiantSpaceWallCircle(getMap(),addPoints(div_point,point(-1,-1)),sze);
+            checkAddGiantSpaceWallCircle(getMap(), addPoints(div_point, point(-1, -1)), sze);
     }
     else
     {
-        checkAddGiantSpaceWallCube(getMap(),div_point,sze);
+        checkAddGiantSpaceWallCube(getMap(), div_point, sze);
         if (getMap()->getSize().x() % 2 == 0)
-            checkAddGiantSpaceWallCube(getMap(),addPoints(div_point,point(-1,0)),sze);
+            checkAddGiantSpaceWallCube(getMap(), addPoints(div_point, point(-1, 0)), sze);
         if (getMap()->getSize().y() % 2 == 0)
-            checkAddGiantSpaceWallCube(getMap(),addPoints(div_point,point(0,-1)),sze);
+            checkAddGiantSpaceWallCube(getMap(), addPoints(div_point, point(0, -1)), sze);
         if (getMap()->getSize().x() % 2 == 0 && getMap()->getSize().y() % 2 == 0)
-            checkAddGiantSpaceWallCube(getMap(),addPoints(div_point,point(-1,-1)),sze);
+            checkAddGiantSpaceWallCube(getMap(), addPoints(div_point, point(-1, -1)), sze);
     }
-
 }
 
 void SubAreaRegion::evolveSpaceWallCA()

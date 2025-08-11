@@ -28,7 +28,8 @@ class Game
 {
 public:
     Game();
-    void run();
+    void runGame();
+    void runProgram();
     void primaryGameLoop(bool loaded);
     void checkForUniversalRaceEvent();
     void checkForSubAreaRaceEvent();
@@ -78,7 +79,7 @@ public:
     void playerBuyFuel(station *);
     void pickUpItems(MobShip*, int, int);
     void checkPickUpItems(MobShip *);
-    void printSubAreaEntranceMessage();
+    void printSubAreaEntranceMessage(bool);
     void printTogglePromptMessage(input_t, bool);
     void cycleTarget();
     void setPointIfInMapRangeAndLOS(point, point&);
@@ -110,7 +111,7 @@ public:
     template <typename M> void featurePlayerSelect(M*, point);
 private:
     point last_smloc;
-    point last_subarealoc;
+    bool programActive;
     int gmti;
     int current_player_target;
     bool usingMachine;
@@ -124,9 +125,11 @@ private:
 
 bool eightDirectionRestrictedWeaponSelected(MobShip*);
 
-bool inRangeStarMapBackdropGreen(backdrop_t);
+bool inRangeStarMapBackdropOrange(backdrop_t);
 
 bool inRangeStarMapBackdropRed(backdrop_t);
+
+bool inRangeStarMapBackdropGreen(backdrop_t);
 
 bool inRangeStarMapBackdropUnhighlighted(backdrop_t starTile);
 

@@ -228,7 +228,7 @@ point getClosestNPCTargetInRangeLine(MobShip* mob, int travelRange)
 
             const point target = addPoints(attackLoc, point(dx * travelRange, dy * travelRange));
 
-            if (!inRange(target, point(0, 0), point(STARMAPWID - 1, STARMAPHGT - 1)))
+            if (!inRange(target, point(0, 0), point(SHOWWID - 1, SHOWHGT - 1)))
                 continue;
 
             candidatePoints.push_back(target);

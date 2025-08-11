@@ -17,6 +17,8 @@ gfx_engine::~gfx_engine()
 // initialize SDL2
 bool gfx_engine::initSDL()
 {
+    int pixelMultiplier = 1;
+
     // initialize all of SDL2's utilities/mechanisms etc...
     if (SDL_Init(SDL_INIT_EVERYTHING) == -1)
     {
@@ -25,7 +27,7 @@ bool gfx_engine::initSDL()
 
     // initialize SDL_Window instance screen
     screen = SDL_CreateWindow("Cosmic War Adventure", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        SCREENWID*3, SCREENHGT*3, SDL_WINDOW_SHOWN);
+        SCREENWID*pixelMultiplier, SCREENHGT*pixelMultiplier, SDL_WINDOW_FULLSCREEN_DESKTOP);
 
     if (screen == NULL)
     {
@@ -39,7 +41,7 @@ bool gfx_engine::initSDL()
     {
         return false;
     }
-    /*
+    
     renderTarget = SDL_CreateTexture(renderer,
         SDL_PIXELFORMAT_RGBA8888,
         SDL_TEXTUREACCESS_TARGET,
@@ -49,8 +51,8 @@ bool gfx_engine::initSDL()
     {
         return false;
     }
-    */
-    SDL_RenderSetScale(renderer, 3.0f, 3.0f);
+    
+    //SDL_RenderSetScale(renderer, 3.0f, 3.0f);
 
     text_bitmap = IMG_LoadTexture(renderer, "8x8font.png");
     std::cout << SDL_GetError() << std::endl;
@@ -179,7 +181,7 @@ void gfx_engine::drawRectangle(color_type c, point loc, point area, bool filled)
 // clear screen to black
 void gfx_engine::clearScreen()
 {
-    //renderTargetGE();
+    renderTargetGE();
     SDL_SetRenderDrawColor(renderer,0,0,0,0);
     SDL_RenderClear(renderer);
 }
@@ -187,14 +189,14 @@ void gfx_engine::clearScreen()
 // update display
 void gfx_engine::updateScreen()
 {
-    //SDL_SetRenderTarget(renderer, NULL);
-    //SDL_RenderCopy(renderer, renderTarget, NULL, NULL);
+    SDL_SetRenderTarget(renderer, NULL);
+    SDL_RenderCopy(renderer, renderTarget, NULL, NULL);
     SDL_RenderPresent(renderer);
 }
 
 void gfx_engine::renderTargetGE()
 {
-    //SDL_SetRenderTarget(renderer, renderTarget);
+    SDL_SetRenderTarget(renderer, renderTarget);
 }
 
 color_type getDimmedColor(color_type c, Uint8 f, Uint8 o)

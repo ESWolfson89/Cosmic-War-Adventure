@@ -107,11 +107,6 @@ int rollMultipleDice(dice_roll d)
     return ret_val;
 }
 
-Module *getCurrentMobSelectedModule(MobShip *mb)
-{
-    return mb->getModule(mb->getModuleSelectionIndex());
-}
-
 bool checkNPCWeaponEvent(MobShip* attacker)
 {
     const int targetID = attacker->getMobSubAreaAttackID();
@@ -559,7 +554,7 @@ void checkMobExplosionRadiusDamage(point center, int radius, damage_report baseD
     }
 }
 
-void mobShootSingleProjectile(MobShip* mb, point dest)
+void mobShootSingleProjectile(MobShip* mb, point dest) 
 {
     Module* current_mod = getCurrentMobSelectedModule(mb);
     const auto& weapon = current_mod->getWeaponStruct();

@@ -6,7 +6,7 @@
 #include "rng.h"
 #include "line.h"
 
-#define CREDIT_DL_MULTIPLIER 1000ULL
+#define CREDIT_DL_MULTIPLIER 3000ULL
 
 // fighter                           abcdefgh...
 // advanced fighter                 ABCDEFGH...
@@ -128,7 +128,7 @@ static const shipmobstat_struct allshipmob_data[2] =
     {
         SHIP_PLAYER, 1,
         10.0,10.0,100.0,
-        5000,10,8,1,0,0,
+        50,10,8,1,0,0,
         0,0,3,0,0,1,
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
         {0,0,0},
@@ -260,6 +260,8 @@ void saveShipMobStatStruct(std::ofstream& os, const shipmobstat_struct& s);
 void loadShipMobStatStruct(std::ifstream& is, shipmobstat_struct& s);
 
 bool hasWeaponOfType(MobShip* ship, weapon_t t);
+
+Module* getCurrentMobSelectedModule(MobShip*);
 
 extern MobShip player_ship;
 

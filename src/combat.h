@@ -24,8 +24,6 @@ int baseHitChance(MobShip *, MobShip *);
 
 int rollMultipleDice(dice_roll);
 
-Module *getCurrentMobSelectedModule(MobShip *);
-
 void mobChangeSelectedWeapon(MobShip*);
 
 bool checkNPCWeaponEvent(MobShip*);

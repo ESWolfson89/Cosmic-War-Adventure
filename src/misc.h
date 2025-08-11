@@ -30,6 +30,8 @@ void saveDiceRoll(std::ofstream& os, const dice_roll&);
 
 void loadDiceRoll(std::ifstream& is, dice_roll&);
 
+std::string capitalizeFirstLetter(std::string s);
+
 std::string double2String(double);
 
 std::string int2String(int);

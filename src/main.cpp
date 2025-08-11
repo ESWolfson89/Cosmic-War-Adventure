@@ -3,6 +3,6 @@
 int main(int argc, char* argv[])
 {
     Game gameObj;
-    gameObj.run();
+    gameObj.runProgram();
     return 0;
 }

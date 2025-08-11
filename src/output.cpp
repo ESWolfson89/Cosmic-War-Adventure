@@ -421,7 +421,7 @@ color_type shipDisplayBoxColor(MobShip* s)
     if (playerAtt > 0)
         return color_green;
     if (playerAtt == 0)
-        return color_white;
+        return color_orange;
     
     return color_red;
 }
@@ -456,12 +456,18 @@ void display::displayNPCShipInfo(MobShip* s)
     const point innerBoxBR(SCREENWID - ((SHOWWID + 2) * TILEWID) - TILEWID + 1, (SHOWHGT * TILEHGT) / 2);
     gfx_obj.drawRectangle(shipBorderColor, innerBoxTL, innerBoxBR, false);
 
+    Module* currentModule = getCurrentMobSelectedModule(s);
+    // always a weapon for now
+    std::string moduleName = currentModule->getWeaponStruct().name_modifier;
+    color_pair moduleColor = currentModule->getWeaponStruct().disp_chtype.color;
+
     addString(hull + "                      ", cp_grayonblack, point(SHOWWID + 3, 1));
     addString(crew + "                      ", cp_lightgrayonblack, point(SHOWWID + 3, 2));
     addString(shields + "                      ", cp_lightblueonblack, point(SHOWWID + 3, 3));
     addString(speed + "       ", cp_purpleonblack, point(SHOWWID + 23, 1));
     addString(accuracy + "       ", cp_redonblack, point(SHOWWID + 23, 2));
     addString(evasion + "       ", cp_darkredonblack, point(SHOWWID + 23, 3));
+    addString(capitalizeFirstLetter(moduleName), moduleColor, point(SHOWWID + 3, 4));
 
     displayNPCShipGraphic(s);
 
@@ -508,10 +514,10 @@ void display::printWindowBorders(std::string mapName, std::string shipName, tab_
     const color_pair mapColor = (tt == TABTYPE_PLAYAREA ? cp_blackonwhite : cp_whiteonblack);
     addString(mapName, mapColor, starmapLabelPos);
     gfx_obj.drawRectangle(color_black, point(TILEWID, TILEHGT), point(SHOWWID * TILEWID, SHOWHGT * TILEHGT), true);
-    gfx_obj.drawRectangle(color_white, point(TILEWID - 1, TILEHGT - 1), point(SHOWWID * TILEWID + 2, SHOWHGT * TILEHGT + 2), false);
+    gfx_obj.drawRectangle(color_orange, point(TILEWID - 1, TILEHGT - 1), point(SHOWWID * TILEWID + 2, SHOWHGT * TILEHGT + 2), false);
 
     // Monitor window
-    printMonitorWindow(color_white);
+    printMonitorWindow(color_orange);
     addString("<<<OFFLINE>>>", cp_greenonblack, point(SHOWWID + (GRIDWID - SHOWWID - 10) / 2, SHOWHGT / 2 - 9));
 
     // Ship stats window
@@ -524,7 +530,7 @@ void display::printWindowBorders(std::string mapName, std::string shipName, tab_
 
     const point borderTL((SHOWWID + 2) * TILEWID, (SHOWHGT * TILEHGT) / 2 + TILEHGT * 2 - 1);
     const point borderBR(SCREENWID - ((SHOWWID + 2) * TILEWID) - TILEWID + 1, (SHOWHGT * TILEHGT) / 2 - TILEHGT + 2);
-    gfx_obj.drawRectangle(color_white, borderTL, borderBR, false);
+    gfx_obj.drawRectangle(color_orange, borderTL, borderBR, false);
 }
 
 void display::printMonitorWindow(color_type col)

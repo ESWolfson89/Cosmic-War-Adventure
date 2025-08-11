@@ -28,7 +28,8 @@ class SubAreaRegion
         void initMap(point);
         void setupSubAreaMapGenerics(point, backdrop_t);
         void setupProcgenTerritorialSubArea(race *);
-        void setupProcgenNonTerritorialSubArea(point);
+        void setupProcgenWarzoneSubArea(point);
+        void setupProcgenEmptySubArea(point);
         void evolveSpaceWallCA();
         void smoothenSpaceWallStructure();
         void placeInitialSpaceWallConfiguration(race_domain_type);
@@ -65,6 +66,7 @@ class SubAreaRegion
         void initFloodFillFlags();
         void addProcgenSubAreaNativeShips(race *,int);
         void addAllHomeworlds(race *);
+        void carveSpaceWall(point div_point, int sze);
         void generateAllSpaceStations(int,int);
         void generateAllEntertainmentStations(int dl, int numStations);
         void insertOneHomeworld(race *, point);

@@ -2,58 +2,73 @@
 
 Game::Game()
 {
+    programActive = true;
+}
+
+void Game::runGame()
+{
     Game_active = true;
     playerHasMoved = false;
     usingMachine = false;
     wait_counter = 0;
+
+    bool loaded = false;
+
+    point titleTextLocation = point(GRIDWID / 2 - 16, 8);
+
+    gfx_obj.clearScreen();
+    display_obj.addString("      COSMIC WAR ADVENTURE       ", cp_darkredonblack, titleTextLocation);
+    display_obj.addString("           v0.1.0-dev            ", cp_darkgrayonblack, titleTextLocation + point(0, 2));
+    display_obj.addString(" Press ENTER to start a new Game ", cp_grayonblack, titleTextLocation + point(0, 8));
+    display_obj.addString("Press R to reload a previous Game", cp_grayonblack, titleTextLocation + point(0, 10));
+    display_obj.addString("        By Ewolf Gamedev         ", cp_whiteonblack, titleTextLocation + point(0, GRIDHGT - 17));
+    gfx_obj.updateScreen();
+    // set player input
+    do
+    {
+        event_handler.setAction();
+        if (event_handler.getAction() == INP_TOGGLE)
+        {
+            initGameObjects();
+        }
+        if (event_handler.getAction() == INP_LOAD)
+        {
+            setupLoadedGame();
+            loaded = true;
+        }
+        if (event_handler.getAction() == INP_QUIT)
+        {
+            programActive = false;
+        }
+    } while (event_handler.getAction() != INP_TOGGLE && event_handler.getAction() != INP_LOAD && programActive);
+
+    if (programActive)
+    {
+        primaryGameLoop(loaded);
+        cleanupEverything();
+    }
+
+    do
+    {
+        event_handler.setAction();
+    } while (event_handler.getAction() != INP_TOGGLE);
 }
 
-void Game::run()
+void Game::runProgram()
 {
     if(gfx_obj.initSDL())
     {
-        bool loaded = false;
-
-        point titleTextLocation = point(GRIDWID / 2 - 16, 8);
-
-        display_obj.addString("      COSMIC WAR ADVENTURE       ", cp_darkredonblack,  titleTextLocation);
-        display_obj.addString("           v0.1.0-dev            ", cp_darkgrayonblack, titleTextLocation + point(0,2));
-        display_obj.addString(" Press ENTER to start a new Game ", cp_grayonblack,     titleTextLocation + point(0,8));
-        display_obj.addString("Press R to reload a previous Game", cp_grayonblack,     titleTextLocation + point(0,10));
-        display_obj.addString(" Copyright (c) Eric Wolfson 2025 ", cp_whiteonblack,    titleTextLocation + point(0,GRIDHGT-17));
-        gfx_obj.updateScreen();
-        // set player input
         do
         {
-            event_handler.setAction();
-            if (event_handler.getAction() == INP_TOGGLE)
-            {
-                initGameObjects();
-            }
-            if (event_handler.getAction() == INP_LOAD)
-            {
-                setupLoadedGame();
-                loaded = true;
-            }
-        } while (event_handler.getAction() != INP_TOGGLE && event_handler.getAction() != INP_LOAD && event_handler.getAction() != INP_QUIT);
-
-        if (event_handler.getAction() != INP_QUIT)
-        {
-            primaryGameLoop(loaded);
-        }
-
-        do
-        {
-            event_handler.setAction();
-        } while (event_handler.getAction() != INP_TOGGLE);
+            runGame();
+            cleanupEverything();
+        } while (programActive);
     }
     else
     {
         std::cout << "failed to initialize... press enter to terminate.";
         std::cin.get();
     }
-
-    cleanupEverything();
 }
 
 void Game::promptQuit()
@@ -87,6 +102,7 @@ void Game::cleanupEverything()
     universe.cleanupEverything();
     contact_menu_obj.cleanupEverything();
     player_ship.cleanupEverything();
+    display_obj.clearAndDeleteAllMessages();
 }
 
 // 1) clear messages, 2) print new message with space bar prompt 3) update screen,
@@ -396,7 +412,7 @@ void Game::raceInvasionEvent(race* offender, race* defender)
     SubAreaRegion* region = universe.getSubArea(subareaIndex);
     map* subMap = region->getMap();
 
-    if (region->getNumShipNPCs() >= 100)
+    if (region->getNumShipNPCs() >= 100 && getMap()->getv(defenderLoc))
     {
         msgeAddPromptSpace("You detect a fleet of ships failing to enter the " + defender->getNameString() + " " + domainStr + ".", cp_whiteonblack);
         return;
@@ -567,7 +583,7 @@ int getMinNumShipsDestroyedForSurrenderToPlayer(race* r)
     case(RACEDOMAIN_SECTOR):
         return 15;
     case(RACEDOMAIN_DOMAIN):
-        return 30;
+        return 25;
     }
 
     // empire
@@ -700,7 +716,9 @@ void Game::printTileCharacteristics()
         SMBACKDROP_FRIENDRACE_MAINSEQSTARSUBAREAENTRANCE, SMBACKDROP_FRIENDRACE_REDSTARSUBAREAENTRANCE,
         SMBACKDROP_FRIENDRACE_BLUESTARSUBAREAENTRANCE, SMBACKDROP_FRIENDRACE_WHITESTARSUBAREAENTRANCE,
         SMBACKDROP_HOSTILERACE_MAINSEQSTARSUBAREAENTRANCE, SMBACKDROP_HOSTILERACE_REDSTARSUBAREAENTRANCE,
-        SMBACKDROP_HOSTILERACE_BLUESTARSUBAREAENTRANCE, SMBACKDROP_HOSTILERACE_WHITESTARSUBAREAENTRANCE
+        SMBACKDROP_HOSTILERACE_BLUESTARSUBAREAENTRANCE, SMBACKDROP_HOSTILERACE_WHITESTARSUBAREAENTRANCE,
+        SMBACKDROP_ALLYRACE_MAINSEQSTARSUBAREAENTRANCE, SMBACKDROP_ALLYRACE_REDSTARSUBAREAENTRANCE,
+        SMBACKDROP_ALLYRACE_BLUESTARSUBAREAENTRANCE, SMBACKDROP_ALLYRACE_WHITESTARSUBAREAENTRANCE
     };
 
     static const std::unordered_set<int> warZoneBackdrops = {
@@ -973,20 +991,37 @@ void Game::setRegionTileForRaceHome(race* dominantRace)
     const backdrop_t tile = universe.getMap()->getBackdrop(last_smloc);
     const int attitude = dominantRace->getPlayerAttStatus();
 
-    if (attitude < 0)
+    if (!dominantRace->isSurrenderedToPlayer())
     {
-        if (inRangeStarMapBackdropGreen(tile))
-            setVisitedStarMapTileBackdrop(last_smloc, NUM_STAR_TYPES);
+        if (attitude < 0)
+        {
+            if (inRangeStarMapBackdropGreen(tile))
+                setVisitedStarMapTileBackdrop(last_smloc, -NUM_STAR_TYPES);
 
-        if (inRangeStarMapBackdropUnhighlighted(tile))
-            setVisitedStarMapTileBackdrop(last_smloc, NUM_STAR_TYPES * 2);
+            if (inRangeStarMapBackdropOrange(tile))
+                setVisitedStarMapTileBackdrop(last_smloc, NUM_STAR_TYPES);
+
+            if (inRangeStarMapBackdropUnhighlighted(tile))
+                setVisitedStarMapTileBackdrop(last_smloc, 2 * NUM_STAR_TYPES);
+        }
+        else
+        {
+            if (inRangeStarMapBackdropGreen(tile))
+                setVisitedStarMapTileBackdrop(last_smloc, -2 * NUM_STAR_TYPES);
+
+            if (inRangeStarMapBackdropRed(tile))
+                setVisitedStarMapTileBackdrop(last_smloc, -NUM_STAR_TYPES);
+
+            if (inRangeStarMapBackdropUnhighlighted(tile))
+                setVisitedStarMapTileBackdrop(last_smloc, NUM_STAR_TYPES);
+        }
     }
     else
     {
-        if (inRangeStarMapBackdropRed(tile))
-            setVisitedStarMapTileBackdrop(last_smloc, -NUM_STAR_TYPES);
+        if (inRangeStarMapBackdropOrange(tile))
+            setVisitedStarMapTileBackdrop(last_smloc, 2*NUM_STAR_TYPES);
 
-        if (inRangeStarMapBackdropUnhighlighted(tile))
+        if (inRangeStarMapBackdropRed(tile))
             setVisitedStarMapTileBackdrop(last_smloc, NUM_STAR_TYPES);
     }
 }
@@ -1022,12 +1057,12 @@ void Game::setVisitedStarMapTileBackdrops(point smloc)
         }
         case(SST_WARZONE):
         {
-            setVisitedStarMapTileBackdrop(smloc, NUM_STAR_TYPES*3);
+            setVisitedStarMapTileBackdrop(smloc, NUM_STAR_TYPES*4);
             break;
         }
         case(SST_EMPTYSYSTEM):
         {
-            setVisitedStarMapTileBackdrop(smloc, NUM_STAR_TYPES*4);
+            setVisitedStarMapTileBackdrop(smloc, NUM_STAR_TYPES*5);
         }
         default:
             break;
@@ -1070,6 +1105,7 @@ void Game::enterSubArea(bool isEncounter)
             universe.setSubAreaMapType(SMT_PERSISTENT);
             current_subarea_id = subareaIndex;
             resetSurrenderedShips();
+            printSubAreaEntranceMessage(false);
         }
         else
         {
@@ -1083,6 +1119,7 @@ void Game::enterSubArea(bool isEncounter)
 
             current_subarea_id = universe.getNumSubAreas() - 1;
             setVisitedStarMapTileBackdrops(playerLoc);
+            printSubAreaEntranceMessage(true);
         }
 
         current_maptype = MAPTYPE_LOCALEMAP;
@@ -1113,10 +1150,11 @@ void Game::enterSubArea(bool isEncounter)
             playerHasMoved = false;
             addEncounterShips();
         }
+
+        printSubAreaEntranceMessage(true);
     }
 
     changeMobTile(point(0, 0), getPlayerShip()->at(), getPlayerShip()->getMobType());
-    printSubAreaEntranceMessage();
 }
 
 void resetSurrenderedShips()
@@ -1160,7 +1198,7 @@ star_type getStarTypeFromStarMapTile(point loc)
     return STARTYPE_NONE;
 }
 
-void Game::printSubAreaEntranceMessage()
+void Game::printSubAreaEntranceMessage(bool initialEnterance)
 {
     switch(currentRegion()->getSubAreaSpecificType())
     {
@@ -1174,10 +1212,13 @@ void Game::printSubAreaEntranceMessage()
              msgeAdd("You enter an uninhabited star system.",cp_whiteonblack);
              break;
         case(SST_RACEHOME):
-             msgeAdd("You enter an occupied star system.",cp_whiteonblack);
+             msgeAdd("You enter the occupied star system.",cp_whiteonblack);
              break;
         case(SST_WARZONE):
-             msgeAdd("You have entered a war zone!",cp_whiteonblack);
+             if (initialEnterance)
+                 msgeAdd("You have entered a star region of a race destroyed long ago. It appears to be a war zone now!", cp_whiteonblack);
+             else
+                 msgeAdd("You enter the war zone.", cp_whiteonblack);
              break;
         default:
              break;
@@ -1719,12 +1760,15 @@ bool Game::converseViaContactMenu(race* nativeRace)
 
         const int controllerNativeRegionIndex = universe.getSubAreaIndex(controllerRace->getStarmapLoc());
 
-        const int totalActiveNPCs = universe.getSubArea(controllerNativeRegionIndex)->getNumActiveShipsPresent();
-        const int activeNatives = universe.getSubArea(controllerNativeRegionIndex)->getNumActiveNativeShipsPresent();
-
-        if (totalActiveNPCs > activeNatives || controllerRace->getRaceOverallMajorStatus() == RMS_ENSLAVED)
+        if (controllerNativeRegionIndex >= 0)
         {
-            nativeAreaSeiged = true;
+            const int totalActiveNPCs = universe.getSubArea(controllerNativeRegionIndex)->getNumActiveShipsPresent();
+            const int activeNatives = universe.getSubArea(controllerNativeRegionIndex)->getNumActiveNativeShipsPresent();
+
+            if (totalActiveNPCs > activeNatives || controllerRace->getRaceOverallMajorStatus() == RMS_ENSLAVED)
+            {
+                nativeAreaSeiged = true;
+            }
         }
 
         switch(enter_action)
@@ -1737,7 +1781,7 @@ bool Game::converseViaContactMenu(race* nativeRace)
             {
                 if (nativeAreaSeiged)
                 {
-                    msgeAddPromptSpace("Due to the seige at The " + controllerRace->getNameString() + " " + race_domain_suffix_string[(int)controllerRace->getRaceDomainType()] + ", are unwilling to make contact.", cp_whiteonblack);
+                    msgeAddPromptSpace("Due to the seige at The " + controllerRace->getNameString() + " " + race_domain_suffix_string[(int)controllerRace->getRaceDomainType()] + ", they are unwilling to make contact.", cp_whiteonblack);
                     return false;
                 }
                 break;
@@ -1780,7 +1824,7 @@ void Game::playerFireWeapon(point delta)
 
     point fireLocation = addPoints(getPlayerShip()->at(), delta);
 
-    if (inRange(fireLocation, point(0, 0), point(STARMAPWID - 1, STARMAPHGT - 1)))
+    if (inRange(fireLocation, point(0, 0), point(SHOWWID - 1, SHOWHGT - 1)))
     {
         mobFire(getPlayerShip(), fireLocation);
     }
@@ -2233,7 +2277,7 @@ void Game::pickUpItems(MobShip *mb, int s, int q)
 
 void Game::initMenus()
 {
-    contact_menu_obj = menu(point(2, GRIDHGT / 4), point(GRIDWID - 4, GRIDHGT / 2));
+    contact_menu_obj = menu(point(2, 2), point(GRIDWID - 4, GRIDHGT - 14));
     station_menu_obj = menu(point(2, 2), getSmallStationMenuSize());
     entertainmentStationMenu = menu(point(2, 2), getSmallStationMenuSize());
 }
@@ -2243,6 +2287,7 @@ void Game::setupLoadedGame()
     load();
     initMenus();
     display_obj.updateUpperLeft(getPlayerShip()->at(), getMap()->getSize());
+    raceIDNameMapDiscovered.clear();
     current_player_target = 0;
     if (current_maptype != MAPTYPE_STARMAP)
     {
@@ -2252,6 +2297,7 @@ void Game::setupLoadedGame()
 
 void Game::initGameObjects()
 {
+    raceIDNameMapDiscovered.clear();
     universe.setupUniverse();
     universe.setSubAreaMapType(SMT_NONE);
     initMenus();
@@ -2269,7 +2315,7 @@ void Game::initGameObjects()
     display_obj.updateUpperLeft(getPlayerShip()->at(), getMap()->getSize());
     changeMobTile(point(0, 0), getPlayerShip()->at(), getPlayerShip()->getMobType());
 
-    getPlayerShip()->setNumMaxModules(26);
+    //getPlayerShip()->setNumMaxModules(26);
 
     Module cm1 = Module(MODULE_CREW, 24, 32);
     getPlayerShip()->addModule(cm1);
@@ -2289,7 +2335,7 @@ void Game::initGameObjects()
     wm1.setWeaponStruct(allbasicweapon_stats[1]);
     getPlayerShip()->addModule(wm1);
 
-    
+    /*
         for (int i = 1; i <= 17; i++)
         {
             Module wm = Module(MODULE_WEAPON, 100, 100);
@@ -2308,7 +2354,7 @@ void Game::initGameObjects()
 
         Module cm5 = Module(MODULE_CREW, 96, 96);
         getPlayerShip()->addModule(cm5);
-        
+      */  
     getPlayerShip()->setModuleSelectionIndex(4);
     last_smloc = getPlayerShip()->at();
 }
@@ -2321,7 +2367,6 @@ void Game::save()
 
     // Save Game class members
     last_smloc.save(os); // DONE
-    last_subarealoc.save(os); // NOT NEEDED
     os.write(reinterpret_cast<const char*>(&turn_timer), sizeof(uint)); // DONE
 
     // Save externs
@@ -2348,7 +2393,6 @@ void Game::load()
 
     // Load Game class members
     last_smloc.load(is);
-    last_subarealoc.load(is);
     is.read(reinterpret_cast<char*>(&turn_timer), sizeof(uint));
 
     // Load externs
@@ -2379,7 +2423,7 @@ bool eightDirectionRestrictedWeaponSelected(MobShip* mb)
     return getCurrentMobSelectedModule(mb)->getWeaponStruct().eightDirectionRestricted;
 }
 
-bool inRangeStarMapBackdropGreen(backdrop_t starTile)
+bool inRangeStarMapBackdropOrange(backdrop_t starTile)
 {
     return (int)starTile >= SMBACKDROP_FRIENDRACE_MAINSEQSTARSUBAREAENTRANCE &&
            (int)starTile <= SMBACKDROP_FRIENDRACE_WHITESTARSUBAREAENTRANCE;
@@ -2389,6 +2433,12 @@ bool inRangeStarMapBackdropRed(backdrop_t starTile)
 {
     return (int)starTile >= SMBACKDROP_HOSTILERACE_MAINSEQSTARSUBAREAENTRANCE &&
            (int)starTile <= SMBACKDROP_HOSTILERACE_WHITESTARSUBAREAENTRANCE;
+}
+
+bool inRangeStarMapBackdropGreen(backdrop_t starTile)
+{
+    return (int)starTile >= SMBACKDROP_ALLYRACE_MAINSEQSTARSUBAREAENTRANCE &&
+           (int)starTile <= SMBACKDROP_ALLYRACE_WHITESTARSUBAREAENTRANCE;
 }
 
 bool inRangeStarMapBackdropUnhighlighted(backdrop_t starTile)
@@ -2402,6 +2452,7 @@ bool isMainSequenceBackdropTile(backdrop_t starTile)
     return starTile == SMBACKDROP_MAINSEQSTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_FRIENDRACE_MAINSEQSTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_HOSTILERACE_MAINSEQSTARSUBAREAENTRANCE ||
+        starTile == SMBACKDROP_ALLYRACE_MAINSEQSTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_WARZONE_MAINSEQSTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_EMPTY_MAINSEQSTARSUBAREAENTRANCE;
 }
@@ -2411,6 +2462,7 @@ bool isBlueStarBackdropTile(backdrop_t starTile)
     return starTile == SMBACKDROP_BLUESTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_FRIENDRACE_BLUESTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_HOSTILERACE_BLUESTARSUBAREAENTRANCE ||
+        starTile == SMBACKDROP_ALLYRACE_BLUESTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_WARZONE_BLUESTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_EMPTY_BLUESTARSUBAREAENTRANCE;
 }
@@ -2421,6 +2473,7 @@ bool isRedStarBackdropTile(backdrop_t starTile)
     return starTile == SMBACKDROP_REDSTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_FRIENDRACE_REDSTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_HOSTILERACE_REDSTARSUBAREAENTRANCE ||
+        starTile == SMBACKDROP_ALLYRACE_REDSTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_WARZONE_REDSTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_EMPTY_REDSTARSUBAREAENTRANCE;
 }
@@ -2431,6 +2484,7 @@ bool isWhiteStarBackdropTile(backdrop_t starTile)
     return starTile == SMBACKDROP_WHITESTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_FRIENDRACE_WHITESTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_HOSTILERACE_WHITESTARSUBAREAENTRANCE ||
+        starTile == SMBACKDROP_ALLYRACE_WHITESTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_WARZONE_WHITESTARSUBAREAENTRANCE ||
         starTile == SMBACKDROP_EMPTY_WHITESTARSUBAREAENTRANCE;
 }
