@@ -107,7 +107,7 @@ void Game::cleanupEverything()
 
 // 1) clear messages, 2) print new message with space bar prompt 3) update screen,
 // 4) wait indefinitely until user presses the space bar
-void Game::msgeAddPromptSpace(std::string s, color_pair col)
+void Game::msgeAddPromptSpace(std::string s, color_pair col, bool finalUpdate)
 {
     display_obj.clearAndDeleteAllMessages();
     msgeAdd(s,col);
@@ -115,7 +115,8 @@ void Game::msgeAddPromptSpace(std::string s, color_pair col)
     gfx_obj.updateScreen();
     event_handler.waitForKey(' ');
     display_obj.clearAndDeleteAllMessages();
-    gfx_obj.updateScreen();
+    if (finalUpdate)
+        gfx_obj.updateScreen();
 }
 
 // ask for player input via event_handler "input" class object
@@ -408,13 +409,20 @@ void Game::raceInvasionEvent(race* offender, race* defender)
 
     if (subareaIndex < 0)
         return;
-
     SubAreaRegion* region = universe.getSubArea(subareaIndex);
     map* subMap = region->getMap();
 
-    if (region->getNumShipNPCs() >= 100 && getMap()->getv(defenderLoc))
+    std::cout << region->getNumShipNPCs();
+     
+
+    const point mapSize = getMapSize();
+    const int mapShipLimit = std::min(75, std::min(mapSize.x() * 2, mapSize.y() * 2));
+    if (region->getNumShipNPCs() >= mapShipLimit)
     {
-        msgeAddPromptSpace("You detect a fleet of ships failing to enter the " + defender->getNameString() + " " + domainStr + ".", cp_whiteonblack);
+        if (getMap()->getv(defenderLoc))
+        {
+            msgeAddPromptSpace("You detect a fleet of ships failing to enter the " + defender->getNameString() + " " + domainStr + ".", cp_whiteonblack, true);
+        }
         return;
     }
 
@@ -456,7 +464,7 @@ void Game::raceInvasionEvent(race* offender, race* defender)
             " at " + locationStr + ".";
     }
 
-    msgeAddPromptSpace(message, cp_whiteonblack);
+    msgeAddPromptSpace(message, cp_whiteonblack, true);
 }
 
 void Game::checkForSubAreaRaceEvent()
@@ -472,11 +480,15 @@ void Game::checkForSubAreaRaceEvent()
     const int totalActiveNPCs = currentRegion()->getNumActiveShipsPresent();
     const int activeNatives = currentRegion()->getNumActiveNativeShipsPresent();
 
-    if (totalActiveNPCs > 0 && totalActiveNPCs == activeNatives)
+    int dominantRaceID = getDominantRaceIDInRegion(currentRegion());
+    race* dominantRace = universe.getRace(dominantRaceID);
+    int dominantRaceDangerLevel = dominantRace->getDangerLevel();
+
+    if ((totalActiveNPCs >= dominantRaceDangerLevel || dominantRace->getPlayerAttStatus() == 0) && totalActiveNPCs == activeNatives)
         return;
 
     const point mapSize = getMapSize();
-    const int maxAllowedNPCs = std::min(75, std::min(mapSize.x(), mapSize.y()) * 2);
+    const int maxAllowedNPCs = std::min(75, std::min(mapSize.x(), mapSize.y()));
     if (totalActiveNPCs >= maxAllowedNPCs)
         return;
 
@@ -486,7 +498,7 @@ void Game::checkForSubAreaRaceEvent()
 
     for (int i = 0; i < numHomeworlds; ++i)
     {
-        Planet* planet = homeRace->getHomeworld(i);
+        HomeWorld* planet = homeRace->getHomeworld(i);
         const point planetLoc = planet->getLoc();
 
         const int controllingRaceID = planet->getControlRaceID();
@@ -498,7 +510,7 @@ void Game::checkForSubAreaRaceEvent()
         if (mobBlocked(getMap()->getMob(planetLoc)))
             continue;
 
-        if (!roll(250 - dangerLevel * 5))
+        if (!roll(155 - dangerLevel * 5))
             continue;
 
         // Spawn the ship
@@ -628,7 +640,7 @@ void Game::runRaceSurrenderToPlayerScript(race *r)
 {
     display_obj.printMonitorWindow(color_white);
 
-    msgeAddPromptSpace("Incoming Transmission...", cp_whiteonblack);
+    msgeAddPromptSpace("Incoming Transmission...", cp_whiteonblack, true);
 
     ContactTree tree = createSurrenderToPlayerContactTree(r);
     runContactScenario(tree);
@@ -755,12 +767,12 @@ void Game::printTileCharacteristics()
     {
         msgeAdd("An entertainment center is here.", cp_grayonblack);
     }
-    else if (backdrop == LBACKDROP_PLANET)
+    else if (backdrop == LBACKDROP_HOMEWORLD)
     {
         msgeAdd("There is a homeworld here belonging to The " +
             currentRegion()->getSubAreaName() + ".", cp_lightblueonblack);
     }
-    else if (backdrop == LBACKDROP_ENSLAVEDPLANET)
+    else if (backdrop == LBACKDROP_ENSLAVEDHOMEWORLD)
     {
         const int controllingID = universe.getRace(
             currentRegion()->getNativeRaceID())->getHomeworld(playerPos)->getControlRaceID();
@@ -786,7 +798,7 @@ void Game::checkForUnEnslavementRaceEvent()
             race* otherRace = universe.getRace(otherIdx);
             for (int hw = 0; hw < otherRace->getNumHomeworlds(); ++hw)
             {
-                Planet* homeworld = otherRace->getHomeworld(hw);
+                HomeWorld* homeworld = otherRace->getHomeworld(hw);
                 if (homeworld->getControlRaceID() == enslavedRace->getRaceID())
                 {
                     const point hwLoc = homeworld->getLoc();
@@ -796,7 +808,7 @@ void Game::checkForUnEnslavementRaceEvent()
                     map* subMap = universe
                         .getSubArea(universe.getSubAreaIndex(otherRace->getStarmapLoc()))
                         ->getMap();
-                    subMap->setBackdrop(hwLoc, LBACKDROP_PLANET);
+                    subMap->setBackdrop(hwLoc, LBACKDROP_HOMEWORLD);
 
                     const int oldControllerID = universe.getRace(otherRace->getControllerRaceID())->getRaceID();
                     const int newControllerID = getDominantRaceIDInRegion(
@@ -818,7 +830,7 @@ void Game::checkPlayerRecapturingRaceEvent(race *oldController, race *original)
 {
     display_obj.printMonitorWindow(color_white);
 
-    msgeAddPromptSpace("Incoming Transmission...", cp_whiteonblack);
+    msgeAddPromptSpace("Incoming Transmission...", cp_whiteonblack, true);
 
     if (!original->isSurrenderedToPlayer())
         return;
@@ -874,7 +886,7 @@ void Game::checkForRaceWarEvent()
 
         if (attackedRace->getRaceOverallMajorStatus() == RMS_FREE)
         {
-            msgeAddPromptSpace("The " + raceAttackedRegionName + " retaliates on the arrival of the " + raceAttackerName + " ships!", cp_whiteonblack);
+            msgeAddPromptSpace("The " + raceAttackedRegionName + " retaliates on the arrival of the " + raceAttackerName + " ships!", cp_whiteonblack, false);
 
             for (auto i = 0; i < numAttacksFromAttackedRace; i++)
             {
@@ -1085,10 +1097,12 @@ void Game::enterSubArea(bool isEncounter)
         {
             race* targetRace = universe.getRace(raceIndex);
             const int controllerID = targetRace->getControllerRaceID();
+            std::cout << targetRace->getDangerLevel() << "\n";
 
             if (!converseViaContactMenu(targetRace))
             {
                 setRegionTileForRaceHome(universe.getRace(controllerID));
+                reDisplayWithoutUpdate(true);
                 return;
             }
 
@@ -1129,7 +1143,7 @@ void Game::enterSubArea(bool isEncounter)
     else
     {
         if (isEncounter)
-            msgeAddPromptSpace("An encounter!", cp_whiteonblack);
+            msgeAddPromptSpace("An encounter!", cp_whiteonblack, true);
 
         setMobTileToNIL(getMap(), playerLoc);
 
@@ -1335,7 +1349,7 @@ void Game::navigateMenu(menu *mu)
 void Game::useSpaceStation(point p)
 {
     bool exitMenu = false;
-    msgeAddPromptSpace("Your ship docks at the space station.", cp_blackonwhite);
+    msgeAddPromptSpace("Your ship docks at the space station.", cp_blackonwhite, true);
 
     int selection = 0;
     station_menu_obj.setSelectionIndex(0);
@@ -1458,7 +1472,7 @@ void Game::useSpaceStation(point p)
 
 void Game::useEntertainmentCenter(point p)
 {
-    msgeAddPromptSpace("Your ship docks at the space station.", cp_blackonwhite);
+    msgeAddPromptSpace("Your ship docks at the space station.", cp_blackonwhite, true);
 
     bool exitMenu = false;
     int selection = 0;
@@ -1747,7 +1761,7 @@ bool Game::converseViaContactMenu(race* nativeRace)
 
     if (!nativeRace->playerIdentifiedByRace())
     {
-        msgeAddPromptSpace("You encounter an unidentified alien region!", cp_blackonwhite);
+        msgeAddPromptSpace("You encounter an unidentified alien region!", cp_blackonwhite, true);
     }
     else
     {
@@ -1781,7 +1795,7 @@ bool Game::converseViaContactMenu(race* nativeRace)
             {
                 if (nativeAreaSeiged)
                 {
-                    msgeAddPromptSpace("Due to the seige at The " + controllerRace->getNameString() + " " + race_domain_suffix_string[(int)controllerRace->getRaceDomainType()] + ", they are unwilling to make contact.", cp_whiteonblack);
+                    msgeAddPromptSpace("Due to the seige at The " + controllerRace->getNameString() + " " + race_domain_suffix_string[(int)controllerRace->getRaceDomainType()] + ", they are unwilling to make contact.", cp_whiteonblack, true);
                     return false;
                 }
                 break;
@@ -1792,7 +1806,7 @@ bool Game::converseViaContactMenu(race* nativeRace)
     }
 
     bool enterSubArea = false;
-    msgeAddPromptSpace("Incoming Transmission...", cp_whiteonblack);
+    msgeAddPromptSpace("Incoming Transmission...", cp_whiteonblack, true);
     executeSubareaEntranceContactScenario(controllerRace, nativeRace, enterSubArea);
     nativeRace->setPlayerIDByRaceStatus(true);
     raceIDNameMapDiscovered[nativeRace->getRaceID()] = nativeRace->getNameString();
@@ -2287,7 +2301,6 @@ void Game::setupLoadedGame()
     load();
     initMenus();
     display_obj.updateUpperLeft(getPlayerShip()->at(), getMap()->getSize());
-    raceIDNameMapDiscovered.clear();
     current_player_target = 0;
     if (current_maptype != MAPTYPE_STARMAP)
     {
@@ -2365,18 +2378,15 @@ void Game::save()
     std::ofstream os("save.sav", std::ios::binary);
     if (!os) return;
 
-    // Save Game class members
     last_smloc.save(os); // DONE
     os.write(reinterpret_cast<const char*>(&turn_timer), sizeof(uint)); // DONE
 
-    // Save externs
     player_ship.save(os); //DONE
     universe.save(os); // DONE
     os.write(reinterpret_cast<const char*>(&current_maptype), sizeof(MapType));
     os.write(reinterpret_cast<const char*>(&current_subarea_id), sizeof(int)); // DONE
     os.write(reinterpret_cast<const char*>(&current_tab), sizeof(tab_type));
 
-    // Save raceIDNameMapDiscovered
     uint32_t discoveredCount = static_cast<uint32_t>(raceIDNameMapDiscovered.size());
     os.write(reinterpret_cast<const char*>(&discoveredCount), sizeof(discoveredCount));
     for (const auto& [id, name] : raceIDNameMapDiscovered)
@@ -2391,18 +2401,15 @@ void Game::load()
     std::ifstream is("save.sav", std::ios::binary);
     if (!is) return;
 
-    // Load Game class members
     last_smloc.load(is);
     is.read(reinterpret_cast<char*>(&turn_timer), sizeof(uint));
 
-    // Load externs
     player_ship.load(is);
     universe.load(is);
     is.read(reinterpret_cast<char*>(&current_maptype), sizeof(MapType));
     is.read(reinterpret_cast<char*>(&current_subarea_id), sizeof(int));
     is.read(reinterpret_cast<char*>(&current_tab), sizeof(tab_type));
 
-    // Load raceIDNameMapDiscovered
     uint32_t discoveredCount = 0;
     is.read(reinterpret_cast<char*>(&discoveredCount), sizeof(discoveredCount));
     for (uint32_t i = 0; i < discoveredCount; ++i)
@@ -2497,19 +2504,36 @@ void printExitPromptMessage()
 void Game::runContactScenario(ContactTree& contactTree)
 {
     int scenario_id = contactTree.startingScenarioID;
-    int previousSelectionIndex = -1;
+    int last_built_id = std::numeric_limits<int>::min(); // force initial build
+    int preservedSel = 0;
 
     while (true)
     {
         const ContactScenario& scenario = contactTree.getScenario(scenario_id);
 
-        contact_menu_obj.clearMenuItems();
-        contact_menu_obj.clearMenuMainText();
-        contact_menu_obj.addMenuMainText(scenario.message);
-
-        for (const auto& option : scenario.menuOptions)
+        // Rebuild only when the page changes
+        if (last_built_id != scenario_id)
         {
-            contact_menu_obj.addMenuItem(option, blank_ch);
+            preservedSel = contact_menu_obj.getSelectionIndex();
+
+            contact_menu_obj.clearMenuItems();
+            contact_menu_obj.clearMenuMainText();
+            contact_menu_obj.addMenuMainText(scenario.message);
+
+            for (const auto& option : scenario.menuOptions)
+                contact_menu_obj.addMenuItem(option, blank_ch);
+
+            const int n = contact_menu_obj.getNumMenuItems();
+            if (n > 0) {
+                if (preservedSel < 0) preservedSel = 0;
+                if (preservedSel >= n) preservedSel = n - 1;
+                contact_menu_obj.setSelectionIndex(preservedSel);
+            }
+            else {
+                contact_menu_obj.setSelectionIndex(0);
+            }
+
+            last_built_id = scenario_id;
         }
 
         display_obj.displayMenu(&contact_menu_obj);
@@ -2521,18 +2545,36 @@ void Game::runContactScenario(ContactTree& contactTree)
         }
         else if (event_handler.getAction() == INP_SELECT)
         {
-            int sel = contact_menu_obj.getSelectionIndex();
+            const int sel = contact_menu_obj.getSelectionIndex();
 
-            if (scenario.onSelectCallback)
-                scenario.onSelectCallback(previousSelectionIndex);
+            // Figure out where this option would go
+            int next_id = -1;
+            if (!scenario.nextScenarioIDs.empty() &&
+                sel >= 0 && sel < (int)scenario.nextScenarioIDs.size())
+            {
+                next_id = scenario.nextScenarioIDs[sel];
+            }
 
-            if (scenario.endConversation || scenario.nextScenarioIDs.empty() || scenario.nextScenarioIDs[sel] == -1)
-                break;
+            // If this page ends OR has no next (-1), we are NOT navigating.
+            // Only in the "no next" case do we run the current page's callback.
+            if (scenario.endConversation || next_id == -1)
+            {
+                if (next_id == -1 && scenario.onSelectCallback)
+                    scenario.onSelectCallback(sel);   // e.g., Scenario 11 "enter subarea"
 
-            previousSelectionIndex = sel;  // store for next callback
+                break;  // conversation ends here
+            }
 
-            scenario_id = scenario.nextScenarioIDs[sel];
+            // We ARE navigating to another page deliver current selection to the NEXT page’s callback.
+            // (This lets Scenario 10 consume the choice made on Scenario 9.)
+            const ContactScenario& nextScenario = contactTree.getScenario(next_id);
+            if (nextScenario.onSelectCallback)
+                nextScenario.onSelectCallback(sel);
+
+            // Switch to next page
+            scenario_id = next_id;
             contact_menu_obj.setSelectionIndex(0);
+            last_built_id = std::numeric_limits<int>::min(); // force rebuild
         }
     }
 

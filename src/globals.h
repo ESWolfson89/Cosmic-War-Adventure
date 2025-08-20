@@ -112,7 +112,8 @@ enum EntertainmentType
 enum MapType
 {
     MAPTYPE_STARMAP,
-    MAPTYPE_LOCALEMAP
+    MAPTYPE_LOCALEMAP,
+    MAPTYPE_PLANETMAP
 };
 
 enum subarea_MapType
@@ -130,6 +131,14 @@ enum subarea_specific_type
     SST_RACEHOME,
     SST_EMPTYSYSTEM,
     SST_WARZONE
+};
+
+enum PlanetType
+{
+    PT_NULL,
+    PT_GRAY,
+    PT_RED,
+    PT_YELLOW
 };
 
 enum mob_t
@@ -173,8 +182,11 @@ enum backdrop_t
     SMBACKDROP_EMPTY_REDSTARSUBAREAENTRANCE,
     SMBACKDROP_EMPTY_BLUESTARSUBAREAENTRANCE,
     SMBACKDROP_EMPTY_WHITESTARSUBAREAENTRANCE,
-    LBACKDROP_PLANET,
-    LBACKDROP_ENSLAVEDPLANET,
+    LBACKDROP_HOMEWORLD,
+    LBACKDROP_ENSLAVEDHOMEWORLD,
+    LBACKDROP_GRAYPLANET,
+    LBACKDROP_REDPLANET,
+    LBACKDROP_ORANGEPLANET,
     LBACKDROP_SPACESTATION_SHIP,
     LBACKDROP_SPACESTATION_ENTERTAINMENT,
     LBACKDROP_SPACEWALL,
@@ -183,7 +195,10 @@ enum backdrop_t
     LBACKDROP_MAINSEQSTARBACKGROUND,
     LBACKDROP_REDSTARBACKGROUND,
     LBACKDROP_BLUESTARBACKGROUND,
-    LBACKDROP_WHITESTARBACKGROUND
+    LBACKDROP_WHITESTARBACKGROUND,
+    LBACKDROP_GRAYPLANETTERRAIN,
+    LBACKDROP_REDPLANETTERRAIN,
+    LBACKDROP_ORANGEPLANETTERRAIN
 };
 
 enum fire_t
@@ -232,6 +247,7 @@ static const color_type color_yellow = {255,255,0};
 static const color_type color_green = {0,255,0};
 static const color_type color_darkgreen = { 0,128,0 };
 static const color_type color_darkred = {128,0,0};
+static const color_type color_darkyellow = { 100,0,100 };
 static const color_type color_orange = {255,128,0};
 static const color_type color_brown = {180,90,0};
 static const color_type color_cyan = {0,192,192};
@@ -284,6 +300,12 @@ static const color_pair cp_planetblueonverydarkgray = {color_planetblue,color_ve
 static const color_pair cp_blackondarkgray = {color_black,color_darkgray};
 static const color_pair cp_blackonverydarkgray = {color_black,color_verydarkgray};
 static const color_pair cp_blackonspace = {color_black,color_space};
+static const color_pair cp_darkyellowonblack = { color_darkyellow, color_black };
+static const color_pair cp_darkorangeonblack = { color_darkorange, color_black };
+static const color_pair cp_blackonpurple = { color_black, color_purple };
+static const color_pair cp_blackonorange = { color_black, color_orange };
+static const color_pair cp_blackondarkred = { color_black, color_darkred };
+static const color_pair cp_blackongreen = { color_black, color_green };
 
 static const chtype blank_ch = {cp_blackonblack,(int)' '};
 static const chtype blank_grid_ch = {cp_spaceonblack,254};
@@ -421,7 +443,7 @@ static const chtype item_symbol[2] =
     {cp_grayonblack,37}
 };
 
-static const chtype backdrop_symbol[37] =
+static const chtype backdrop_symbol[43] =
 {
     blank_ch,
     {cp_verydarkgrayonblack,(int)'~'},
@@ -451,6 +473,9 @@ static const chtype backdrop_symbol[37] =
     {{color_white, color_gray},(int)'*'},
     {cp_planetblueonverydarkgray,(int)'*'},
     {cp_purpleonverydarkgray,(int)'*'},
+    {cp_darkgrayonblack, (int)'*'},
+    {cp_darkredonblack, (int)'*'},
+    {cp_darkorangeonblack, (int)'*'},
     {cp_lightgrayonblack,157},
     {cp_redonblack, 21},
     {cp_grayonblack,(int)'#'},
@@ -459,7 +484,10 @@ static const chtype backdrop_symbol[37] =
     {cp_lightyellowonblack,219},
     {cp_lightredonblack,219},
     {cp_lightblueonblack,219},
-    {cp_whiteonblack,219}
+    {cp_whiteonblack,219},
+    {cp_darkgrayonblack, 177},
+    {cp_darkredonblack, 177},
+    {cp_darkorangeonblack, 177}
 };
 
 enum race_type

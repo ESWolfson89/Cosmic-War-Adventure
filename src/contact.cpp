@@ -373,18 +373,20 @@ ContactTree createFullNonHostileContactTree(race* controlRace, race* nativeRace,
             .message = "As you wish.",
             .menuOptions = {"[continue]"},
             .nextScenarioIDs = {11},
-            .onSelectCallback = [controlRace, filteredAttackableRaceIDs](int selectedIndex)
+            .onSelectCallback = [controlRace, &enterSubArea, filteredAttackableRaceIDs](int selectedIndex)
              {         
                 if (selectedIndex < static_cast<int>(filteredAttackableRaceIDs.size()))
                 {
                     int targetRaceID = filteredAttackableRaceIDs[selectedIndex];
                     controlRace->setRaceIDCommandedToAttack(targetRaceID);
                     controlRace->setRaceAttStatus(targetRaceID, std::min(-15, controlRace->getRaceAttStatus(targetRaceID) - 15));
+                    playerHasMoved = true;
                 }
                 else
                 {
                     controlRace->setRaceIDCommandedToAttack(-1);
                 }
+                enterSubArea = false;
              },
             .endConversation = true
         };

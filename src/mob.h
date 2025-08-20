@@ -6,7 +6,7 @@
 #include "rng.h"
 #include "line.h"
 
-#define CREDIT_DL_MULTIPLIER 3000ULL
+#define CREDIT_DL_MULTIPLIER 4000ULL
 
 // fighter                           abcdefgh...
 // advanced fighter                 ABCDEFGH...
@@ -35,6 +35,7 @@ struct ship_design_struct
     color_type ctThirdColor;
     color_type ctFourthColor;
     chtype shipFlameCh;
+    int weaponFrontOffset;
 };
 
 enum shipmob_classtype

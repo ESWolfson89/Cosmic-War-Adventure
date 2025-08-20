@@ -183,21 +183,41 @@ void display::displayMachineBox()
     //gfx_obj.updateScreen();
 }
 
-void display::displayMenu(menu *mu)
+void display::displayMenu(menu* mu)
 {
     point loc = mu->getLoc();
     point area = mu->getArea();
 
-    gfx_obj.drawRectangle(color_black,point(TILEWID*loc.x(),TILEHGT*loc.y()),point(area.x()*TILEWID,area.y()*TILEHGT),true);
-    gfx_obj.drawRectangle(color_white,point(TILEWID*loc.x()-1,TILEHGT*loc.y()-1),point(area.x()*TILEWID+2,area.y()*TILEHGT+2),false);
+    gfx_obj.drawRectangle(color_black,
+        point(TILEWID * loc.x(), TILEHGT * loc.y()),
+        point(area.x() * TILEWID, area.y() * TILEHGT),
+        true);
+    gfx_obj.drawRectangle(color_white,
+        point(TILEWID * loc.x() - 1, TILEHGT * loc.y() - 1),
+        point(area.x() * TILEWID + 2, area.y() * TILEHGT + 2),
+        false);
 
     if (mu->getNumMenuMainTextStrings() > 0)
-        addString(mu->getMenuMainText(0),cp_whiteonblack,point(((loc.x()+area.x())/2)-((int)mu->getMenuMainText(0).size()/2)+1,loc.y()));
+        addString(mu->getMenuMainText(0),
+            cp_whiteonblack,
+            point(((loc.x() + area.x()) / 2) - ((int)mu->getMenuMainText(0).size() / 2) + 1, loc.y()));
 
-    for (int i = 0; i < mu->getNumMenuItems(); ++i)
+    const int visibleRows = mu->getVisibleRows();           // area.y - 3
+    const int start = mu->getScrollOffset();
+    const int end = std::min(start + visibleRows, mu->getNumMenuItems());
+
+    // Draw only the visible slice
+    for (int i = start; i < end; ++i)
     {
-        addChar(mu->getMenuItem(i).menu_symbol,point(loc.x()+1,loc.y()+i+2));
-        addString(mu->getMenuItem(i).description,(i == mu->getSelectionIndex() ? cp_blackonwhite : cp_whiteonblack),point(loc.x() + 3,loc.y() + i + 2));
+        const int row = i - start;                          // row 0..visibleRows-1
+        const bool selected = (i == mu->getSelectionIndex());
+
+        addChar(mu->getMenuItem(i).menu_symbol,
+            point(loc.x() + 1, loc.y() + row + 2));
+
+        addString(mu->getMenuItem(i).description,
+            selected ? cp_blackonwhite : cp_whiteonblack,
+            point(loc.x() + 3, loc.y() + row + 2));
     }
 
     gfx_obj.updateScreen();
@@ -213,167 +233,358 @@ void display::displayNPCShipGraphic(MobShip *s)
     runShipDesignCADisplayRule(s);
     setNPCShipYCenterPixels(s);
     drawNPCShipDesign(s);
+    //drawWeaponModuleTiles(s);
 }
 
-void display::initNPCShipPixels(MobShip *s)
+chtype getShipWeaponSymbolOnDisplay(weapon_struct& wstruct)
 {
-    for (int i = 0; i < NPCSHIP_PIXEL_MAXHEIGHT; ++i)
-    for (int j = 0; j < NPCSHIP_PIXEL_MAXWIDTH; ++j)
+    int numShots = wstruct.num_shots;
+
+    chtype ch;
+
+    color_pair cp = wstruct.disp_chtype.color;
+
+    color_type cpf = cp.fg;
+    color_type cpb = cp.bg;
+
+    switch (wstruct.wt)
     {
-        if (j > NPCSHIP_PIXEL_MAXWIDTH - s->getDesignStruct().xExtension)
-        {
-            npc_ship_pixels[i][j] = 1;
-            npc_ship_pixels_temp[i][j] = 1;
-        }
-        else
-        {
-            npc_ship_pixels[i][j] = 0;
-            npc_ship_pixels_temp[i][j] = 0;
-        }
-        npc_ship_chars[i][j] = blank_ch;
+    case(WEAPONTYPE_BLAST):
+    case(WEAPONTYPE_BEAM):
+        ch.ascii = numShots > 1 ? int2String(numShots)[0] : std::toupper(wstruct.name_modifier[0]);
+        cp.fg = cpb;
+        cp.bg = cpf;
+        break;
+    case(WEAPONTYPE_MISSILE):
+        ch.ascii = numShots > 1 ? 'D' : (int)'M';
+        cp.fg = cpb;
+        cp.bg = cpf;
+        break;
+    case(WEAPONTYPE_PULSE):
+        ch.ascii = (int)'*';
+        cp = cp_blackonpurple;
+        break;
+    case(WEAPONTYPE_SPREAD):
+        ch.ascii = (int)'*';
+        cp = cp_blackonorange;
+        break;
+    case(WEAPONTYPE_WALLOP):
+        ch.ascii = (int)'*';
+        cp = cp_blackongreen;
+        break;
+    case(WEAPONTYPE_MECH):
+        ch.ascii = wstruct.disp_chtype.ascii;
+        cp = cp_blackondarkgray;
+        break;
+    case(WEAPONTYPE_HELL):
+        ch.ascii = 239;
+        cp = cp_blackondarkred;
+        break;
+    default:
+        break;
     }
+
+    ch.color = cp;
+
+    return ch;
 }
 
-void display::runShipDesignCADisplayRule(MobShip *s)
+void display::drawWeaponModuleTiles(MobShip* s)
 {
-    int num_adj = 0;
-    point adj;
-    for (int n = 0; n < s->getDesignStruct().CAShipGenerations; ++n)
+    //return;
+    const int H = NPCSHIP_PIXEL_MAXHEIGHT;
+    const int W = NPCSHIP_PIXEL_MAXWIDTH;
+
+    int count = 0;
+
+    // Use string (name_modifier) as key
+    std::unordered_map<std::string, int> weaponMap;
+
+    // Initialize counts to zero
+    for (int i = 1; i < NUM_TOTAL_WEAPON_TYPES; i++)
     {
-        for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
-        for (int j = NPCSHIP_PIXEL_MAXWIDTH - s->getDesignStruct().xExtension + 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
+        weaponMap[allbasicweapon_stats[i].name_modifier] = 0;
+    }
+
+    // Count installed modules
+    for (int i = 0; i < s->getNumInstalledModulesOfType(MODULE_WEAPON); i++)
+    {
+        Module* m = s->getModule(i);
+        if (m->getModuleType() == MODULE_WEAPON)
         {
-            num_adj = 0;
-            for (int dy = -1; dy <= 1; ++dy)
-            for (int dx = -1; dx <= 1; ++dx)
+            weaponMap[m->getWeaponStruct().name_modifier]++;
+        }
+    }
+
+    // Draw weapons
+    for (int i = 1; i < NUM_TOTAL_WEAPON_TYPES; ++i)
+    {
+        weapon_struct wstruct = allbasicweapon_stats[i];
+        const int n = weaponMap[wstruct.name_modifier];
+        if (n <= 0) continue;
+
+        const chtype ch = getShipWeaponSymbolOnDisplay(wstruct);
+        const shipmob_classtype classType = s->getStatStruct().sctype;
+
+        const int frontOffset = s->getDesignStruct().weaponFrontOffset;
+
+        auto offsetsFor = [](int k) -> std::vector<int>
             {
-                adj.set(dx+j,dy+i);
-                if (dy != 0 || dx != 0)
-                if (npc_ship_pixels[adj.y()][adj.x()] > 0)
-                    num_adj += npc_ship_pixels[adj.y()][adj.x()];
-            }
+                switch (k)
+                {
+                case 1:  return { 0 };
+                case 2:  return { -3, +3 };
+                case 3:  return { -2, 0, +2 };
+                case 4:  return { -4, -2, +2, +4 };
+                case 5:  return { -5, -3, 0, +3, +5 };
+                case 6:  return { -6, -4, -2, +2, +4, +6 };
+                case 7:  return { -3, -2, -1, 0, +1, +2, +3 };
+                case 8:  return { -5, -4, -3, -2, +2, +3, +4, +5 };                  
+                case 9:  return { 0, -4, -3, -2, -1, +1, +2, +3, +4 };              
+                case 10: return { -5, -4, -3, -2, -1, +1, +2, +3, +4, +5 };          
+                case 11: return { 0, -5, -4, -3, -2, -1, +1, +2, +3, +4, +5 };      
+                case 12: return { -6, -5, -4, -3, -2, -1, +1, +2, +3, +4, +5, +6 };  
+                case 13: return { 0, -6, -5, -4, -3, -2, -1, +1, +2, +3, +4, +5, +6 };
+                default:
+                    return { 0 };
+                }
+            };
 
-            num_adj = num_adj % 9;
+        const int colX = SHOWWID + W - frontOffset - count * static_cast<int>(classType);
+        const int baseY = 4 + H / 2;
 
-            if ((num_adj == 2 || num_adj == 3) && npc_ship_pixels[i][j] == 1)
-                npc_ship_pixels_temp[i][j] = 1;
-            else if (num_adj == 3 && npc_ship_pixels[i][j] == 0)
-                npc_ship_pixels_temp[i][j] = 1;
-            else if (num_adj == 4)
-                npc_ship_pixels_temp[i][j] = 2;
-            else if (num_adj == 5)
-                npc_ship_pixels_temp[i][j] = 3;
-            else
-                npc_ship_pixels_temp[i][j] = 0;
-        }
+        for (int dy : offsetsFor(n))
+            addChar(ch, point(colX, baseY + dy));
 
-        for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
-        for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
-        {
-            npc_ship_pixels[i][j] = npc_ship_pixels_temp[i][j];
-        }
+        ++count;
     }
 }
 
-void display::setNPCShipYCenterPixels(MobShip *s)
+void display::initNPCShipPixels(MobShip* s)
 {
-    for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
-    for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
+    const int H = NPCSHIP_PIXEL_MAXHEIGHT;
+    const int W = NPCSHIP_PIXEL_MAXWIDTH;
+    const auto& ds = s->getDesignStruct();
+    const int xStart = W - ds.xExtension;
+
+    for (int i = 0; i < H; ++i)
     {
-        if (i == 7 && j >= NPCSHIP_PIXEL_MAXWIDTH - s->getDesignStruct().xExtension + 1)
-           npc_ship_pixels[i][j] = 1;
+        for (int j = 0; j < W; ++j)
+        {
+            const bool filled = (j > xStart);
+            const int v = filled ? 1 : 0;
+
+            npc_ship_pixels[i][j] = v;
+            npc_ship_pixels_temp[i][j] = v;
+            npc_ship_chars[i][j] = blank_ch;
+        }
     }
 }
 
-void display::drawNPCShipDesign(MobShip *s)
+void display::runShipDesignCADisplayRule(MobShip* s)
 {
+    const int H = NPCSHIP_PIXEL_MAXHEIGHT;
+    const int W = NPCSHIP_PIXEL_MAXWIDTH;
+    const auto& ds = s->getDesignStruct();
+    const int xStart = W - ds.xExtension;
+
+    for (int gen = 0; gen < ds.CAShipGenerations; ++gen)
+    {
+        // Update temp grid from current pixels
+        for (int i = 1; i < H - 1; ++i)
+        {
+            for (int j = xStart + 1; j < W - 1; ++j)
+            {
+                int adjCount = 0;
+                for (int dy = -1; dy <= 1; ++dy)
+                {
+                    for (int dx = -1; dx <= 1; ++dx)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        const int y = i + dy;
+                        const int x = j + dx;
+                        const int val = npc_ship_pixels[y][x];
+                        if (val > 0) adjCount += val;
+                    }
+                }
+
+                adjCount %= 9;
+
+                const int cur = npc_ship_pixels[i][j];
+                int next = 0;
+
+                // Rule mapping (kept identical)
+                if ((adjCount == 2 || adjCount == 3) && cur == 1)
+                    next = 1;
+                else if (adjCount == 3 && cur == 0)
+                    next = 1;
+                else if (adjCount == 4)
+                    next = 2;
+                else if (adjCount == 5)
+                    next = 3;
+                else
+                    next = 0;
+
+                npc_ship_pixels_temp[i][j] = next;
+            }
+        }
+
+        // Commit temp to main
+        for (int i = 1; i < H - 1; ++i)
+        {
+            for (int j = 1; j < W - 1; ++j)
+            {
+                npc_ship_pixels[i][j] = npc_ship_pixels_temp[i][j];
+            }
+        }
+    }
+}
+
+void display::setNPCShipYCenterPixels(MobShip* s)
+{
+    const int H = NPCSHIP_PIXEL_MAXHEIGHT;
+    const int W = NPCSHIP_PIXEL_MAXWIDTH;
+    const auto& ds = s->getDesignStruct();
+    const int xStart = W - ds.xExtension;
+    const int centerY = 7; // preserves original behavior
+
+    for (int j = 1; j < W - 1; ++j)
+    {
+        if (centerY >= 1 && centerY < H - 1 && j >= xStart + 1)
+        {
+            npc_ship_pixels[centerY][j] = 1;
+        }
+    }
+}
+
+void display::drawNPCShipDesign(MobShip* s)
+{
+    const int H = NPCSHIP_PIXEL_MAXHEIGHT;
+    const int W = NPCSHIP_PIXEL_MAXWIDTH;
+    const auto& ds = s->getDesignStruct();
+
     chtype primary_design_ch;
     chtype secondary_design_ch;
     chtype third_design_ch;
     chtype fourth_design_ch;
     chtype front_tile_ch;
 
-    secondary_design_ch.ascii = s->getDesignStruct().CASecondValue;
-    secondary_design_ch.color.fg = s->getDesignStruct().ctSecondColor;
-    secondary_design_ch.color.bg = getDimmedColor(s->getShipSymbol().color.fg,3,0);
-
-    third_design_ch.ascii = s->getDesignStruct().CAThirdValue;
-    third_design_ch.color.fg = s->getDesignStruct().ctThirdColor;
-    third_design_ch.color.bg = getDimmedColor(secondary_design_ch.color.fg,3,0);
-
-    fourth_design_ch.ascii = s->getDesignStruct().CAFourthValue;
-    fourth_design_ch.color.fg = s->getDesignStruct().ctFourthColor;
-    fourth_design_ch.color.bg = getDimmedColor(third_design_ch.color.fg, 3, 0);
-
+    // Colors/tiles
     primary_design_ch.ascii = 219;
     primary_design_ch.color = s->getShipSymbol().color;
+
+    secondary_design_ch.ascii = ds.CASecondValue;
+    secondary_design_ch.color.fg = ds.ctSecondColor;
+    secondary_design_ch.color.bg = getDimmedColor(s->getShipSymbol().color.fg, 3, 0);
+
+    third_design_ch.ascii = ds.CAThirdValue;
+    third_design_ch.color.fg = ds.ctThirdColor;
+    third_design_ch.color.bg = getDimmedColor(secondary_design_ch.color.fg, 3, 0);
+
+    fourth_design_ch.ascii = ds.CAFourthValue;
+    fourth_design_ch.color.fg = ds.ctFourthColor;
+    fourth_design_ch.color.bg = getDimmedColor(third_design_ch.color.fg, 3, 0);
 
     front_tile_ch.ascii = gray_rightarrow.ascii;
     front_tile_ch.color = s->getShipSymbol().color;
 
-    point loc;
-
-    // Add bulk of ship design to monitor
-    for (int i = 0; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
-    for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH; ++j)
+    // Fill main body
+    for (int i = 0; i < H - 1; ++i)
     {
-        if (i == 0 || j == 0 || i == NPCSHIP_PIXEL_MAXHEIGHT - 1 || j == NPCSHIP_PIXEL_MAXWIDTH - 1)
-            npc_ship_chars[i][j] = blank_ch;
-        else if (npc_ship_pixels[i][j] == 1 || npc_ship_pixels[i][j] == 2)
-            npc_ship_chars[i][j] = primary_design_ch;
-        else if (npc_ship_pixels[i][j] == 3)
-            npc_ship_chars[i][j] = secondary_design_ch;
-        else if (npc_ship_pixels[i][j - 1] > 0 && npc_ship_pixels[i][j + 1] > 0 && npc_ship_pixels[i][j] == 0 && j > 1 && j < NPCSHIP_PIXEL_MAXWIDTH - 2)
-            npc_ship_chars[i][j] = gray_horizontal_pipe;
-        else if (npc_ship_pixels[i - 1][j] > 0 && npc_ship_pixels[i + 1][j] > 0 && npc_ship_pixels[i][j] == 0 && i > 1 && i < NPCSHIP_PIXEL_MAXHEIGHT - 2)
-            npc_ship_chars[i][j] = gray_vertical_pipe;
-        else if (i > 1 && j > 1 && i < NPCSHIP_PIXEL_MAXHEIGHT - 2 && j < NPCSHIP_PIXEL_MAXWIDTH - 2 && numShipPixelsAdj(i, j, 0) < 8 && npc_ship_pixels[i][j] == 0)
-            npc_ship_chars[i][j] = secondary_design_ch;
-    }
-
-    // ...add exhausts, flame trails
-    for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
-    for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH - 5; ++j)
-    {
-        if (npc_ship_pixels[i][j+2] > 0)
+        for (int j = 1; j < W; ++j)
         {
-            npc_ship_chars[i][j+1] = gray_horizontal_pipe;
-            npc_ship_chars[i][j] = s->isActivated() ? s->getDesignStruct().shipFlameCh : blank_ch;
-            break;
+            // frame blanking
+            if (i == 0 || j == 0 || i == H - 1 || j == W - 1)
+            {
+                npc_ship_chars[i][j] = blank_ch;
+                continue;
+            }
+
+            const int cur = npc_ship_pixels[i][j];
+
+            if (cur == 1 || cur == 2)
+            {
+                npc_ship_chars[i][j] = primary_design_ch;
+            }
+            else if (cur == 3)
+            {
+                npc_ship_chars[i][j] = secondary_design_ch;
+            }
+            else
+            {
+                const bool inX = (j > 1 && j < W - 2);
+                const bool inY = (i > 1 && i < H - 2);
+
+                // horizontal pipe between filled neighbors
+                if (inX && npc_ship_pixels[i][j - 1] > 0 && npc_ship_pixels[i][j + 1] > 0 && cur == 0)
+                {
+                    npc_ship_chars[i][j] = gray_horizontal_pipe;
+                }
+                // vertical pipe between filled neighbors
+                else if (inY && npc_ship_pixels[i - 1][j] > 0 && npc_ship_pixels[i + 1][j] > 0 && cur == 0)
+                {
+                    npc_ship_chars[i][j] = gray_vertical_pipe;
+                }
+                // secondary accent in sparse neighborhoods
+                else if (inX && inY && numShipPixelsAdj(i, j, 0) < 8 && cur == 0)
+                {
+                    npc_ship_chars[i][j] = secondary_design_ch;
+                }
+            }
         }
     }
 
-    // ...add front ship |> tiles
-    for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
-    for (int j = NPCSHIP_PIXEL_MAXWIDTH - 1; j >= 2; --j)
+    // Exhaust / flame trails
+    for (int i = 1; i < H - 1; ++i)
     {
-        if (npc_ship_pixels[i][j-1] > 0)
+        for (int j = 1; j < W - 5; ++j)
         {
-            npc_ship_chars[i][j] = front_tile_ch;
-            break;
+            if (npc_ship_pixels[i][j + 2] > 0)
+            {
+                npc_ship_chars[i][j + 1] = gray_horizontal_pipe;
+                npc_ship_chars[i][j] = s->isActivated() ? ds.shipFlameCh : blank_ch;
+                break;
+            }
         }
     }
 
-    for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
-    for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
+    // Front |> tiles
+    for (int i = 1; i < H - 1; ++i)
     {
-        loc.set(SHOWWID + 3 + j, 4 + i); 
-        addChar(npc_ship_chars[i][j], loc);
+        for (int j = W - 1; j >= 2; --j)
+        {
+            if (npc_ship_pixels[i][j - 1] > 0)
+            {
+                npc_ship_chars[i][j] = front_tile_ch;
+                break;
+            }
+        }
     }
 
-    for (int i = 1; i < NPCSHIP_PIXEL_MAXHEIGHT - 1; ++i)
-    for (int j = 1; j < NPCSHIP_PIXEL_MAXWIDTH - 1; ++j)
+    // Blit layer 1
+    for (int i = 1; i < H - 1; ++i)
     {
-        loc.set(SHOWWID + 3 + j, 4 + i);
-
-        if (allSurroundingNPCShipPixelsMatch(i, j, { primary_design_ch }))
+        for (int j = 1; j < W - 1; ++j)
         {
-            addChar(third_design_ch, loc);
+            addChar(npc_ship_chars[i][j], point(SHOWWID + 3 + j, 4 + i));
         }
+    }
 
-        if (allSurroundingNPCShipPixelsMatch(i, j, { secondary_design_ch }))
+    // Accents (third/fourth) based on surrounding matches
+    for (int i = 1; i < H - 1; ++i)
+    {
+        for (int j = 1; j < W - 1; ++j)
         {
-            addChar(fourth_design_ch, loc);
+            const point loc(SHOWWID + 3 + j, 4 + i);
+
+            if (allSurroundingNPCShipPixelsMatch(i, j, { primary_design_ch }))
+            {
+                addChar(third_design_ch, loc);
+            }
+            if (allSurroundingNPCShipPixelsMatch(i, j, { secondary_design_ch }))
+            {
+                addChar(fourth_design_ch, loc);
+            }
         }
     }
 }
@@ -878,7 +1089,7 @@ bool msgbuffer::addMessage(std::string m, color_pair col)
 void msgbuffer::deleteAllMessages()
 {
   message_cursor = 0;
-  message_string = "";
+  std::string().swap(message_string);
   for (int i = 0; i < NUMMESSAGELINES * GRIDWID; ++i)
   {
       message_color_data[i] = cp_blackonblack;

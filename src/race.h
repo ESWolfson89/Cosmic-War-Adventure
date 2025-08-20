@@ -1,7 +1,7 @@
 #ifndef RACE_H_
 #define RACE_H_
 
-#include "planet.h"
+#include "homeworld.h"
 #include "namegen.h"
 #include <map>
 
@@ -177,8 +177,8 @@ class race
         void setSurrenderedToPlayer(bool surrendered);
         void setNumShipsDestroyedByPlayerAtRegion(int numDestroyed);
         void setRaceIDCommandedToAttack(int);
-        Planet * getHomeworld(int);
-        Planet * getHomeworld(point);
+        HomeWorld * getHomeworld(int);
+        HomeWorld * getHomeworld(point);
         entrance_contact_struct *getEntranceContactStruct();
         MobShip *getNativeShip(int);
         point getStarmapLoc() const;
@@ -211,7 +211,7 @@ class race
         race_personality_type getRacePersonalityType();
     private:
         std::vector<MobShip> native_ships;
-        std::vector<Planet> homeworlds;
+        std::vector<HomeWorld> homeworlds;
         std::map<int,rel_status> rel_race_map;
         std::map<int,int> att_race_map;
         point sm_loc;

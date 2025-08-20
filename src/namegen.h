@@ -10,7 +10,7 @@ std::string getNamePrefix(MobShip*);
 
 static std::vector<std::string> startingConsonant =
 {
-	"b","f","j","m","p","q","v","w","x","z"
+	"b","f","j","m","p","q","v","w","x","z","n","r",
 };
 
 static std::vector<std::string> middleConsonant =
@@ -32,7 +32,7 @@ static std::vector<std::string> exoticPrefixes =
 {
     "Bra", "Fro", "Jex", "Mar", "Prek", "Qua", "Vex", "Wol", "Xal", "Zor",
     "Brek", "Fim", "Jal", "Mok", "Prax", "Qel", "Vul", "Wrax", "Xel", "Zhek",
-    "Bla", "Farn", "Jux", "Mern", "Plek"
+    "Bla", "Farn", "Jux", "Mern", "Plek", "Nal", "Nai", "Nor", "Rig", "Rel", "Ryl"
 };
 
 static std::vector<std::string> exoticSuffixes = 

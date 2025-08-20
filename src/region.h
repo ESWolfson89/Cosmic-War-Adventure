@@ -66,6 +66,7 @@ class SubAreaRegion
         void initFloodFillFlags();
         void addProcgenSubAreaNativeShips(race *,int);
         void addAllHomeworlds(race *);
+        void addAllPlanets();
         void carveSpaceWall(point div_point, int sze);
         void generateAllSpaceStations(int,int);
         void generateAllEntertainmentStations(int dl, int numStations);
@@ -93,6 +94,7 @@ class SubAreaRegion
         bool race_affiliated;
         subarea_specific_type sast;
         star_type s_type;
+        PlanetType planetType;
         std::string subarea_name;
         std::vector <MobShip> NPCShips;
         std::vector <station> station_objs;
@@ -132,6 +134,8 @@ class StarMapRegion
         map m;
         std::vector <race> raceVector;
         std::vector <SubAreaRegion> subareaVector;
+        std::vector <SubAreaRegion> planetVector;
+        std::map<int, std::vector<int>> planetIDFromLocaleID;
         SubAreaRegion nonpersistent_subarea;
         subarea_MapType samt;
 };
@@ -178,10 +182,12 @@ int getMobRaceDangerLevel(MobShip*);
 
 SubAreaRegion* currentRegion();
 
+backdrop_t planetTypeToBackdrop(PlanetType planetType);
 
 extern StarMapRegion universe;
 extern MapType current_maptype;
 extern int current_subarea_id;
+extern int current_planet_id;
 extern int current_mob_turn;
 
 #endif

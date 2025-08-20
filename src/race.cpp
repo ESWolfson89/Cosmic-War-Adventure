@@ -146,6 +146,20 @@ void race::setupRelationshipVectors()
     }
 }
 
+
+//     Q
+//   q   q
+//    5 5
+//   q   q
+//     Q
+//      
+//     S
+//      
+//     Q     
+//   q   q  
+//    5 5 
+//   q   q
+//     Q
 void race::generateOneProcgenNativeShip(int dl, shipmob_classtype smct, npc_ship_type nst)
 {
     shipmobstat_struct procgen_struct = getProcgenShipStatStruct(dl, smct);
@@ -160,16 +174,16 @@ void race::generateOneProcgenNativeShip(int dl, shipmob_classtype smct, npc_ship
 
 std::string fullShipName(MobShip* ship, const std::string& raceName, shipmob_classtype smct, bool isPirate)
 {
-    const bool hasMissile = hasWeaponOfType(ship, WEAPONTYPE_MISSILE);
+    const bool hasExplosiveWeapon = hasWeaponOfType(ship, WEAPONTYPE_MISSILE) || hasWeaponOfType(ship, WEAPONTYPE_HELL);
 
     if (isPirate)
     {
-        return hasMissile
+        return hasExplosiveWeapon
             ? raceName + " pirate bomber"
             : raceName + " pirate";
     }
 
-    if (hasMissile && smct == CLASSTYPE_FIGHTER)
+    if (hasExplosiveWeapon && smct == CLASSTYPE_FIGHTER)
     {
         return raceName + " bomber";
     }
@@ -182,7 +196,7 @@ void race::cleanupEverything()
     for (int i = 0; i < (int)native_ships.size(); ++i)
          native_ships[i].cleanupEverything();
     std::vector<MobShip>().swap(native_ships);
-    std::vector<Planet>().swap(homeworlds);
+    std::vector<HomeWorld>().swap(homeworlds);
     std::map<int,rel_status>().swap(rel_race_map);
     std::map<int,int>().swap(att_race_map);
 }
@@ -223,7 +237,7 @@ void race::setHomeworldMajorStatus(point p, RaceMajorStatus rms)
 
 void race::addHomeworld(point p, int oid, int cid, int dl)
 {
-    homeworlds.push_back(Planet(p, oid, cid, dl));
+    homeworlds.push_back(HomeWorld(p, oid, cid, dl));
 }
 
 entrance_contact_struct *race::getEntranceContactStruct()
@@ -231,12 +245,12 @@ entrance_contact_struct *race::getEntranceContactStruct()
     return &ecs_obj;
 }
 
-Planet * race::getHomeworld(int i)
+HomeWorld * race::getHomeworld(int i)
 {
     return &homeworlds[i];
 }
 
-Planet * race::getHomeworld(point p)
+HomeWorld * race::getHomeworld(point p)
 {
     for (int i = 0; i < (int)homeworlds.size(); ++i)
     {
@@ -425,7 +439,7 @@ void race::save(std::ofstream& os) const
     // Save homeworld_objs
     int hw_count = static_cast<int>(homeworlds.size());
     os.write(reinterpret_cast<const char*>(&hw_count), sizeof(int));
-    for (const Planet& hw : homeworlds)
+    for (const HomeWorld& hw : homeworlds)
         hw.save(os);
 
     // Save att_race_map

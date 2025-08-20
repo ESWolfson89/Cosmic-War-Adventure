@@ -59,7 +59,7 @@ void activateOneNPC(MobShip* mb)
 void checkNPCFlags(MobShip* mb)
 {
     checkMobHasEngine(mb);
-    checkNPCPlanetEnslaveEvent(mb);
+    checkNPCHomeWorldEnslaveEvent(mb);
 }
 
 void setNPCAIPattern(MobShip* mob)
@@ -83,7 +83,7 @@ void setNPCAIPattern(MobShip* mob)
         mob->setAIPattern(rollPerc(roveChance) ? AIPATTERN_ROVING : AIPATTERN_NEUTRAL);
     }
 
-    checkNPCPlanetMoveEvent(mob);
+    checkNPCHomeWorldMoveEvent(mob);
 }
 
 void setNPCGoalDestinationLoc(MobShip* mob)
@@ -115,7 +115,7 @@ void setNPCGoalDestinationLoc(MobShip* mob)
         case AIPATTERN_APPROACHPLANET:
             if (mob->getGoalStatus() == GOALSTATUS_COMPLETE)
             {
-                setNPCRandFreePlanetDestination(mob);
+                setNPCRandFreeHomeWorldDestination(mob);
                 mob->setGoalStatus(GOALSTATUS_INCOMPLETE);
             }
             break;
@@ -141,7 +141,7 @@ void setNPCRandDestination(MobShip* mob)
     mob->setDestination(destination);
 }
 
-void setNPCRandFreePlanetDestination(MobShip* mob)
+void setNPCRandFreeHomeWorldDestination(MobShip* mob)
 {
     if (!mob) 
         return;
@@ -211,6 +211,14 @@ point getPointNextToMapBorder(point p)
     return p + point(0, 1);
 }
 
+bool isMaxStraightLineDistanceFrom(MobShip* attacker, point target)
+{
+    if (std::abs(attacker->at().x() - target.x()) == std::abs(attacker->at().y() - target.y()) &&
+        std::abs(attacker->at().x() - target.x()) == getCurrentMobSelectedModule(attacker)->getWeaponStruct().travel_range)
+        return true;
+    return false;
+}
+
 point getClosestNPCTargetInRangeLine(MobShip* mob, int travelRange)
 {
     const point attackLoc = getMobFromID(mob->getMobSubAreaAttackID())->at();
@@ -276,7 +284,7 @@ void checkNPCMoveEvent(MobShip* mob)
     moveNPC(mob, nextLoc);
 }
 
-void checkNPCPlanetMoveEvent(MobShip* mb)
+void checkNPCHomeWorldMoveEvent(MobShip* mb)
 {
     if (universe.getSubAreaMapType() == SMT_PERSISTENT && currentRegion()->isRaceAffiliated())
     {
@@ -286,14 +294,14 @@ void checkNPCPlanetMoveEvent(MobShip* mb)
         if (offending_race_id == victim_race_id)
             return;
         
-        if (approachPlanetPatternSetCondition(offending_race_id, victim_race_id))
+        if (approachHomeWorldPatternSetCondition(offending_race_id, victim_race_id))
         {
             mb->setAIPattern(AIPATTERN_APPROACHPLANET);
         }
     }
 }
 
-void checkNPCPlanetEnslaveEvent(MobShip* mob)
+void checkNPCHomeWorldEnslaveEvent(MobShip* mob)
 {
     if (!planetEnslaveEventCondition(mob))
         return;
@@ -305,7 +313,7 @@ void checkNPCPlanetEnslaveEvent(MobShip* mob)
 
     nativeRace->setHomeworldMajorStatus(loc, RMS_ENSLAVED);
     nativeRace->setHomeworldControllerRace(loc, mobRaceID, getMobRaceDangerLevel(mob));
-    getMap()->setBackdrop(loc, LBACKDROP_ENSLAVEDPLANET);
+    getMap()->setBackdrop(loc, LBACKDROP_ENSLAVEDHOMEWORLD);
 
     if (getMap()->getv(loc))
     {
@@ -406,10 +414,10 @@ bool planetEnslaveEventCondition(MobShip* mob)
         currentRegion()->isRaceAffiliated() &&
         race->getRaceOverallMajorStatus() != RMS_ENSLAVED &&
         mob->getAIPattern() == AIPATTERN_APPROACHPLANET &&
-        getMap()->getBackdrop(mob->at()) == LBACKDROP_PLANET;
+        getMap()->getBackdrop(mob->at()) == LBACKDROP_HOMEWORLD;
 }
 
-bool approachPlanetPatternSetCondition(int offendingRaceID, int victimRaceID)
+bool approachHomeWorldPatternSetCondition(int offendingRaceID, int victimRaceID)
 {
     auto* offender = universe.getRace(offendingRaceID);
     auto* victim = universe.getRace(victimRaceID);

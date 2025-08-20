@@ -4,6 +4,7 @@
 StarMapRegion universe;
 MapType current_maptype;
 int current_subarea_id;
+int current_planet_id;
 int current_mob_turn;
 
 // starmap implementation
@@ -115,15 +116,15 @@ int getMaxDangerLevel(point smLoc)
 
     const int distance = (int)sqrt(distanceSquared(point(smLoc.x(), STARMAPHGT - smLoc.y() - 1), point(STARMAPWID - 1, STARMAPHGT - 1)));
     
-    if (distance > 140 || distance < 10)
+    if (distance > 130 || distance < 20)
         maxRoll = 15;
-    else if (distance > 125 || distance < 25)
+    else if (distance > 115 || distance < 35)
         maxRoll = 20;
-    else if (distance > 110 || distance < 40)
+    else if (distance > 100 || distance < 55)
         maxRoll = 23;
-    
-    maxRoll = 25;
-        
+    else
+        maxRoll = 25;
+
     return maxRoll;
 }
 
@@ -283,6 +284,7 @@ void SubAreaRegion::setupProcgenEmptySubArea(point loc)
     point map_size = getMap()->getSize();
     int sze = randInt(4, 5);
     generateStarBackdrop(getMap(), divPoint(map_size, 2, 2), sze, s_type);
+    addAllPlanets();
     subarea_name = "Sector (" + int2String(loc.x() + 1) + "," + int2String(STARMAPHGT - loc.y()) + ")";
 }
 
@@ -297,6 +299,9 @@ void SubAreaRegion::setupProcgenWarzoneSubArea(point loc)
     evolveSpaceWallCA();
 
     smoothenSpaceWallStructure();
+
+    addAllPlanets();
+
     subarea_name = "Sector (" + int2String(loc.x() + 1) + "," + int2String(STARMAPHGT - loc.y()) + ")";
 }
 
@@ -791,6 +796,8 @@ void SubAreaRegion::setupProcgenTerritorialSubArea(race *race_obj)
 
     addAllHomeworlds(race_obj);
 
+    addAllPlanets();
+
     generateAllSpaceStations(race_obj->getDangerLevel(),randInt(1,randInt(1,randInt(1,4))));
 
     generateAllEntertainmentStations(race_obj->getDangerLevel(), randInt(0, randInt(0, randInt(1, 3))));
@@ -1098,9 +1105,31 @@ void SubAreaRegion::addAllHomeworlds(race* race_obj)
     }
 }
 
+void SubAreaRegion::addAllPlanets()
+{
+    return;
+    int numPlanets = randInt(1, 5);
+
+    const point mapSize = getMap()->getSize();
+
+    const point center = point(mapSize.x() / 2, mapSize.y() / 2);
+    const point minCorner = center - point(star_radius, star_radius);
+    const point maxCorner = center + point(star_radius, star_radius);
+
+    for (int i = 0; i < numPlanets; i++)
+    {
+        point planetLoc = getRandNPCShipOpenPoint(
+            getMap(), minCorner, maxCorner,
+            LBACKDROP_MAINSEQSTARBACKGROUND,
+            LBACKDROP_WHITESTARBACKGROUND);
+
+        getMap()->setBackdrop(planetLoc, (backdrop_t)randInt((int)LBACKDROP_GRAYPLANET, (int)LBACKDROP_ORANGEPLANET));
+    }
+}
+
 void SubAreaRegion::insertOneHomeworld(race *race_obj, point p)
 {
-    getMap()->setBackdrop(p,LBACKDROP_PLANET);
+    getMap()->setBackdrop(p,LBACKDROP_HOMEWORLD);
     race_obj->addHomeworld(p,race_obj->getRaceID(), race_obj->getRaceID(), race_obj->getDangerLevel());
 }
 
@@ -1143,6 +1172,18 @@ void SubAreaRegion::addProcgenSubAreaNativeShips(race *race_obj, int num_types)
             }
         }
     }
+}
+
+backdrop_t planetTypeToBackdrop(PlanetType planetType)
+{
+    switch (planetType)
+    {
+    case(PT_GRAY):
+        return LBACKDROP_GRAYPLANETTERRAIN;
+    case(PT_RED):
+        return LBACKDROP_REDPLANETTERRAIN;
+    }
+    return LBACKDROP_ORANGEPLANETTERRAIN;
 }
 
 void initEmptyTiles(map * m, backdrop_t filler)
@@ -1448,7 +1489,7 @@ int getDominantRaceIDInRegion(SubAreaRegion* region)
 
     for (int i = 0; i < numHomeworlds; ++i)
     {
-        Planet* homeworld = nativeRace->getHomeworld(i);
+        HomeWorld* homeworld = nativeRace->getHomeworld(i);
         const int raceID = homeworld->getControlRaceID();
         const int danger = homeworld->getDangerLevel();
 

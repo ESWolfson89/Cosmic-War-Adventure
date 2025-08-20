@@ -61,6 +61,7 @@ void MobShip::initShipDesign()
     design_obj.ctThirdColor = procgen_ship_colors[randInt(0, NUM_POSSIBLE_SHIP_COLORS-1)].fg;
     design_obj.ctFourthColor = procgen_ship_colors[randInt(0, NUM_POSSIBLE_SHIP_COLORS-1)].fg;
     design_obj.shipFlameCh = shipFlames[randInt(0, static_cast<int>(shipFlames.size()) - 1)];
+    design_obj.weaponFrontOffset = randInt(0, 4);
     switch(sms_data.sctype)
     {
         case(CLASSTYPE_FIGHTER):

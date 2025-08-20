@@ -48,7 +48,7 @@ public:
     void promptInput();
     void cleanupEverything();
     void movePlayerShip(point);
-    void msgeAddPromptSpace(std::string, color_pair);
+    void msgeAddPromptSpace(std::string, color_pair, bool);
     void executeMiscPlayerTurnBasedData();
     void executeMiscNPCTurnBasedData();
     void returnToStarMap();

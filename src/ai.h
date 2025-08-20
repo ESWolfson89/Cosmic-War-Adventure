@@ -12,19 +12,20 @@ void checkNPCFlags(MobShip* mb);
 void setNPCAIPattern(MobShip* mb);
 void setNPCGoalDestinationLoc(MobShip* mb);
 void setNPCRandDestination(MobShip* mb);
-void setNPCRandFreePlanetDestination(MobShip* mb);
+void setNPCRandFreeHomeWorldDestination(MobShip* mb);
 void setNPCAttackPositionDestination(MobShip* mb);
 void checkNPCMoveEvent(MobShip* mb);
-void checkNPCPlanetMoveEvent(MobShip* mb);
+void checkNPCHomeWorldMoveEvent(MobShip* mb);
 void checkMobHasEngine(MobShip* mb);
-void checkNPCPlanetEnslaveEvent(MobShip* mob);
+void checkNPCHomeWorldEnslaveEvent(MobShip* mob);
 void checkNPCAggroEvent(MobShip* mb);
 void resetWaitCounter();
 void moveNPC(MobShip* mb, point new_loc);
 
 bool planetEnslaveEventCondition(MobShip* mob);
-bool approachPlanetPatternSetCondition(int offendingRaceID, int victimRaceID);
+bool approachHomeWorldPatternSetCondition(int offendingRaceID, int victimRaceID);
 bool moveNPCCondition(MobShip* mob, point newLoc);
+bool isMaxStraightLineDistanceFrom(MobShip* attacker, point target);
 
 point getPointNextToMapBorder(point p);
 point getClosestNPCTargetInRangeLine(MobShip* mb, int travelRange);

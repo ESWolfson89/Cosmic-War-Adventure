@@ -82,6 +82,7 @@ class display
         void displayMenu(menu *);
         void displayNPCShipInfo(MobShip *);
         void displayNPCShipGraphic(MobShip *);
+        void drawWeaponModuleTiles(MobShip *);
         void initNPCShipPixels(MobShip *);
         void runShipDesignCADisplayRule(MobShip *);
         void setNPCShipYCenterPixels(MobShip *);
@@ -142,6 +143,8 @@ void setMobTile(map*, point, mob_t);
 bool chtypeEqual(chtype, chtype);
 
 color_type shipDisplayBoxColor(MobShip* s);
+
+chtype getShipWeaponSymbolOnDisplay(weapon_struct& wstruct);
 
 extern display display_obj;
 extern tab_type current_tab;
