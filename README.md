@@ -2,7 +2,7 @@ Cosmic War Adventure.
 
 An ascii space adventure game.
 
-![Alt text](/screenshots/screenshotcwa3.jpg?raw=true "Screenshot1")
+![Alt text](/screenshots/Untitled.jpg?raw=true "Screenshot1")
 
 ---
 
