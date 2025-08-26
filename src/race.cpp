@@ -169,6 +169,7 @@ void race::generateOneProcgenNativeShip(int dl, shipmob_classtype smct, npc_ship
     // for now there are no modified weapons
     MobShip* newShip = &native_ships[(int)native_ships.size() - 1];
     generateGuaranteedNPCShipMobModules(newShip);
+    setRandomWeaponModule(newShip);
     newShip->setShipName(fullShipName(newShip, race_name_str, smct, false));
 }
 
@@ -758,4 +759,26 @@ MobShip* getHighestDangerLevelShipForRace(race* r)
     }
 
     return r->getNativeShip(iteration);
+}
+
+void setRandomWeaponModule(MobShip* mob)
+{
+    const int currentIndex = mob->getModuleSelectionIndex();
+    const int moduleCount = mob->getNumInstalledModules();
+
+    std::vector<int> weaponIndices;
+
+    for (int i = 0; i < moduleCount; ++i)
+    {
+        if (i != currentIndex && mob->getModule(i)->getModuleType() == MODULE_WEAPON)
+        {
+            weaponIndices.push_back(i);
+        }
+    }
+
+    if (!weaponIndices.empty())
+    {
+        const int selected = weaponIndices[randInt(0, weaponIndices.size() - 1)];
+        mob->setModuleSelectionIndex(selected);
+    }
 }

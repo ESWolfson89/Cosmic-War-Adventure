@@ -253,4 +253,6 @@ MobShip* getHighestDangerLevelShipForRace(race* r);
 
 std::string fullShipName(MobShip* ship, const std::string & raceName, shipmob_classtype smct, bool pirate);
 
+void setRandomWeaponModule(MobShip* mob);
+
 #endif

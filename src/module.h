@@ -5,17 +5,17 @@
 
 static const int procgen_weapons_base_chance[NUM_TOTAL_WEAPON_TYPES] =
 {
-    0,100,50,25,50,25,12,9,5,2,8,10,2,3,12,4,2,1
+    0,100,50,25,50,25,12,9,5,2,8,10,2,3,4,12,4,2,1
 };
 
 static const int procgen_engines_base_chance[NUM_TOTAL_ENGINE_TYPES] =
 {
-    0,100,20
+    0,100,15,5
 };
 
 static const int procgen_shields_base_chance[NUM_TOTAL_SHIELD_TYPES] =
 {
-    0,60,10
+    0,65,20,15,5
 };
 
 enum module_type
@@ -36,7 +36,8 @@ enum weapon_t
     WEAPONTYPE_MISSILE,
     WEAPONTYPE_SPREAD,
     WEAPONTYPE_PULSE,
-    WEAPONTYPE_WALLOP,
+    WEAPONTYPE_TOXICWALLOP,
+    WEAPONTYPE_ENERGYWALLOP,
     WEAPONTYPE_INSTANT,
     WEAPONTYPE_HELL,
     WEAPONTYPE_MECH
@@ -178,7 +179,7 @@ static const weapon_struct allbasicweapon_stats[NUM_TOTAL_WEAPON_TYPES] =
   },
   {
       WEAPONTYPE_BEAM, {4,12,9}, {1,3,0}, 8, 0, 0, 25,
-      0, 0, 0, 0, 10, 0, 1, 9, 8, true, true, true, true, FIRET_LIGHTREDLINE, {cp_lightredonblack,92}, "plasma beam", 6, 350000
+      0, 0, 0, 0, 10, 0, 1, 9, 8, true, true, true, true, FIRET_ORANGELINE, {cp_orangeonblack,92}, "plasma beam", 6, 350000
   },
   {
       WEAPONTYPE_SPREAD, {6,7,6}, {1,4,7}, 7, 1, 0, 0,
@@ -189,8 +190,12 @@ static const weapon_struct allbasicweapon_stats[NUM_TOTAL_WEAPON_TYPES] =
       0, 0, 0, 0, 7, 0, 1, 8, 12, false, false, false, true, FIRET_PURPLEPLASMA, {cp_purpleonblack,(int)'^'}, "pulse cannon", 15, 700000
   },
   {
-      WEAPONTYPE_WALLOP, {0,0,0}, {12,3,6}, 7, 0, 0, 0,
+      WEAPONTYPE_TOXICWALLOP, {0,0,0}, {12,3,6}, 7, 0, 0, 0,
       4, 2, 0, 0, 4, 0, 1, 7, 14, false, false, true, true, FIRET_GREENWALLOP, {cp_greenonblack,(int)'*'}, "plague cannon", 16, 600000
+  },
+  {
+      WEAPONTYPE_ENERGYWALLOP, {4,18,9}, {1,2,1}, 17, 8, 0, 100,
+      0, 0, 0, 0, 6, 0, 1, 8, 16, false, false, false, true, FIRET_BLUEWALLOP, {cp_blueonblack,(int)'*'}, "ionic blast cannon", 16, 400000
   },
   {
       WEAPONTYPE_MISSILE, {6,19,9}, {1,6,8}, 0, 0, 0, 0,
@@ -210,18 +215,21 @@ static const weapon_struct allbasicweapon_stats[NUM_TOTAL_WEAPON_TYPES] =
   }
 };
 
-static const shield_struct allbasicshield_stats[3] =
+static const shield_struct allbasicshield_stats[NUM_TOTAL_SHIELD_TYPES] =
 {
     {0,1,{cp_blackonblack, (int)'N'},"",0},
     {1,150,{cp_redonblack, (int)'#'},"basic shield",1000},
-    {3,100,{cp_whiteonblack, (int)'#'},"advanced shield",5000}
+    {2,125,{cp_orangeonblack,(int)'#'},"reinforced shield",7500},
+    {3,100,{cp_blueonblack, (int)'#'},"advanced defense barrier",35000},
+    {4,75,{cp_purpleonblack, (int)'#'},"ultra blast dissipator",100000}
 };
 
-static const shipengine_struct allbasicengine_stats[3] =
+static const shipengine_struct allbasicengine_stats[NUM_TOTAL_ENGINE_TYPES] =
 {
     {0,0,0,{cp_blackonblack,(int)'N'},"",0},
-    {0,1,0,{cp_orangeonblack, (int)'+'},"basic propulsion system",2500},
-    {10,2,1,{cp_blueonblack, (int)'+'},"advanced thruster",15000}
+    {0,1,0,{cp_orangeonblack, (int)'+'},"basic propulsion system",5000},
+    {10,2,1,{cp_blueonblack, (int)'+'},"advanced thruster",20000},
+    {20,3,2,{cp_redonblack, (int)'+'},"dynamic blaze booster",50000},
 };
 
 class Module

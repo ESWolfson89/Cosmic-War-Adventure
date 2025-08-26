@@ -268,9 +268,13 @@ chtype getShipWeaponSymbolOnDisplay(weapon_struct& wstruct)
         ch.ascii = (int)'*';
         cp = cp_blackonorange;
         break;
-    case(WEAPONTYPE_WALLOP):
+    case(WEAPONTYPE_TOXICWALLOP):
         ch.ascii = (int)'*';
         cp = cp_blackongreen;
+        break;
+    case(WEAPONTYPE_ENERGYWALLOP):
+        ch.ascii = (int)'*';
+        cp = cp_blackonblue;
         break;
     case(WEAPONTYPE_MECH):
         ch.ascii = wstruct.disp_chtype.ascii;
@@ -473,7 +477,7 @@ void display::drawNPCShipDesign(MobShip* s)
     primary_design_ch.ascii = 219;
     primary_design_ch.color = s->getShipSymbol().color;
 
-    secondary_design_ch.ascii = ds.CASecondValue;
+    secondary_design_ch.ascii = ds.CASecondValue; 
     secondary_design_ch.color.fg = ds.ctSecondColor;
     secondary_design_ch.color.bg = getDimmedColor(s->getShipSymbol().color.fg, 3, 0);
 
@@ -488,48 +492,49 @@ void display::drawNPCShipDesign(MobShip* s)
     front_tile_ch.ascii = gray_rightarrow.ascii;
     front_tile_ch.color = s->getShipSymbol().color;
 
-    // Fill main body
-    for (int i = 0; i < H - 1; ++i)
-    {
-        for (int j = 1; j < W; ++j)
-        {
-            // frame blanking
-            if (i == 0 || j == 0 || i == H - 1 || j == W - 1)
-            {
+    // Fill main body (refactored)
+    for (int i = 0; i < H; ++i) {
+        for (int j = 0; j < W; ++j) {
+            // frame blanking on borders
+            if (i == 0 || j == 0 || i == H - 1 || j == W - 1) {
                 npc_ship_chars[i][j] = blank_ch;
                 continue;
             }
 
             const int cur = npc_ship_pixels[i][j];
 
-            if (cur == 1 || cur == 2)
-            {
+            // primary/secondary design fills
+            if (cur == 1 || cur == 2) {
                 npc_ship_chars[i][j] = primary_design_ch;
+                continue;
             }
-            else if (cur == 3)
-            {
+            if (cur == 3) {
                 npc_ship_chars[i][j] = secondary_design_ch;
+                continue;
             }
-            else
-            {
-                const bool inX = (j > 1 && j < W - 2);
-                const bool inY = (i > 1 && i < H - 2);
 
-                // horizontal pipe between filled neighbors
-                if (inX && npc_ship_pixels[i][j - 1] > 0 && npc_ship_pixels[i][j + 1] > 0 && cur == 0)
-                {
-                    npc_ship_chars[i][j] = gray_horizontal_pipe;
-                }
-                // vertical pipe between filled neighbors
-                else if (inY && npc_ship_pixels[i - 1][j] > 0 && npc_ship_pixels[i + 1][j] > 0 && cur == 0)
-                {
-                    npc_ship_chars[i][j] = gray_vertical_pipe;
-                }
-                // secondary accent in sparse neighborhoods
-                else if (inX && inY && numShipPixelsAdj(i, j, 0) < 8 && cur == 0)
-                {
-                    npc_ship_chars[i][j] = secondary_design_ch;
-                }
+            // interior checks only needed for empty cells
+            if (cur != 0) continue;
+
+            const bool inX = (j > 1 && j < W - 2);
+            const bool inY = (i > 1 && i < H - 2);
+
+            auto isFilled = [&](int y, int x) {
+                const int v = npc_ship_pixels[y][x];
+                return v == 1 || v == 2;
+                };
+
+            // horizontal pipe between filled neighbors
+            if (inX && isFilled(i, j - 1) && isFilled(i, j + 1)) {
+                npc_ship_chars[i][j] = gray_horizontal_pipe;
+            }
+            // vertical pipe between filled neighbors
+            else if (inY && isFilled(i - 1, j) && isFilled(i + 1, j)) {
+                npc_ship_chars[i][j] = gray_vertical_pipe;
+            }
+            // secondary accent in sparse neighborhoods
+            else if (inX && inY && numShipPixelsAdj(i, j, 0) < 8) {
+                npc_ship_chars[i][j] = secondary_design_ch;
             }
         }
     }

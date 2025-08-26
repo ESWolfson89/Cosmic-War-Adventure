@@ -1001,40 +1001,31 @@ void Game::enterStation()
 void Game::setRegionTileForRaceHome(race* dominantRace)
 {
     const backdrop_t tile = universe.getMap()->getBackdrop(last_smloc);
-    const int attitude = dominantRace->getPlayerAttStatus();
+    const bool       surrendered = dominantRace->isSurrenderedToPlayer();
+    const int        attitude = dominantRace->getPlayerAttStatus();
 
-    if (!dominantRace->isSurrenderedToPlayer())
+    auto apply = [&](bool cond, int delta) {
+        if (cond) setVisitedStarMapTileBackdrop(last_smloc, delta);
+        };
+
+    if (surrendered)
     {
-        if (attitude < 0)
-        {
-            if (inRangeStarMapBackdropGreen(tile))
-                setVisitedStarMapTileBackdrop(last_smloc, -NUM_STAR_TYPES);
+        apply(inRangeStarMapBackdropOrange(tile), 2 * NUM_STAR_TYPES);
+        apply(inRangeStarMapBackdropRed(tile), 1 * NUM_STAR_TYPES);
+        return;
+    }
 
-            if (inRangeStarMapBackdropOrange(tile))
-                setVisitedStarMapTileBackdrop(last_smloc, NUM_STAR_TYPES);
-
-            if (inRangeStarMapBackdropUnhighlighted(tile))
-                setVisitedStarMapTileBackdrop(last_smloc, 2 * NUM_STAR_TYPES);
-        }
-        else
-        {
-            if (inRangeStarMapBackdropGreen(tile))
-                setVisitedStarMapTileBackdrop(last_smloc, -2 * NUM_STAR_TYPES);
-
-            if (inRangeStarMapBackdropRed(tile))
-                setVisitedStarMapTileBackdrop(last_smloc, -NUM_STAR_TYPES);
-
-            if (inRangeStarMapBackdropUnhighlighted(tile))
-                setVisitedStarMapTileBackdrop(last_smloc, NUM_STAR_TYPES);
-        }
+    if (attitude < 0)
+    {
+        apply(inRangeStarMapBackdropGreen(tile), -1 * NUM_STAR_TYPES);
+        apply(inRangeStarMapBackdropOrange(tile), 1 * NUM_STAR_TYPES);
+        apply(inRangeStarMapBackdropUnhighlighted(tile), 2 * NUM_STAR_TYPES);
     }
     else
     {
-        if (inRangeStarMapBackdropOrange(tile))
-            setVisitedStarMapTileBackdrop(last_smloc, 2*NUM_STAR_TYPES);
-
-        if (inRangeStarMapBackdropRed(tile))
-            setVisitedStarMapTileBackdrop(last_smloc, NUM_STAR_TYPES);
+        apply(inRangeStarMapBackdropGreen(tile), -2 * NUM_STAR_TYPES);
+        apply(inRangeStarMapBackdropRed(tile), -1 * NUM_STAR_TYPES);
+        apply(inRangeStarMapBackdropUnhighlighted(tile), 1 * NUM_STAR_TYPES);
     }
 }
 
@@ -1295,13 +1286,17 @@ void Game::addEncounterShips()
 
     for (int i = 0; i < numShips; ++i)
     {
-        point spawnLoc = getRandNPCShipOpenPoint(
-            getMap(),
-            point(1, 1),
-            addPoints(getMapSize(), point(-2, -2)),
-            LBACKDROP_SPACE_UNLIT,
-            LBACKDROP_SPACE_LIT
-        );
+        point spawnLoc;
+        
+        do {
+            spawnLoc = getRandNPCShipOpenPoint(
+                getMap(),
+                point(1, 1),
+                addPoints(getMapSize(), point(-2, -2)),
+                LBACKDROP_SPACE_UNLIT,
+                LBACKDROP_SPACE_LIT
+            );
+        } while (spawnLoc.x() == getMapSize().x() / 2 || spawnLoc.y() == getMapSize().y() / 2);
 
         currentRegion()->createNPCShip(pirateRace->getNativeShip(0), spawnLoc, raceID);
         MobShip* ship = currentRegion()->getNPCShip(i);
@@ -1582,170 +1577,208 @@ void Game::useMachinePlayer(M* mach_obj)
     } while (usingMachine);
 }
 
-void Game::upgradePlayerHull(station *ss_obj)
+void Game::upgradePlayerHull(station* ss)
 {
     display_obj.clearAndDeleteAllMessages();
 
-    if (ss_obj->getHullUpgradeCost() > getPlayerShip()->getNumCredits())
-        msgeAdd("You can't afford to upgrade your hull here!",cp_grayonblack);
-    else if (getPlayerShip()->getHullStatus() < getPlayerShip()->getMaxHull())
-        msgeAdd("You must completely repair your hull before you can upgrade it.",cp_grayonblack);
-    else
-    {
-        getPlayerShip()->setMaxHull(getPlayerShip()->getMaxHull() + 1);
-        getPlayerShip()->setHullStatus(getPlayerShip()->getMaxHull());
-        getPlayerShip()->setNumCredits(getPlayerShip()->getNumCredits() - ss_obj->getHullUpgradeCost());
-        display_obj.printShipStatsSection(getPlayerShip());
-        msgeAdd("Your hull has been upgraded!",cp_whiteonblack);
-    }
-}
+    auto* ps = getPlayerShip();
+    const auto cost = ss->getHullUpgradeCost();
 
-void Game::repairPlayerHull(station *ss_obj)
-{
-    display_obj.clearAndDeleteAllMessages();
-
-    if (ss_obj->getHullFixCost() > getPlayerShip()->getNumCredits())
-        msgeAdd("You can't afford to repair your hull here!",cp_grayonblack);
-    else if (getPlayerShip()->getHullStatus() >= getPlayerShip()->getMaxHull())
-        msgeAdd("Your ship's hull is in perfect condition already.",cp_grayonblack);
-    else
-    {
-        getPlayerShip()->setHullStatus(getPlayerShip()->getHullStatus() + 1);
-        getPlayerShip()->setNumCredits(getPlayerShip()->getNumCredits() - ss_obj->getHullFixCost());
-        display_obj.printShipStatsSection(getPlayerShip());
-        msgeAdd("The crew at the station work on repairing your ship.",cp_whiteonblack);
-    }
-}
-
-void Game::playerBuyFuel(station *ss_obj)
-{
-    display_obj.clearAndDeleteAllMessages();
-
-    if (ss_obj->getFuelCost() > getPlayerShip()->getNumCredits())
-        msgeAdd("You can't afford to buy fuel here!",cp_grayonblack);
-    else if (getPlayerShip()->getTotalMTFillCapacity(MODULE_FUEL) == getPlayerShip()->getTotalMTFillRemaining(MODULE_FUEL))
-        msgeAdd("Your ship's fuel tank capacity has already been reached!",cp_grayonblack);
-    else
-    {
-        getPlayerShip()->incTotalFillAmount(1,MODULE_FUEL);
-        getPlayerShip()->setNumCredits(getPlayerShip()->getNumCredits() - ss_obj->getFuelCost());
-        display_obj.printShipStatsSection(getPlayerShip());
-        display_obj.printShipGraphic(getPlayerShip(), SHOWHGT/2);
-        msgeAdd("You purchase 1 unit of fuel. A low-pitched \"*GLUGG*\" sound echoes throughout your ship.",cp_whiteonblack);
-    }
-}
-
-void Game::upgradePlayerSlotCapacity(station *ss_obj)
-{
-    display_obj.clearAndDeleteAllMessages();
-
-    if (ss_obj->getSlotCapUpgradeCost() > getPlayerShip()->getNumCredits())
-        msgeAdd("You can't afford to increase your module slot capacity here!",cp_grayonblack);
-    else if (getPlayerShip()->getMaxNumModules() >= MAX_PLAYER_SLOTS)
-        msgeAdd("Your ship's structure does not support having more than " + int2String(MAX_PLAYER_SLOTS) + " slots.",cp_grayonblack);
-    else
-    {
-        getPlayerShip()->setNumMaxModules(getPlayerShip()->getMaxNumModules() + 1);
-        getPlayerShip()->setNumCredits(getPlayerShip()->getNumCredits() - ss_obj->getSlotCapUpgradeCost());
-        display_obj.printShipStatsSection(getPlayerShip());
-        display_obj.printShipGraphic(getPlayerShip(), SHOWHGT/2);
-        msgeAdd("Your ships module slot capacity has been upgraded!",cp_whiteonblack);
-    }
-}
-
-void Game::playerHireCrew(station * ss_obj)
-{
-    display_obj.clearAndDeleteAllMessages();
-
-    if (ss_obj->getCrewCost() > getPlayerShip()->getNumCredits())
-        msgeAdd("You can't afford to hire any crew here!",cp_grayonblack);
-    else if (getPlayerShip()->getTotalMTFillCapacity(MODULE_CREW) == getPlayerShip()->getTotalMTFillRemaining(MODULE_CREW))
-        msgeAdd("Your ship is currently at the maximum crew capacity.",cp_grayonblack);
-    else
-    {
-        getPlayerShip()->incTotalFillAmount(1,MODULE_CREW);
-        getPlayerShip()->setNumCredits(getPlayerShip()->getNumCredits() - ss_obj->getCrewCost());
-        display_obj.printShipStatsSection(getPlayerShip());
-        display_obj.printShipGraphic(getPlayerShip(), SHOWHGT/2);
-        msgeAdd("A very bizarre looking alien joins your ship's crew.",cp_whiteonblack);
-    }
-}
-
-void Game::playerPurchaseModule(station *ss_obj, menu *ss_mu)
-{
-    int selection = ss_mu->getSelectionIndex();
-
-    // make sure not out of bounds
-    if (selection >= ss_obj->getNumModulesForTrade())
+    if (cost > ps->getNumCredits()) {
+        msgeAdd("You can't afford to upgrade your hull here!", cp_grayonblack);
         return;
-
-    uint_64 cost = ss_obj->getModuleForTradeCost(selection);
-
-    int module_slots_available = getPlayerShip()->getMaxNumModules() - getPlayerShip()->getNumInstalledModules();
-
-    display_obj.clearAndDeleteAllMessages();
-
-    if (cost > getPlayerShip()->getNumCredits())
-        msgeAdd("You do not have enough credits for that module!",cp_whiteonblack);
-    else
-    {
-        if (module_slots_available >= 1)
-        {
-            getPlayerShip()->addModule(*(ss_obj->getModuleForTrade(selection)));
-            getPlayerShip()->setNumCredits(getPlayerShip()->getNumCredits() - cost);
-            ss_obj->eraseModule(selection);
-            display_obj.printShipStatsSection(getPlayerShip());
-            display_obj.printShipGraphic(getPlayerShip(), SHOWHGT/2);
-            ss_mu->eraseMenuItem(selection);
-            msgeAdd("Your new module has been installed!",cp_purpleonblack);
-        }
-        else
-        {
-            msgeAdd("Your ship already has the maximum number of modules it can hold!",cp_whiteonblack);
-        }
     }
-}
-
-void Game::playerSellModule(station *ss_obj, menu *ss_mu)
-{
-    int selection = ss_mu->getSelectionIndex();
-
-    // make sure not out of bounds
-    if (selection >= getPlayerShip()->getNumInstalledModules())
-        return;
-
-    uint_64 value = ss_obj->getModuleSellCost(getPlayerShip()->getModule(selection));
-
-    display_obj.clearAndDeleteAllMessages();
-
-    if (getPlayerShip()->getNumInstalledModulesOfType(MODULE_ENGINE) == 1 &&
-        getPlayerShip()->getModule(selection)->getModuleType() == MODULE_ENGINE)
-    {
-        msgeAdd("You cannot sell your ship's sole engine!",cp_grayonblack);
+    if (ps->getHullStatus() < ps->getMaxHull()) {
+        msgeAdd("You must completely repair your hull before you can upgrade it.", cp_grayonblack);
         return;
     }
 
-    if (getPlayerShip()->getModule(selection)->getModuleType() == MODULE_FUEL &&
-        getPlayerShip()->getModule(selection)->getFillQuantity() > 0)
-    {
-        msgeAdd("You cannot sell a non-empty fuel tank!",cp_grayonblack);
+    ps->setMaxHull(ps->getMaxHull() + 1);
+    ps->setHullStatus(ps->getMaxHull());
+    ps->setNumCredits(ps->getNumCredits() - cost);
+
+    display_obj.printShipStatsSection(ps);
+    msgeAdd("Your hull has been upgraded!", cp_whiteonblack);
+}
+
+void Game::repairPlayerHull(station* ss)
+{
+    display_obj.clearAndDeleteAllMessages();
+
+    auto* ps = getPlayerShip();
+    const auto cost = ss->getHullFixCost();
+
+    if (cost > ps->getNumCredits()) {
+        msgeAdd("You can't afford to repair your hull here!", cp_grayonblack);
+        return;
+    }
+    if (ps->getHullStatus() >= ps->getMaxHull()) {
+        msgeAdd("Your ship's hull is in perfect condition already.", cp_grayonblack);
         return;
     }
 
-    if (getPlayerShip()->getModule(selection)->getModuleType() == MODULE_CREW &&
-        getPlayerShip()->getModule(selection)->getFillQuantity() > 0)
-    {
-        msgeAdd("You cannot sell a non-empty crew pod!",cp_grayonblack);
+    ps->setHullStatus(ps->getHullStatus() + 1);
+    ps->setNumCredits(ps->getNumCredits() - cost);
+
+    display_obj.printShipStatsSection(ps);
+    msgeAdd("The crew at the station work on repairing your ship.", cp_whiteonblack);
+}
+
+void Game::playerBuyFuel(station* ss)
+{
+    display_obj.clearAndDeleteAllMessages();
+
+    auto* ps = getPlayerShip();
+    const auto cost = ss->getFuelCost();
+    const int cap = ps->getTotalMTFillCapacity(MODULE_FUEL);
+    const int fill = ps->getTotalMTFillRemaining(MODULE_FUEL);
+
+    if (cost > ps->getNumCredits()) {
+        msgeAdd("You can't afford to buy fuel here!", cp_grayonblack);
+        return;
+    }
+    if (cap == fill) {
+        msgeAdd("Your ship's fuel tank capacity has already been reached!", cp_grayonblack);
         return;
     }
 
-    getPlayerShip()->setNumCredits(getPlayerShip()->getNumCredits() + value);
-    getPlayerShip()->eraseModule(selection);
-    getPlayerShip()->setModuleSelectionIndex(0);
-    ss_mu->eraseMenuItem(selection);
-    display_obj.printShipStatsSection(getPlayerShip());
-    display_obj.printShipGraphic(getPlayerShip(), SHOWHGT/2);
-    msgeAdd("You sell the module; it is recycled into raw materials.",cp_whiteonblack);
+    ps->incTotalFillAmount(1, MODULE_FUEL);
+    ps->setNumCredits(ps->getNumCredits() - cost);
+
+    display_obj.printShipStatsSection(ps);
+    display_obj.printShipGraphic(ps, SHOWHGT / 2);
+    msgeAdd("You purchase 1 unit of fuel. A low-pitched \"*GLUGG*\" sound echoes throughout your ship.", cp_whiteonblack);
+}
+
+void Game::upgradePlayerSlotCapacity(station* ss)
+{
+    display_obj.clearAndDeleteAllMessages();
+
+    auto* ps = getPlayerShip();
+    const auto cost = ss->getSlotCapUpgradeCost();
+
+    if (cost > ps->getNumCredits()) {
+        msgeAdd("You can't afford to increase your module slot capacity here!", cp_grayonblack);
+        return;
+    }
+    if (ps->getMaxNumModules() >= MAX_PLAYER_SLOTS) {
+        msgeAdd("Your ship's structure does not support having more than " + int2String(MAX_PLAYER_SLOTS) + " slots.", cp_grayonblack);
+        return;
+    }
+
+    ps->setNumMaxModules(ps->getMaxNumModules() + 1);
+    ps->setNumCredits(ps->getNumCredits() - cost);
+
+    display_obj.printShipStatsSection(ps);
+    display_obj.printShipGraphic(ps, SHOWHGT / 2);
+    msgeAdd("Your ships module slot capacity has been upgraded!", cp_whiteonblack);
+}
+
+void Game::playerHireCrew(station* ss)
+{
+    display_obj.clearAndDeleteAllMessages();
+
+    auto* ps = getPlayerShip();
+    const auto cost = ss->getCrewCost();
+    const int cap = ps->getTotalMTFillCapacity(MODULE_CREW);
+    const int fill = ps->getTotalMTFillRemaining(MODULE_CREW);
+
+    if (cost > ps->getNumCredits()) {
+        msgeAdd("You can't afford to hire any crew here!", cp_grayonblack);
+        return;
+    }
+    if (cap == fill) {
+        msgeAdd("Your ship is currently at the maximum crew capacity.", cp_grayonblack);
+        return;
+    }
+
+    ps->incTotalFillAmount(1, MODULE_CREW);
+    ps->setNumCredits(ps->getNumCredits() - cost);
+
+    display_obj.printShipStatsSection(ps);
+    display_obj.printShipGraphic(ps, SHOWHGT / 2);
+    msgeAdd("A very bizarre looking alien joins your ship's crew.", cp_whiteonblack);
+}
+
+void Game::playerPurchaseModule(station* ss, menu* menuObj)
+{
+    const int selection = menuObj->getSelectionIndex();
+    if (selection < 0 || selection >= ss->getNumModulesForTrade())
+        return;
+
+    display_obj.clearAndDeleteAllMessages();
+
+    auto* ps = getPlayerShip();
+    const uint_64 cost = ss->getModuleForTradeCost(selection);
+    const int slotsAvail = ps->getMaxNumModules() - ps->getNumInstalledModules();
+
+    if (cost > ps->getNumCredits()) {
+        msgeAdd("You do not have enough credits for that module!", cp_whiteonblack);
+        return;
+    }
+    if (slotsAvail < 1) {
+        msgeAdd("Your ship already has the maximum number of modules it can hold!", cp_whiteonblack);
+        return;
+    }
+
+    if (Module* src = ss->getModuleForTrade(selection)) {
+        ps->addModule(*src);
+        ps->setNumCredits(ps->getNumCredits() - cost);
+        ss->eraseModule(selection);
+        menuObj->eraseMenuItem(selection);
+
+        display_obj.printShipStatsSection(ps);
+        display_obj.printShipGraphic(ps, SHOWHGT / 2);
+        msgeAdd("Your new module has been installed!", cp_purpleonblack);
+    }
+    else {
+        msgeAdd("That module is no longer available.", cp_grayonblack);
+    }
+}
+
+void Game::playerSellModule(station* ss, menu* menuObj)
+{
+    const int selection = menuObj->getSelectionIndex();
+    auto* ps = getPlayerShip();
+
+    if (selection < 0 || selection >= ps->getNumInstalledModules())
+        return;
+
+    display_obj.clearAndDeleteAllMessages();
+
+    Module* mod = ps->getModule(selection);
+    if (!mod) {
+        msgeAdd("That module cannot be found.", cp_grayonblack);
+        return;
+    }
+
+    // Safety checks
+    if (mod->getModuleType() == MODULE_ENGINE &&
+        ps->getNumInstalledModulesOfType(MODULE_ENGINE) == 1)
+    {
+        msgeAdd("You cannot sell your ship's sole engine!", cp_grayonblack);
+        return;
+    }
+    if ((mod->getModuleType() == MODULE_FUEL || mod->getModuleType() == MODULE_CREW) &&
+        mod->getFillQuantity() > 0)
+    {
+        msgeAdd(mod->getModuleType() == MODULE_FUEL
+            ? "You cannot sell a non-empty fuel tank!"
+            : "You cannot sell a non-empty crew pod!",
+            cp_grayonblack);
+        return;
+    }
+
+    const uint_64 value = ss->getModuleSellCost(mod);
+
+    ps->setNumCredits(ps->getNumCredits() + value);
+    ps->eraseModule(selection);
+    ps->setModuleSelectionIndex(0);
+    menuObj->eraseMenuItem(selection);
+
+    display_obj.printShipStatsSection(ps);
+    display_obj.printShipGraphic(ps, SHOWHGT / 2);
+    msgeAdd("You sell the module; it is recycled into raw materials.", cp_whiteonblack);
 }
 
 // returns true if conversation leads to entering subarea
@@ -1894,110 +1927,101 @@ void Game::cycleTarget()
 
 point Game::getNextToggleDeltaForFireWeapon(point at, point delta)
 {
-    point nextPoint = addPoints(at, delta);
+    const point next = addPoints(at, delta);
 
+    // If weapon is NOT 8-dir restricted, return naive next (original behavior: no bounds check here)
     if (!eightDirectionRestrictedWeaponSelected(getPlayerShip()))
+        return next;
+
+    // 8-dir restricted path: snap to straight line from player toward target cell
+    const point playerAt = getPlayerShip()->at();
+
+    point snapped = next;
+    if (!isInStraightLine(playerAt, next))
     {
-        return nextPoint;
-    }
-    else
-    {
-        point playerAt = getPlayerShip()->at();
-
-        if (!isInStraightLine(playerAt, nextPoint))
-        {
-            point playerTargetDelta = pointDistance(playerAt, at);
-
-            int maxCoord = std::max(abs(playerTargetDelta.x()), abs(playerTargetDelta.y()));
-
-            point distancePoint = multiplyPoints(point(maxCoord, maxCoord), delta);
-
-            nextPoint = addPoints(distancePoint, playerAt);
-        }
+        const point playerTargetDelta = pointDistance(playerAt, at);
+        const int   maxCoord = std::max(std::abs(playerTargetDelta.x()), std::abs(playerTargetDelta.y()));
+        const point distancePoint = multiplyPoints(point(maxCoord, maxCoord), delta);
+        snapped = addPoints(playerAt, distancePoint);
     }
 
-    if (inRange(nextPoint, point(0, 0), point(currentRegion()->getMap()->getSize().x() - 1, currentRegion()->getMap()->getSize().y() - 1)))
-    {
-        return nextPoint;
-    }
+    // Only in the restricted path do we range-check (matches original)
+    const point mapMax = point(currentRegion()->getMap()->getSize().x() - 1,
+        currentRegion()->getMap()->getSize().y() - 1);
+
+    if (inRange(snapped, point(0, 0), mapMax))
+        return snapped;
 
     return at;
 }
 
-// only works in star systems for now...
 void Game::playerTargetToggle(input_t type)
 {
     if (current_tab != TABTYPE_PLAYAREA)
-    {
         return;
-    }
 
-    if (current_maptype != MAPTYPE_LOCALEMAP)
-    {
+    if (current_maptype != MAPTYPE_LOCALEMAP) {
         printTogglePromptMessage(type, false);
         return;
     }
 
-    point at = getPlayerShip()->at();
+    auto* const map = getMap();
+    auto* const player = getPlayerShip();
+    auto* const region = currentRegion();
 
-    point temp_loc;
+    point at = getNextTargetedNPC(type);
 
-    at = getNextTargetedNPC(type);
-
-    printTogglePromptMessage(type, true);
-
-    if (!checkCanTargetBasedOnModule(type))
-    {
+    // Must have a weapon selected
+    if (!checkCanTargetBasedOnModule(type)) {
         msgeAdd("Your selected module is not a weapon!", cp_grayonblack);
         return;
     }
 
-    if (type == INP_WEAPONFIRE && !sufficientFillQuantity(getPlayerShip()))
-    {
+    // Must have resources to fire
+    if (type == INP_WEAPONFIRE && !sufficientFillQuantity(player)) {
         msgeAdd("You do not have enough power or projectiles to fire that weapon now!", cp_grayonblack);
         cycleTarget();
         return;
     }
 
+    printTogglePromptMessage(type, true);
+
+    point tempLoc = at;
+
+    // Targeting loop until fire input
     do
     {
-        printPlayerFirePath(getPlayerShip()->at(),at);
+        printPlayerFirePath(player->at(), at);
 
-        if ((int)getMap()->getMob(at) > (int)SHIP_PLAYER)
-            display_obj.displayMonitor(MONITOR_TARGETINFO,currentRegion()->getNPCShip(at));
+        if ((int)map->getMob(at) > (int)SHIP_PLAYER)
+            display_obj.displayMonitor(MONITOR_TARGETINFO, region->getNPCShip(at));
 
         gfx_obj.updateScreen();
-
         event_handler.setAction();
 
         if (event_handler.getAction() == INP_DELTA)
         {
-            if (type == INP_WEAPONFIRE)
-            {
-                temp_loc = getNextToggleDeltaForFireWeapon(at, event_handler.getDelta());
-            }
-            else
-            {
-                temp_loc = addPoints(at, event_handler.getDelta());
-            }
-            setPointIfInMapRangeAndLOS(temp_loc, at);
+            const point d = event_handler.getDelta();
+            tempLoc = (type == INP_WEAPONFIRE)
+                ? getNextToggleDeltaForFireWeapon(at, d)
+                : addPoints(at, d);
+
+            setPointIfInMapRangeAndLOS(tempLoc, at);
         }
 
-        if (isAt(temp_loc, at))
-        {
-            clearAllFireCells(getMap());
-        }
+        if (isAt(tempLoc, at))
+            clearAllFireCells(map);
 
         if (event_handler.getAction() == INP_TOGGLE)
         {
-            clearAllFireCells(getMap());
+            clearAllFireCells(map);
             cycleTarget();
             return;
         }
 
         if (event_handler.getAction() == INP_SELECT)
         {
-            clearAllFireCells(getMap());
+            clearAllFireCells(map);
             at = getNextTargetedNPC(type);
         }
 
@@ -2005,20 +2029,15 @@ void Game::playerTargetToggle(input_t type)
 
     playerHasMoved = true;
 
-    clearAllFireCells(getMap());
-
+    clearAllFireCells(map);
     gfx_obj.updateScreen();
 
     if (type == INP_WEAPONFIRE)
     {
-        if (!isAt(at, getPlayerShip()->at()))
-        {
-            mobFire(getPlayerShip(), at);
-        }
+        if (!isAt(at, player->at()))
+            mobFire(player, at);
         else
-        {
             msgeAdd("Cannot target your own ship...", cp_grayonblack);
-        }
     }
 
     cycleTarget();
@@ -2202,64 +2221,72 @@ void Game::checkNPCShipDefeatedByPlayer(MobShip * ship)
 
 void Game::checkPlayerDefeatedEvent()
 {
-    point p;
-    if (getPlayerShip()->getHullStatus() <= 0)
+    auto* const player = getPlayerShip();
+    auto* const map = getMap();
+
+    // Hull destroyed explosion, remove tile, end game
+    if (player->getHullStatus() <= 0)
     {
-        p = getPlayerShip()->at();
-        msgeAdd("Your ship has been destroyed!",cp_darkredonblack);
+        const point p = player->at();
+
+        msgeAdd("Your ship has been destroyed!", cp_darkredonblack);
         printExitPromptMessage();
-        display_obj.printShipStatsSection(getPlayerShip());
-        setMobTileToNIL(getMap(), p);
-        explosion_data.push_back({p,getPlayerShip()->getStatStruct().destruction_radius,0});
+        display_obj.printShipStatsSection(player);
+
+        setMobTileToNIL(map, p);
+        explosion_data.push_back({ p, player->getStatStruct().destruction_radius, 0 });
+
         resetAttackIDs(0);
         Game_active = false;
         return;
     }
 
-    if (getPlayerShip()->getTotalMTFillRemaining(MODULE_CREW) <= 0)
+    // No crew remaining deactivate ship, end game (no explosion)
+    if (player->getTotalMTFillRemaining(MODULE_CREW) <= 0)
     {
-        msgeAdd("All crew members aboard your ship have vanquished!",cp_darkredonblack);
-        getPlayerShip()->setActivationStatus(false);
+        msgeAdd("All crew members aboard your ship have vanquished!", cp_darkredonblack);
+        player->setActivationStatus(false);
         printExitPromptMessage();
-        display_obj.printShipStatsSection(getPlayerShip());
+        display_obj.printShipStatsSection(player);
+
         resetAttackIDs(0);
         Game_active = false;
-        return;
     }
 }
 
 void Game::createShipDestructionAnimations()
 {
-    fire_t ft;
+    if (explosion_data.empty()) {
+        return;
+    }
 
-    int num_explosions = (int)explosion_data.size();
+    auto* const map = getMap();
 
-    int m_radius = 1;
+    // Find the maximum explosion radius (at least 1, matching original init)
+    int max_radius = 1;
+    for (const auto& e : explosion_data)
+        max_radius = std::max(max_radius, static_cast<int>(e.radius));
 
-    int num_visible = 0;
-
-    for (int i = 0; i < num_explosions; ++i)
-         m_radius = (int)std::max(m_radius,explosion_data[i].radius);
-
-    for (int c = 0; c < m_radius*2; ++c)
+    // Iterate "rings" out to max_radius*2 (same semantics as before)
+    for (int c = 0; c < max_radius * 2; ++c)
     {
-        num_visible = 0;
+        int num_visible = 0;
 
-        for (int i = 0; i < num_explosions; ++i)
+        for (auto& e : explosion_data)
         {
-            if (c < explosion_data[i].radius*2 && getMap()->getv(explosion_data[i].loc))
+            if (c < e.radius * 2 && map->getv(e.loc))
             {
-                ft = c < explosion_data[i].radius ? FIRET_EXPLOSION : NIL_f;
-                explosion_data[i].iteration = (c != explosion_data[i].radius ? explosion_data[i].iteration + 1 : 1);
-                printFireCircle(explosion_data[i].loc,explosion_data[i].iteration,ft);
-                num_visible++;
+                const fire_t ft = (c < e.radius) ? FIRET_EXPLOSION : NIL_f;
+                e.iteration = (c != e.radius) ? (e.iteration + 1) : 1;
+                printFireCircle(e.loc, e.iteration, ft);
+                ++num_visible;
             }
         }
 
         if (num_visible > 0)
             display_obj.delayAndUpdate(30);
         else
-            break;
+            break; // nothing visible this ring; stop early
     }
 
     explosion_data.clear();
@@ -2310,68 +2337,94 @@ void Game::setupLoadedGame()
 
 void Game::initGameObjects()
 {
+    // Reset discovery & world state
     raceIDNameMapDiscovered.clear();
     universe.setupUniverse();
     universe.setSubAreaMapType(SMT_NONE);
+
+    // UI / meta state
     initMenus();
     turn_timer = 0U;
     current_maptype = MAPTYPE_STARMAP;
     current_tab = TABTYPE_PLAYAREA;
     current_subarea_id = -1;
     current_player_target = 0;
-    getPlayerShip()->setShipMob(true, allshipmob_data[(int)SHIP_PLAYER],
-        NPCSHIPTYPE_NONE, allshipmob_data[(int)SHIP_PLAYER].max_hull, point(PLAYER_START_X, PLAYER_START_Y));
-    getPlayerShip()->initMobSubAreaID(0);
-    getPlayerShip()->setMobSubAreaAttackID(-1);
-    getPlayerShip()->setMobSubAreaGroupID(-1);
-    getPlayerShip()->setNumCredits(5000ULL);
-    display_obj.updateUpperLeft(getPlayerShip()->at(), getMap()->getSize());
-    changeMobTile(point(0, 0), getPlayerShip()->at(), getPlayerShip()->getMobType());
 
-    //getPlayerShip()->setNumMaxModules(26);
+    // Player ship setup
+    auto* ps = getPlayerShip();
+    auto* map = getMap();
 
-    Module cm1 = Module(MODULE_CREW, 24, 32);
-    getPlayerShip()->addModule(cm1);
+    ps->setShipMob(
+        /*isShip*/ true,
+        allshipmob_data[static_cast<int>(SHIP_PLAYER)],
+        NPCSHIPTYPE_NONE,
+        allshipmob_data[static_cast<int>(SHIP_PLAYER)].max_hull,
+        point(PLAYER_START_X, PLAYER_START_Y)
+    );
+    ps->initMobSubAreaID(0);
+    ps->setMobSubAreaAttackID(-1);
+    ps->setMobSubAreaGroupID(-1);
+    ps->setNumCredits(5000ULL);
 
-    Module fm1 = Module(MODULE_FUEL, 100, 100);
-    getPlayerShip()->addModule(fm1);
+    // Position/viewport
+    display_obj.updateUpperLeft(ps->at(), map->getSize());
+    changeMobTile(point(0, 0), ps->at(), ps->getMobType());
 
-    Module sm1 = Module(MODULE_SHIELD, allbasicshield_stats[1].base_num_layers, allbasicshield_stats[1].base_num_layers);
-    sm1.setShieldStruct(allbasicshield_stats[1]);
-    getPlayerShip()->addModule(sm1);
+    // --- Starter modules ---
 
-    Module em1 = Module(MODULE_ENGINE, 10, 10);
-    em1.setEngineStruct(allbasicengine_stats[1]);
-    getPlayerShip()->addModule(em1);
+    // Crew
+    {
+        Module m{ MODULE_CREW, 24, 32 };
+        ps->addModule(m);
+    }
 
-    Module wm1 = Module(MODULE_WEAPON, 50, 50);
-    wm1.setWeaponStruct(allbasicweapon_stats[1]);
-    getPlayerShip()->addModule(wm1);
+    // Fuel
+    {
+        Module m{ MODULE_FUEL, 100, 100 };
+        ps->addModule(m);
+    }
+
+    // Shield
+    {
+        Module m{ MODULE_SHIELD, allbasicshield_stats[1].base_num_layers, allbasicshield_stats[1].base_num_layers };
+        m.setShieldStruct(allbasicshield_stats[1]);
+        ps->addModule(m);
+    }
+
+    // Engine
+    {
+        Module m{ MODULE_ENGINE, 10, 10 };
+        m.setEngineStruct(allbasicengine_stats[1]);
+        ps->addModule(m);
+    }
+
+    // Weapon
+    {
+        Module m{ MODULE_WEAPON, 50, 50 };
+        m.setWeaponStruct(allbasicweapon_stats[1]);
+        ps->addModule(m);
+    }
 
     /*
-        for (int i = 1; i <= 17; i++)
-        {
-            Module wm = Module(MODULE_WEAPON, 100, 100);
-            wm.setWeaponStruct(allbasicweapon_stats[i]);
-            getPlayerShip()->addModule(wm);
-        }
+    // Bulk add examples kept as-is (commented):
+    for (int i = 1; i <= 18; ++i) {
+        Module wm{ MODULE_WEAPON, 100, 100 };
+        wm.setWeaponStruct(allbasicweapon_stats[i]);
+        ps->addModule(wm);
+    }
 
-        Module cm2 = Module(MODULE_CREW, 96, 96);
-        getPlayerShip()->addModule(cm2);
+    ps->addModule(Module(MODULE_CREW, 96, 96));
+    ps->addModule(Module(MODULE_CREW, 96, 96));
+    ps->addModule(Module(MODULE_CREW, 96, 96));
+    ps->addModule(Module(MODULE_CREW, 96, 96));
+    */
 
-        Module cm3 = Module(MODULE_CREW, 96, 96);
-        getPlayerShip()->addModule(cm3);
+    // Select the weapon by default (index 4 in the above order)
+    ps->setModuleSelectionIndex(4);
 
-        Module cm4 = Module(MODULE_CREW, 96, 96);
-        getPlayerShip()->addModule(cm4);
-
-        Module cm5 = Module(MODULE_CREW, 96, 96);
-        getPlayerShip()->addModule(cm5);
-      */  
-    getPlayerShip()->setModuleSelectionIndex(4);
-    last_smloc = getPlayerShip()->at();
+    // Remember starting star-map location
+    last_smloc = ps->at();
 }
-
 
 void Game::save()
 {

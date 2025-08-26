@@ -100,12 +100,12 @@ void loadStationBuyModulesMenu(station* stationObj, menu* menuObj)
             break;
 
         case MODULE_CREW:
-            label = "Crew Pod (MAX " + int2String(mod->getMaxFillQuantity()) + ")";
+            label = "crew pod (MAX " + int2String(mod->getMaxFillQuantity()) + ")";
             sym = crewpod_symbol;
             break;
 
         case MODULE_FUEL:
-            label = "Fuel Tank (MAX " + int2String(mod->getMaxFillQuantity()) + ")";
+            label = "fuel tank (MAX " + int2String(mod->getMaxFillQuantity()) + ")";
             sym = fueltank_symbol;
             break;
 
@@ -150,13 +150,13 @@ void loadStationSellModulesMenu(station* stationObj, menu* menuObj, MobShip* pla
             break;
 
         case MODULE_CREW:
-            label = "Crew Pod (" + int2String(mod->getFillQuantity()) + "/" +
+            label = "crew pod (" + int2String(mod->getFillQuantity()) + "/" +
                 int2String(mod->getMaxFillQuantity()) + ")";
             sym = crewpod_symbol;
             break;
 
         case MODULE_FUEL:
-            label = "Fuel Tank (" + int2String(mod->getFillQuantity()) + "/" +
+            label = "fuel tank (" + int2String(mod->getFillQuantity()) + "/" +
                 int2String(mod->getMaxFillQuantity()) + ")";
             sym = fueltank_symbol;
             break;

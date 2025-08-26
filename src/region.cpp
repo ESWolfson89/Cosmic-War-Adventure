@@ -265,7 +265,7 @@ void StarMapRegion::createPersistentSubArea(point loc, star_type st, subarea_spe
     }
     else
     {
-        if (roll(4))
+        if (roll(3))
         {
             subareaVector[subarea_idx].setupProcgenWarzoneSubArea(loc);
             subareaVector[subarea_idx].setSubAreaSpecificType(SST_WARZONE);

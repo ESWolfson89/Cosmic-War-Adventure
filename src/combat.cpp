@@ -144,24 +144,7 @@ bool checkNPCWeaponEvent(MobShip* attacker)
 
 void mobChangeSelectedWeapon(MobShip* mob)
 {
-    const int currentIndex = mob->getModuleSelectionIndex();
-    const int moduleCount = mob->getNumInstalledModules();
-
-    std::vector<int> weaponIndices;
-
-    for (int i = 0; i < moduleCount; ++i)
-    {
-        if (i != currentIndex && mob->getModule(i)->getModuleType() == MODULE_WEAPON)
-        {
-            weaponIndices.push_back(i);
-        }
-    }
-
-    if (!weaponIndices.empty())
-    {
-        const int selected = weaponIndices[randInt(0, weaponIndices.size() - 1)];
-        mob->setModuleSelectionIndex(selected);
-    }
+    setRandomWeaponModule(mob);
 }
 
 void printShipmobWeaponEventMessage(MobShip* mob, const std::string& action)
@@ -223,9 +206,14 @@ void mobFire(MobShip* mb, point p)
             msgeAdd("*VREEEEEEEEE!*", weapon_cp);
             break;
         }
-        case(WEAPONTYPE_WALLOP):
+        case(WEAPONTYPE_TOXICWALLOP):
         {
             msgeAdd("*VRRRRUPP*", weapon_cp);
+            break;
+        }
+        case(WEAPONTYPE_ENERGYWALLOP):
+        {
+            msgeAdd("*Bzzz-choooom*", weapon_cp);
             break;
         }
         case(WEAPONTYPE_MECH):
@@ -247,28 +235,29 @@ void mobFire(MobShip* mb, point p)
     {
         switch (selected_weapon)
         {
-        case(WEAPONTYPE_MISSILE):
-        case(WEAPONTYPE_WALLOP):
-        case(WEAPONTYPE_MECH):
-        case(WEAPONTYPE_BLAST):
-        case(WEAPONTYPE_BEAM):
-        case(WEAPONTYPE_HELL):
-        {
-            mobShootSingleProjectile(mb, p);
-            break;
-        }
-        case(WEAPONTYPE_SPREAD):
-        {
-            mobShootSpread(mb, p, 3);
-            break;
-        }
-        case(WEAPONTYPE_PULSE):
-        {
-            mobShootPulse(mb, p);
-            break;
-        }
-        default:
-            break;
+            case(WEAPONTYPE_MISSILE):
+            case(WEAPONTYPE_TOXICWALLOP):
+            case(WEAPONTYPE_ENERGYWALLOP):
+            case(WEAPONTYPE_MECH):
+            case(WEAPONTYPE_BLAST):
+            case(WEAPONTYPE_BEAM):
+            case(WEAPONTYPE_HELL):
+            {
+                mobShootSingleProjectile(mb, p);
+                break;
+            }
+            case(WEAPONTYPE_SPREAD):
+            {
+                mobShootSpread(mb, p, 3);
+                break;
+            }
+            case(WEAPONTYPE_PULSE):
+            {
+                mobShootPulse(mb, p);
+                break;
+            }
+            default:
+               break;
         }
     }
 }
@@ -346,9 +335,9 @@ void displayEvasionReport(int acc_val, MobShip* mb)
     msgeAdd(getNamePrefix(mb) + " " + mb->getShipName() + " " + evasion_str, cp_grayonblack);
 }
 
-void endOfProjectileLoop(MobShip* mb, point lof, bool is_detectable)
+void endOfProjectileLoop(MobShip* mb, point lof, bool is_detectable, bool line_extender)
 {
-    if (is_detectable)
+    if (is_detectable || line_extender)
         clearAllFireCells(getMap());
 
     if (terrainBlocked(getMap()->getBackdrop(lof)))
@@ -456,8 +445,12 @@ void displayDamageReport(damage_report dr, MobShip* attacker, MobShip* target, b
             }
             break;
 
-        case WEAPONTYPE_WALLOP:
+        case WEAPONTYPE_TOXICWALLOP:
             reportStr = "The " + targetName + " is engulfed by the toxic fumes!";
+            break;
+
+        case WEAPONTYPE_ENERGYWALLOP:
+            reportStr = "The " + targetName + " is blasted by the electricity";
             break;
 
         case WEAPONTYPE_MISSILE:
@@ -584,7 +577,7 @@ void mobShootSingleProjectile(MobShip* mb, point dest)
         
         if (hitmob_condition || primary_iter == range - 1 || terrainBlocked(getMap()->getBackdrop(lof)))
         {
-          endOfProjectileLoop(mb, lof, is_detectable);
+          endOfProjectileLoop(mb, lof, is_detectable, weapon.extender_line_disp);
           return;
         }
         

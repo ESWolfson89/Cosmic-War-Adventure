@@ -50,11 +50,11 @@
 
 #define NUM_TOTAL_MODULE_TYPES 7
 
-#define NUM_TOTAL_WEAPON_TYPES 18
+#define NUM_TOTAL_WEAPON_TYPES 19
 
-#define NUM_TOTAL_ENGINE_TYPES 3
+#define NUM_TOTAL_ENGINE_TYPES 4
 
-#define NUM_TOTAL_SHIELD_TYPES 3
+#define NUM_TOTAL_SHIELD_TYPES 5
 
 #define NUM_TOTAL_RACES 150
 
@@ -216,10 +216,10 @@ enum fire_t
     FIRET_PURPLELINEHORIZ,
     FIRET_PURPLELINEDIAG1,
     FIRET_PURPLELINEDIAG2,
-    FIRET_LIGHTREDLINE,
-    FIRET_LIGHTREDLINEHORIZ,
-    FIRET_LIGHTREDLINEDIAG1,
-    FIRET_LIGHTREDLINEDIAG2,
+    FIRET_ORANGELINE,
+    FIRET_ORANGELINEHORIZ,
+    FIRET_ORANGELINEDIAG1,
+    FIRET_ORANGELINEDIAG2,
     FIRET_GRAYLINE,
     FIRET_GRAYLINEHORIZ,
     FIRET_GRAYLINEDIAG1,
@@ -228,6 +228,7 @@ enum fire_t
     FIRET_DAMAGINGEXPLOSION,
     FIRET_PURPLEPLASMA,
     FIRET_GREENWALLOP,
+    FIRET_BLUEWALLOP,
     FIRET_DARKRAZOR,
     FIRET_CURSOR,
     FIRET_CURSORPATH
@@ -306,6 +307,7 @@ static const color_pair cp_blackonpurple = { color_black, color_purple };
 static const color_pair cp_blackonorange = { color_black, color_orange };
 static const color_pair cp_blackondarkred = { color_black, color_darkred };
 static const color_pair cp_blackongreen = { color_black, color_green };
+static const color_pair cp_blackonblue = { color_black, color_blue };
 
 static const chtype blank_ch = {cp_blackonblack,(int)' '};
 static const chtype blank_grid_ch = {cp_spaceonblack,254};
@@ -398,7 +400,7 @@ static const color_pair procgen_ship_colors[NUM_POSSIBLE_SHIP_COLORS] =
   {{225,225,225},color_black}
 };
 
-static const chtype fire_symbol[28] =
+static const chtype fire_symbol[29] =
 {
     blank_ch,
     {cp_cyanonblack,179},
@@ -413,10 +415,10 @@ static const chtype fire_symbol[28] =
     {cp_purpleonblack,196},
     {cp_purpleonblack,92},
     {cp_purpleonblack,(int)'/'},
-    {cp_lightredonblack,179},
-    {cp_lightredonblack,196},
-    {cp_lightredonblack,92},
-    {cp_lightredonblack,(int)'/'},
+    {cp_orangeonblack,179},
+    {cp_orangeonblack,196},
+    {cp_orangeonblack,92},
+    {cp_orangeonblack,(int)'/'},
     {cp_grayonblack,179},
     {cp_grayonblack,196},
     {cp_grayonblack,92},
@@ -425,6 +427,7 @@ static const chtype fire_symbol[28] =
     {cp_redonblack,(int)'*'},
     {cp_purpleonblack,(int)'*'},
     {cp_greenonblack,(int)'*'},
+    {cp_blueonblack,(int)'*'},
     {cp_darkgrayonblack,15},
     {cp_whiteonblack,(int)'X'},
     {cp_whiteonblack,(int)'*'}

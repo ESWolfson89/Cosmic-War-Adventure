@@ -38,7 +38,7 @@ bool checkForMobInLOF(MobShip* mb, point lof, bool add_hitsprite, bool guarantee
 
 void displayEvasionReport(int, MobShip*);
 
-void endOfProjectileLoop(MobShip*, point, bool);
+void endOfProjectileLoop(MobShip*, point, bool, bool);
 
 void checkIfRaceAggroEvent(MobShip*, MobShip*);
 
