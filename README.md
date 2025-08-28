@@ -25,7 +25,3 @@ To be posted:
 2) How to compile in Code::Blocks under windows( I have not tested under linux, but will try to do so in the future so I can have compilation instructions for that too).
 
 3) Remaining things I intend to add.
-
-
-Licensed under GNU (General Public License) GPL version 3.
-See LICENSE.txt for more details.
