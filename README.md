@@ -2,6 +2,9 @@ Cosmic War Adventure.
 
 An ascii space adventure game.
 
+Video of the game can been seen at:
+https://www.youtube.com/watch?v=nmU2icV2Rzo
+
 ![Alt text](/screenshots/Untitled.jpg?raw=true "Screenshot1")
 
 ---
