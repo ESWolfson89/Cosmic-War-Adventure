@@ -6,7 +6,7 @@ Video of the game can been seen at:
 https://www.youtube.com/watch?v=nmU2icV2Rzo
 
 
-![Alt text](/screenshots/Untitled.jpg?raw=true "Screenshot1")
+![Alt text](/Untitled.jpg?raw=true "Screenshot1")
 
 ---
 
@@ -17,8 +17,6 @@ SDL2
 SDL2 Image library
 
 ---
-
-See title screen in screenshot 4 for details on how to play, missing features, etc...
 
 ------------
 
